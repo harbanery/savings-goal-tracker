@@ -16,6 +16,7 @@ import dayjs from "dayjs";
 import { CATEGORY_MAP } from "@/models/categories";
 import type { Purchase } from "@/models/types";
 import { formatIDR } from "@/utils/currency";
+import PurchaseCardList from "./PurchaseCardList";
 
 const { Text } = Typography;
 
@@ -61,10 +62,7 @@ export default function PurchaseTable({ purchases, onEdit, onDelete }: Props) {
         const cat = CATEGORY_MAP[record.purchase.categoryId];
         if (!cat) return <Text type="secondary">-</Text>;
         return (
-          <Tag
-            color={cat.color}
-            style={{ margin: 0, fontSize: 11 }}
-          >
+          <Tag color={cat.color} style={{ margin: 0, fontSize: 11 }}>
             {cat.label}
           </Tag>
         );
@@ -100,6 +98,7 @@ export default function PurchaseTable({ purchases, onEdit, onDelete }: Props) {
       key: "action",
       width: 90,
       align: "center",
+      fixed: "end",
       render: (_: unknown, record: RowData) => (
         <div className="flex justify-center gap-1">
           <Button
@@ -139,6 +138,7 @@ export default function PurchaseTable({ purchases, onEdit, onDelete }: Props) {
       variant="borderless"
       className="shadow-sm"
       title={<Text strong>Daftar Pembelian</Text>}
+      style={{ marginBottom: 24 }}
       styles={{ body: { padding: 0 } }}
     >
       {purchases.length === 0 ? (
@@ -146,13 +146,26 @@ export default function PurchaseTable({ purchases, onEdit, onDelete }: Props) {
           <Empty description="Belum ada pembelian di siklus ini" />
         </div>
       ) : (
-        <Table
-          columns={columns}
-          dataSource={dataSource}
-          pagination={{ pageSize: 10, size: "small" }}
-          size="small"
-          scroll={{ x: 600 }}
-        />
+        <>
+          {/* Tabel untuk tablet & desktop */}
+          <div className="hidden sm:block">
+            <Table
+              columns={columns}
+              dataSource={dataSource}
+              pagination={{ pageSize: 10, size: "small" }}
+              size="small"
+              scroll={{ x: 600 }}
+            />
+          </div>
+          {/* Kartu untuk mobile */}
+          <div className="block p-3 sm:hidden">
+            <PurchaseCardList
+              purchases={purchases}
+              onEdit={onEdit}
+              onDelete={onDelete}
+            />
+          </div>
+        </>
       )}
     </Card>
   );

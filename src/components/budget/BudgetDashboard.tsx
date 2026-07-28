@@ -98,33 +98,35 @@ export default function BudgetDashboard({ initialPurchases }: Props) {
 
   return (
     <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950">
-      <div className="mx-auto max-w-7xl px-4 py-6 md:px-8">
+      <div className="mx-auto max-w-7xl px-3 py-4 sm:px-4 sm:py-6 md:px-8">
         {/* Header */}
-        <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-          <div>
+        <div className="mb-4 flex flex-col gap-4 md:mb-6 md:flex-row md:items-start md:justify-between">
+          <div className="min-w-0">
             <Title
               level={2}
               style={{ marginBottom: 4 }}
-              className="text-xl! sm:text-2xl! md:text-3xl!"
+              className="text-lg! sm:text-2xl! md:text-3xl!"
             >
               Savings Goal Tracker
             </Title>
             <Paragraph
               type="secondary"
               style={{ marginBottom: 0 }}
-              className="text-sm sm:text-base"
+              className="text-xs! sm:text-sm! md:text-base!"
             >
               Pantau pengeluaran bulanan dengan sistem wadah.{" "}
-              <span className="text-zinc-50">
+              <span className="font-medium text-indigo-500 dark:text-indigo-400">
                 Siklus <b>{cycle.label}</b>:{" "}
                 {dayjs(cycle.startDate).format("D MMM")} s/d{" "}
                 {dayjs(cycle.endDate).format("D MMM YYYY")}
               </span>
             </Paragraph>
           </div>
-          <div className="flex flex-col items-end gap-3">
-            <RealtimeClock />
-            <Space wrap>
+          <div className="flex flex-col items-stretch gap-3 sm:flex-row sm:items-center sm:justify-end md:flex-col md:items-end">
+            <div className="flex justify-end">
+              <RealtimeClock />
+            </div>
+            <Space wrap className="justify-center sm:justify-end">
               <ThemeToggle />
               <Button
                 icon={<LeftOutlined />}
@@ -150,7 +152,8 @@ export default function BudgetDashboard({ initialPurchases }: Props) {
                 icon={<PlusOutlined />}
                 onClick={handleOpenCreate}
               >
-                Tambah Pembelian
+                <span className="hidden sm:inline">Tambah Pembelian</span>
+                <span className="sm:hidden">Tambah</span>
               </Button>
             </Space>
           </div>
@@ -168,17 +171,15 @@ export default function BudgetDashboard({ initialPurchases }: Props) {
           />
         )}
 
-        {/* Category Breakdown */}
-        <div className="mb-6">
-          <CategoryBreakdown stats={stats} />
-        </div>
-
         {/* Purchase Table */}
         <PurchaseTable
           purchases={purchases}
           onEdit={handleOpenEdit}
           onDelete={handleDelete}
         />
+
+        {/* Category Breakdown */}
+        <CategoryBreakdown stats={stats} />
 
         {/* Modal */}
         <PurchaseFormModal
