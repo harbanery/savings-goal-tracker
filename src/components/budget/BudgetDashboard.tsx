@@ -1,6 +1,6 @@
 "use client";
 
-import { PlusOutlined, LeftOutlined, RightOutlined } from "@ant-design/icons";
+import { LeftOutlined, RightOutlined } from "@ant-design/icons";
 import { Alert, Button, DatePicker, Space, Typography } from "antd";
 import { useCallback, useMemo, useState } from "react";
 import dayjs from "dayjs";
@@ -193,14 +193,6 @@ export default function BudgetDashboard({
                 icon={<RightOutlined />}
                 onClick={() => handleCycleChange(shiftCycle(cycle, 1))}
               />
-              <Button
-                type="primary"
-                icon={<PlusOutlined />}
-                onClick={handleOpenCreate}
-              >
-                <span className="hidden sm:inline">Tambah Pembelian</span>
-                <span className="sm:hidden">Tambah</span>
-              </Button>
             </Space>
           </div>
         </div>
@@ -211,15 +203,16 @@ export default function BudgetDashboard({
           <Alert
             type="error"
             showIcon
-            message="Melebihi Limit Pengeluaran!"
+            title="Melebihi Limit Pengeluaran!"
             description={`Pengeluaran sudah ${formatIDR(stats.totalSpent)}, melebihi limit ${formatIDR(stats.spendingLimit)}. Selisih: ${formatIDR(Math.abs(stats.limitRemaining))}.`}
-            className="mb-6"
+            style={{ marginBottom: 24 }}
           />
         )}
 
         {/* Purchase Table */}
         <PurchaseTable
           purchases={purchases}
+          onCreate={handleOpenCreate}
           onEdit={handleOpenEdit}
           onDelete={handleDelete}
           onDeleteBulk={handleDeleteBulk}

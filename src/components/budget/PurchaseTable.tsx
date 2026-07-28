@@ -1,6 +1,6 @@
 "use client";
 
-import { DeleteOutlined, EditOutlined } from "@ant-design/icons";
+import { DeleteOutlined, EditOutlined, PlusOutlined } from "@ant-design/icons";
 import {
   Button,
   Card,
@@ -25,6 +25,7 @@ const { Text } = Typography;
 
 interface Props {
   purchases: Purchase[];
+  onCreate: () => void;
   onEdit: (purchase: Purchase) => void;
   onDelete: (id: string) => void;
   onDeleteBulk: (ids: string[]) => void;
@@ -39,6 +40,7 @@ interface RowData {
 /** Tabel daftar pembelian dengan kolom nama, kategori, jumlah, tanggal, aksi. */
 export default function PurchaseTable({
   purchases,
+  onCreate,
   onEdit,
   onDelete,
   onDeleteBulk,
@@ -92,7 +94,11 @@ export default function PurchaseTable({
         const cat = CATEGORY_MAP[record.purchase.categoryId];
         if (!cat) return <Text type="secondary">-</Text>;
         return (
-          <Tag color={cat.color} style={{ margin: 0, fontSize: 11 }}>
+          <Tag
+            color={cat.color}
+            style={{ margin: 0, fontSize: 11 }}
+            variant="solid"
+          >
             {cat.label}
           </Tag>
         );
@@ -173,7 +179,7 @@ export default function PurchaseTable({
         </Space>
       }
       extra={
-        <Space size="small" wrap>
+        <Space size="medium" wrap>
           {hasSelected && (
             <Popconfirm
               title={`Hapus ${selectedRowKeys.length} pembelian?`}
@@ -188,6 +194,14 @@ export default function PurchaseTable({
             </Popconfirm>
           )}
           <ImportExportButtons purchases={purchases} onImported={onImported} />
+          <Button
+            type="primary"
+            size="small"
+            icon={<PlusOutlined />}
+            onClick={onCreate}
+          >
+            <span className="hidden md:inline">Tambah Pembelian</span>
+          </Button>
         </Space>
       }
       style={{ marginBottom: 24 }}

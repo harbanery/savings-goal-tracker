@@ -30,7 +30,7 @@ export default function PurchaseCardList({
   }
 
   return (
-    <div className="flex flex-col gap-2">
+    <div className="dynamic-scrollbar flex max-h-[60vh] min-h-0 flex-col gap-2 overflow-y-auto pr-1">
       {purchases.map((p) => {
         const cat = CATEGORY_MAP[p.categoryId];
         return (
@@ -43,7 +43,9 @@ export default function PurchaseCardList({
           >
             <div className="flex items-center justify-between gap-2">
               <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-2">
+                <div
+                  className={`flex items-center gap-2 ${p.note ? "pb-2" : "pb-1"}`}
+                >
                   <Text strong style={{ fontSize: 13 }} className="truncate">
                     {p.name}
                   </Text>
@@ -51,6 +53,7 @@ export default function PurchaseCardList({
                     <Tag
                       color={cat.color}
                       style={{ margin: 0, fontSize: 10 }}
+                      variant="solid"
                     >
                       {cat.label}
                     </Tag>

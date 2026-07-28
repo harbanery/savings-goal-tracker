@@ -21,7 +21,8 @@
   --foreground: #ededed;
 }
 
-* {
+html,
+body {
   @apply hide-scrollbar;
 }
 
@@ -35,9 +36,73 @@ body {
 }
 
 /*
+ * Dynamic scrollbar untuk area yang dapat di-scroll (antd table body,
+ * card list mobile, dll). Scrollbar tipis yang muncul saat dibutuhkan
+ * dan menyala saat hover.
+ */
+.dynamic-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: rgb(0 0 0 / 0.2) transparent;
+}
+.dark .dynamic-scrollbar {
+  scrollbar-color: rgb(255 255 255 / 0.2) transparent;
+}
+.dynamic-scrollbar::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+.dynamic-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.dynamic-scrollbar::-webkit-scrollbar-thumb {
+  background-color: rgb(0 0 0 / 0.2);
+  border-radius: 3px;
+}
+.dark .dynamic-scrollbar::-webkit-scrollbar-thumb {
+  background-color: rgb(255 255 255 / 0.2);
+}
+.dynamic-scrollbar::-webkit-scrollbar-thumb:hover {
+  background-color: rgb(0 0 0 / 0.35);
+}
+.dark .dynamic-scrollbar::-webkit-scrollbar-thumb:hover {
+  background-color: rgb(255 255 255 / 0.35);
+}
+
+/* Terapkan dynamic scrollbar ke body tabel antd di dalam wrapper */
+.dynamic-scrollbar .ant-table-body {
+  scrollbar-width: thin;
+  scrollbar-color: rgb(0 0 0 / 0.2) transparent;
+}
+.dark .dynamic-scrollbar .ant-table-body {
+  scrollbar-color: rgb(255 255 255 / 0.2) transparent;
+}
+.dynamic-scrollbar .ant-table-body::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+.dynamic-scrollbar .ant-table-body::-webkit-scrollbar-track {
+  background: transparent;
+}
+.dynamic-scrollbar .ant-table-body::-webkit-scrollbar-thumb {
+  background-color: rgb(0 0 0 / 0.2);
+  border-radius: 3px;
+}
+.dark .dynamic-scrollbar .ant-table-body::-webkit-scrollbar-thumb {
+  background-color: rgb(255 255 255 / 0.2);
+}
+.dynamic-scrollbar .ant-table-body::-webkit-scrollbar-thumb:hover {
+  background-color: rgb(0 0 0 / 0.35);
+}
+.dark .dynamic-scrollbar .ant-table-body::-webkit-scrollbar-thumb:hover {
+  background-color: rgb(255 255 255 / 0.35);
+}
+
+/*
  * Utility `hide-scrollbar` (Tailwind v4).
  * Didefinisikan dengan `@utility` agar dapat dipakai via `@apply`
- * maupun sebagai class biasa.
+ * maupun sebagai class biasa. Menggunakan `@layer utilities` tidak
+ * lagi memungkinkan `@apply` di Tailwind v4 dan memicu error
+ * "Cannot apply unknown utility class `hide-scrollbar`".
  */
 @utility hide-scrollbar {
   &::-webkit-scrollbar {

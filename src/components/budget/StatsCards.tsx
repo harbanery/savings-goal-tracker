@@ -9,7 +9,7 @@ interface Props {
 }
 
 /** Kartu statistik ringkasan siklus (3 kartu). */
-export default function StatsCards({ stats }: Props) {
+export default function StatsCards({ stats }: Readonly<Props>) {
   return (
     <Row gutter={[8, 8]} className="mb-4 md:mb-6">
       <Col xs={24} sm={8}>
@@ -21,7 +21,7 @@ export default function StatsCards({ stats }: Props) {
             styles={{
               content: {
                 color: "#6366f1",
-                fontSize: "clamp(13px, 3vw, 24px)",
+                fontSize: "clamp(24px, 3vw, 24px)",
               },
             }}
           />
@@ -36,7 +36,7 @@ export default function StatsCards({ stats }: Props) {
             styles={{
               content: {
                 color: stats.overLimit ? "#ef4444" : "#f59e0b",
-                fontSize: "clamp(13px, 3vw, 24px)",
+                fontSize: "clamp(24px, 3vw, 24px)",
               },
             }}
           />
@@ -51,7 +51,7 @@ export default function StatsCards({ stats }: Props) {
             styles={{
               content: {
                 color: stats.overLimit ? "#ef4444" : "#22c55e",
-                fontSize: "clamp(13px, 3vw, 24px)",
+                fontSize: "clamp(24px, 3vw, 24px)",
               },
             }}
           />
