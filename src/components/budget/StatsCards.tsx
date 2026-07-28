@@ -8,11 +8,11 @@ interface Props {
   stats: CycleStats;
 }
 
-/** Kartu statistik ringkasan siklus. */
+/** Kartu statistik ringkasan siklus (3 kartu). */
 export default function StatsCards({ stats }: Props) {
   return (
     <Row gutter={[8, 8]} className="mb-4 md:mb-6">
-      <Col xs={12} md={6}>
+      <Col xs={24} sm={8}>
         <Card variant="borderless" className="shadow-sm">
           <Statistic
             title="Saldo Awal"
@@ -21,13 +21,13 @@ export default function StatsCards({ stats }: Props) {
             styles={{
               content: {
                 color: "#6366f1",
-                fontSize: "clamp(11px, 3.2vw, 24px)",
+                fontSize: "clamp(13px, 3vw, 24px)",
               },
             }}
           />
         </Card>
       </Col>
-      <Col xs={12} md={6}>
+      <Col xs={24} sm={8}>
         <Card variant="borderless" className="shadow-sm">
           <Statistic
             title="Total Pengeluaran"
@@ -36,13 +36,13 @@ export default function StatsCards({ stats }: Props) {
             styles={{
               content: {
                 color: stats.overLimit ? "#ef4444" : "#f59e0b",
-                fontSize: "clamp(11px, 3.2vw, 24px)",
+                fontSize: "clamp(13px, 3vw, 24px)",
               },
             }}
           />
         </Card>
       </Col>
-      <Col xs={12} md={6}>
+      <Col xs={24} sm={8}>
         <Card variant="borderless" className="shadow-sm">
           <Statistic
             title="Sisa Limit"
@@ -51,7 +51,7 @@ export default function StatsCards({ stats }: Props) {
             styles={{
               content: {
                 color: stats.overLimit ? "#ef4444" : "#22c55e",
-                fontSize: "clamp(11px, 3.2vw, 24px)",
+                fontSize: "clamp(13px, 3vw, 24px)",
               },
             }}
           />
@@ -60,21 +60,6 @@ export default function StatsCards({ stats }: Props) {
             showInfo={false}
             size="small"
             strokeColor={stats.overLimit ? "#ef4444" : "#f59e0b"}
-          />
-        </Card>
-      </Col>
-      <Col xs={12} md={6}>
-        <Card variant="borderless" className="shadow-sm">
-          <Statistic
-            title="Siklus Bulanan"
-            value={stats.remaining}
-            formatter={(value) => formatIDR(Number(value))}
-            styles={{
-              content: {
-                color: stats.remaining < 0 ? "#ef4444" : "#3b82f6",
-                fontSize: "clamp(11px, 3.2vw, 24px)",
-              },
-            }}
           />
         </Card>
       </Col>

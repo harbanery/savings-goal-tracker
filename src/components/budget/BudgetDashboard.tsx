@@ -151,11 +151,11 @@ export default function BudgetDashboard({
               </span>
             </Paragraph>
           </div>
-          <div className="flex flex-col items-stretch gap-3 sm:flex-row sm:items-center sm:justify-end md:flex-col md:items-end">
-            <div className="flex justify-end">
+          <div className="flex flex-col items-end gap-3">
+            <div className="flex w-full justify-end">
               <RealtimeClock />
             </div>
-            <Space wrap className="justify-center sm:justify-end">
+            <Space wrap className="w-full justify-end">
               <ThemeToggle />
               <Button
                 icon={<LeftOutlined />}

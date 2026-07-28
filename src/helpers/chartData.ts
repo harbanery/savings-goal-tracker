@@ -17,13 +17,41 @@ export interface CycleChartData {
   categorySpent: Record<string, number>;
 }
 
+const MONTH_NAMES_ID = [
+  "Januari",
+  "Februari",
+  "Maret",
+  "April",
+  "Mei",
+  "Juni",
+  "Juli",
+  "Agustus",
+  "September",
+  "Oktober",
+  "November",
+  "Desember",
+];
+
+/** Parse label "Agustus 2026" menjadi sort key numerik kronologis. */
+function labelToSortKey(label: string): number {
+  const parts = label.split(" ");
+  if (parts.length !== 2) return 0;
+  const monthIdx = MONTH_NAMES_ID.indexOf(parts[0]);
+  const year = Number(parts[1]);
+  if (monthIdx < 0 || !Number.isFinite(year)) return 0;
+  return year * 12 + monthIdx;
+}
+
 /**
- * Ubah map label -> purchases menjadi array CycleChartData yang terurut.
+ * Ubah map label -> purchases menjadi array CycleChartData yang terurut
+ * secara kronologis (berdasarkan tahun & bulan, bukan urutan abjad).
  */
 export function buildCycleChartData(
   historical: Record<string, Purchase[]>,
 ): CycleChartData[] {
-  const labels = Object.keys(historical).sort();
+  const labels = Object.keys(historical).sort(
+    (a, b) => labelToSortKey(a) - labelToSortKey(b),
+  );
   return labels.map((label) => {
     const purchases = historical[label] ?? [];
     let totalSpent = 0;
