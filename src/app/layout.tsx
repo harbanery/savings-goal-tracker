@@ -26,19 +26,53 @@ export const metadata: Metadata = {
   openGraph: {
     title: META_TITLE,
     ...(META_DESCRIPTION && { description: META_DESCRIPTION }),
-    type: "website",
+    type: "profile",
     siteName: META_APP,
     countryName: "Indonesia",
     locale: "en-US",
     alternateLocale: "id-ID",
     url: `/`,
+    images: [
+      {
+        url: `images/opengraph-image.png`,
+        alt: META_APP,
+        type: "image/png",
+      },
+    ],
   },
+  // twitter: {
+  //   card: "summary_large_image",
+  //   site: "@CommuterLine",
+  //   creator: "@CommuterLine",
+  //   creatorId: "341987176",
+  //   title: META_TITLE,
+  //   ...(META_DESCRIPTION && { description: META_DESCRIPTION }),
+  //   images: [
+  //     {
+  //       url: `images/twitter-image.png`,
+  //       alt: META_APP,
+  //       type: "image/png",
+  //     },
+  //   ],
+  // },
+  creator: "Raihan Yusuf",
+  authors: [{ name: "Raihan Yusuf" }],
   icons: [
     {
       rel: "icon",
       type: "image/x-icon",
       url: `/favicon.ico`,
       sizes: "any",
+    },
+    {
+      rel: "apple-touch-icon",
+      type: "image/x-icon",
+      url: `/favicon.ico`,
+    },
+    {
+      rel: "shortcut icon",
+      type: "image/x-icon",
+      url: `/favicon.ico`,
     },
   ],
 };
