@@ -10,6 +10,7 @@ import {
 import { toPurchases } from "@/helpers/purchaseTransformer";
 import type { Purchase, PurchaseInput } from "@/models/types";
 import type { CycleInfo } from "@/utils/cycleUtils";
+import { shiftCycle } from "@/utils/cycleUtils";
 
 /**
  * Server Actions untuk mutasi data Monthly Budget Tracker.
@@ -38,6 +39,38 @@ export async function getCyclePurchasesAction(
 ): Promise<Purchase[]> {
   const records = await getPurchasesInRange(cycle.startDate, cycle.endDate);
   return toPurchases(records);
+}
+
+/**
+ * Fetch pembelian untuk beberapa siklus terakhir (untuk chart historis).
+ * Mengembalikan map label siklus -> daftar pembelian.
+ * @param endCycle siklus akhir (termasuk)
+ * @param count jumlah siklus yang diambil (termasuk endCycle)
+ */
+export async function getHistoricalPurchasesAction(
+  endCycle: CycleInfo,
+  count: number,
+): Promise<Record<string, Purchase[]>> {
+  const result: Record<string, Purchase[]> = {};
+  let current = endCycle;
+  const cycles: CycleInfo[] = [];
+  for (let i = 0; i < count; i++) {
+    cycles.push(current);
+    current = shiftCycle(current, -1);
+  }
+  cycles.reverse(); // urutkan dari paling lama ke terbaru
+
+  await Promise.all(
+    cycles.map(async (c) => {
+      try {
+        result[c.label] = await getCyclePurchasesAction(c);
+      } catch {
+        result[c.label] = [];
+      }
+    }),
+  );
+
+  return result;
 }
 
 export async function createPurchaseAction(

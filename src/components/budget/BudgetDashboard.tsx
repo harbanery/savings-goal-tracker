@@ -8,8 +8,10 @@ import ThemeToggle from "@/components/theme/ThemeToggle";
 import {
   deletePurchaseAction,
   getCyclePurchasesAction,
+  getHistoricalPurchasesAction,
 } from "@/server/actions";
 import { computeCycleStats } from "@/helpers/stats";
+import { buildCycleChartData } from "@/helpers/chartData";
 import type { Purchase } from "@/models/types";
 import {
   getCycleInfo,
@@ -23,24 +25,47 @@ import PurchaseFormModal from "./PurchaseFormModal";
 import PurchaseTable from "./PurchaseTable";
 import RealtimeClock from "./RealtimeClock";
 import StatsCards from "./StatsCards";
+import AllocationBarChart from "./charts/AllocationBarChart";
+import BalanceDonutChart from "./charts/BalanceDonutChart";
+import CategoryPieChart from "./charts/CategoryPieChart";
+import CumulativeSavingsLineChart from "./charts/CumulativeSavingsLineChart";
+import SavingsComparisonBarChart from "./charts/SavingsComparisonBarChart";
+
+/** Batas bawah siklus yang dapat dipilih: Juli 2026 (Agustus = 25 Juli 2026). */
+const MIN_CYCLE = dayjs("2026-08-01");
+
+/** Apakah siklus sudah di batas minimum (tidak bisa mundur lagi)? */
+function isAtMinCycle(cycle: CycleInfo): boolean {
+  return cycle.year <= 2026 && cycle.monthIndex <= 7;
+}
 
 const { Title, Paragraph } = Typography;
 
 interface Props {
   initialPurchases: Purchase[];
+  initialHistorical: Record<string, Purchase[]>;
 }
 
 /**
  * Dashboard utama (Client Component) untuk Monthly Budget Tracker.
  * Mengelola state daftar pembelian + siklus bulanan + sinkron server.
  */
-export default function BudgetDashboard({ initialPurchases }: Props) {
+export default function BudgetDashboard({
+  initialPurchases,
+  initialHistorical,
+}: Props) {
   const [cycle, setCycle] = useState<CycleInfo>(getCurrentCycle());
   const [purchases, setPurchases] = useState<Purchase[]>(initialPurchases);
+  const [historical, setHistorical] =
+    useState<Record<string, Purchase[]>>(initialHistorical);
   const [formOpen, setFormOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
 
   const stats = useMemo(() => computeCycleStats(purchases), [purchases]);
+  const chartData = useMemo(
+    () => buildCycleChartData(historical),
+    [historical],
+  );
 
   const editingPurchase = useMemo(
     () =>
@@ -51,8 +76,12 @@ export default function BudgetDashboard({ initialPurchases }: Props) {
   /** Refetch pembelian untuk siklus tertentu dari server. */
   const refreshCycle = useCallback(async (targetCycle: CycleInfo) => {
     try {
-      const fresh = await getCyclePurchasesAction(targetCycle);
+      const [fresh, freshHistorical] = await Promise.all([
+        getCyclePurchasesAction(targetCycle),
+        getHistoricalPurchasesAction(targetCycle, 6),
+      ]);
       setPurchases(fresh);
+      setHistorical(freshHistorical);
     } catch (err) {
       console.error("[BudgetDashboard] gagal memuat pembelian:", err);
       setPurchases([]);
@@ -130,11 +159,13 @@ export default function BudgetDashboard({ initialPurchases }: Props) {
               <ThemeToggle />
               <Button
                 icon={<LeftOutlined />}
+                disabled={isAtMinCycle(cycle)}
                 onClick={() => handleCycleChange(shiftCycle(cycle, -1))}
               />
               <DatePicker
                 picker="month"
                 allowClear={false}
+                disabledDate={(d) => d.isBefore(MIN_CYCLE, "month")}
                 value={dayjs(new Date(cycle.year, cycle.monthIndex, 1))}
                 onChange={(v) => {
                   if (v) {
@@ -179,7 +210,26 @@ export default function BudgetDashboard({ initialPurchases }: Props) {
         />
 
         {/* Category Breakdown */}
-        <CategoryBreakdown stats={stats} />
+        <div className="mb-4 md:mb-6">
+          <CategoryBreakdown stats={stats} />
+        </div>
+
+        {/* Charts Row 1: Donut (saldo) + Bar (alokasi per bulan) */}
+        <div className="mb-4 grid grid-cols-1 gap-4 md:mb-6 lg:grid-cols-2">
+          <BalanceDonutChart stats={stats} />
+          <CategoryPieChart cycles={chartData} />
+        </div>
+
+        {/* Charts Row 3: Category Pie */}
+        <div className="mb-4 md:mb-6">
+          <AllocationBarChart cycles={chartData} />
+        </div>
+
+        {/* Charts Row 2: Savings comparison + Cumulative line */}
+        <div className="mb-4 grid grid-cols-1 gap-4 md:mb-6 lg:grid-cols-2">
+          <SavingsComparisonBarChart cycles={chartData} />
+          <CumulativeSavingsLineChart cycles={chartData} />
+        </div>
 
         {/* Modal */}
         <PurchaseFormModal
