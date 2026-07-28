@@ -207,6 +207,7 @@ export default function BudgetDashboard({
           purchases={purchases}
           onEdit={handleOpenEdit}
           onDelete={handleDelete}
+          onImported={() => refreshCycle(cycle)}
         />
 
         {/* Category Breakdown */}

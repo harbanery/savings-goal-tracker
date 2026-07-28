@@ -126,3 +126,43 @@ export async function deletePurchaseAction(id: string): Promise<void> {
   await deletePurchaseService(id);
   revalidatePath("/");
 }
+
+/**
+ * Import massal pembelian dari array PurchaseInput (dari CSV).
+ * Mengembalikan jumlah baris yang berhasil & daftar error.
+ */
+export async function importPurchasesAction(
+  inputs: PurchaseInput[],
+): Promise<{ imported: number; errors: string[] }> {
+  const errors: string[] = [];
+  let imported = 0;
+
+  for (let i = 0; i < inputs.length; i++) {
+    try {
+      const input = inputs[i];
+      const name = sanitizeText(input.name, 100);
+      if (!name) throw new Error("Nama pembelian wajib diisi.");
+      if (!input.categoryId) throw new Error("Kategori wajib dipilih.");
+      validateAmount(input.amount);
+
+      const date = new Date(input.date);
+      if (Number.isNaN(date.getTime())) throw new Error("Tanggal tidak valid.");
+
+      await createPurchaseService({
+        name,
+        categoryId: input.categoryId,
+        amount: Math.round(input.amount),
+        note: sanitizeText(input.note, 500),
+        date,
+      });
+      imported++;
+    } catch (err) {
+      errors.push(
+        `Baris ${i + 1}: ${err instanceof Error ? err.message : String(err)}`,
+      );
+    }
+  }
+
+  if (imported > 0) revalidatePath("/");
+  return { imported, errors };
+}

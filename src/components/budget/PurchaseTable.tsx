@@ -16,6 +16,7 @@ import dayjs from "dayjs";
 import { CATEGORY_MAP } from "@/models/categories";
 import type { Purchase } from "@/models/types";
 import { formatIDR } from "@/utils/currency";
+import ImportExportButtons from "./ImportExportButtons";
 import PurchaseCardList from "./PurchaseCardList";
 
 const { Text } = Typography;
@@ -24,6 +25,7 @@ interface Props {
   purchases: Purchase[];
   onEdit: (purchase: Purchase) => void;
   onDelete: (id: string) => void;
+  onImported: () => void;
 }
 
 interface RowData {
@@ -32,7 +34,7 @@ interface RowData {
 }
 
 /** Tabel daftar pembelian dengan kolom nama, kategori, jumlah, tanggal, aksi. */
-export default function PurchaseTable({ purchases, onEdit, onDelete }: Props) {
+export default function PurchaseTable({ purchases, onEdit, onDelete, onImported }: Props) {
   const columns: ColumnsType<RowData> = [
     {
       title: "Pembelian",
@@ -138,6 +140,9 @@ export default function PurchaseTable({ purchases, onEdit, onDelete }: Props) {
       variant="borderless"
       className="shadow-sm"
       title={<Text strong>Daftar Pembelian</Text>}
+      extra={
+        <ImportExportButtons purchases={purchases} onImported={onImported} />
+      }
       style={{ marginBottom: 24 }}
       styles={{ body: { padding: 0 } }}
     >

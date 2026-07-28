@@ -3,6 +3,12 @@ import type { Purchase } from "@/models/types";
 import { SAVINGS_INITIAL } from "@/config/variables";
 
 /**
+ * Batas bawah siklus yang ditampilkan di chart: Agustus 2026.
+ * Bulan sebelum Agustus 2026 dikosongkan (totalSpent = 0, savings = saldo awal).
+ */
+const MIN_CHART_SORT_KEY = 2026 * 12 + 7; // Agustus 2026 (monthIndex 7)
+
+/**
  * Data satu siklus untuk chart historis.
  */
 export interface CycleChartData {
@@ -44,7 +50,8 @@ function labelToSortKey(label: string): number {
 
 /**
  * Ubah map label -> purchases menjadi array CycleChartData yang terurut
- * secara kronologis (berdasarkan tahun & bulan, bukan urutan abjad).
+ * secara kronologis. Bulan sebelum Agustus 2026 dikosongkan
+ * (totalSpent = 0, categorySpent = {}).
  */
 export function buildCycleChartData(
   historical: Record<string, Purchase[]>,
@@ -53,7 +60,8 @@ export function buildCycleChartData(
     (a, b) => labelToSortKey(a) - labelToSortKey(b),
   );
   return labels.map((label) => {
-    const purchases = historical[label] ?? [];
+    const sortKey = labelToSortKey(label);
+    const purchases = sortKey < MIN_CHART_SORT_KEY ? [] : historical[label] ?? [];
     let totalSpent = 0;
     const categorySpent: Record<string, number> = {};
     for (const p of purchases) {
