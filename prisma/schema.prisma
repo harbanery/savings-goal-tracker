@@ -1,0 +1,49 @@
+// Prisma schema for Savings Goal Tracker
+// Datasource URL dibaca dari DATABASE_URL di .env
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+/// Satu target tabungan (goal).
+model SavingsGoal {
+  /// CUID identifier
+  id            String   @id @default(cuid())
+  /// Nama target, mis. "Dana Darurat", "Liburan"
+  name          String
+  /// Nominal target (menggunakan Decimal untuk presisi mata uang)
+  targetAmount  Decimal  @db.Decimal(14, 2)
+  /// Warna aksen untuk kartu (hex), default indigo
+  color         String   @default("#6366f1")
+  /// Tenggat waktu opsional
+  deadline      DateTime?
+  /// Daftar setoran/contribution yang berelasi
+  contributions Contribution[]
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@map("SavingsGoal")
+}
+
+/// Satu setoran (contribution) untuk sebuah SavingsGoal.
+model Contribution {
+  id        String   @id @default(cuid())
+  /// Relasi ke SavingsGoal
+  goalId    String
+  goal      SavingsGoal @relation(fields: [goalId], references: [id], onDelete: Cascade)
+  /// Nominal setoran
+  amount    Decimal  @db.Decimal(14, 2)
+  /// Catatan opsional
+  note      String   @default("")
+  /// Tanggal setoran
+  date      DateTime @default(now())
+  createdAt DateTime @default(now())
+
+  @@index([goalId])
+  @@map("Contribution")
+}
