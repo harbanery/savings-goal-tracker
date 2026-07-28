@@ -1,5 +1,5 @@
 /**
- * Date utilities untuk dashboard savings tracker.
+ * Date utilities untuk budget tracker.
  */
 
 /** Format Date ke ISO date string (YYYY-MM-DD) menggunakan komponen lokal. */
@@ -31,19 +31,4 @@ export function getMonthLabel(monthIndex: number): string {
     "November",
     "Desember",
   ][monthIndex];
-}
-
-/** Hitung selisih hari antara dua tanggal (target - from), bisa negatif. */
-export function daysBetween(from: Date, target: Date): number {
-  const a = new Date(from.getFullYear(), from.getMonth(), from.getDate());
-  const b = new Date(target.getFullYear(), target.getMonth(), target.getDate());
-  return Math.round((b.getTime() - a.getTime()) / (1000 * 60 * 60 * 24));
-}
-
-/** Sisa hari menuju deadline relatif terhadap hari ini. Bisa negatif (lewat). */
-export function daysUntilDeadline(deadlineISO: string | null): number | null {
-  if (!deadlineISO) return null;
-  const target = new Date(deadlineISO);
-  if (Number.isNaN(target.getTime())) return null;
-  return daysBetween(new Date(), target);
 }

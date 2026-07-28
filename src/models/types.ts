@@ -1,45 +1,37 @@
 /**
- * Tipe data UI (client-facing) untuk Savings Goal Tracker.
- * Nilai nominal disimpan sebagai `number` (bukan Decimal Prisma) agar
- * aman dilewatkan melewati boundary Server -> Client Component.
+ * Tipe data UI untuk Monthly Budget Tracker.
  */
 
-/** Satu setoran untuk sebuah goal. */
-export interface Contribution {
+/** Kategori/wadah sistem dengan alokasi saldo. */
+export interface BudgetCategory {
   id: string;
-  goalId: string;
-  /** Nominal setoran (rupiah). */
+  label: string;
+  description: string;
+  color: string;
+  /** Alokasi saldo per siklus (rupiah). */
+  allocation: number;
+}
+
+/** Satu catatan pembelian/pengeluaran. */
+export interface Purchase {
+  id: string;
+  /** Nama pembelian. */
+  name: string;
+  /** ID kategori/wadah. */
+  categoryId: string;
+  /** Jumlah biaya (rupiah). */
   amount: number;
-  /** Catatan bebas. */
+  /** Catatan opsional. */
   note: string;
-  /** ISO datetime setoran. */
+  /** ISO datetime pembelian. */
   date: string;
 }
 
-/** Satu target tabungan beserta setoran & metrik turunan. */
-export interface SavingsGoal {
-  id: string;
+/** Input untuk membuat/memperbarui pembelian. */
+export interface PurchaseInput {
   name: string;
-  /** Nominal target (rupiah). */
-  targetAmount: number;
-  /** Total terkumpul = jumlah semua contribution. */
-  currentAmount: number;
-  /** Warna aksen (hex). */
-  color: string;
-  /** ISO datetime deadline, atau null bila tidak ada. */
-  deadline: string | null;
-  /** Persentase 0-100 (currentAmount / targetAmount). */
-  progress: number;
-  /** Daftar setoran (terbaru di depan). */
-  contributions: Contribution[];
-  /** ISO datetime pembuatan. */
-  createdAt: string;
-}
-
-/** Input untuk membuat/memperbarui goal (tanpa id & turunan). */
-export interface SavingsGoalInput {
-  name: string;
-  targetAmount: number;
-  deadline: string | null;
-  color: string;
+  categoryId: string;
+  amount: number;
+  note: string;
+  date: string;
 }

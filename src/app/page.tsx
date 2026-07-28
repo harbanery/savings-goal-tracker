@@ -1,18 +1,20 @@
-import SavingsDashboard from "@/components/savings/SavingsDashboard";
-import { getGoalsAction } from "@/server/actions";
-import type { SavingsGoal } from "@/models/types";
+import BudgetDashboard from "@/components/budget/BudgetDashboard";
+import { getCyclePurchasesAction } from "@/server/actions";
+import type { Purchase } from "@/models/types";
+import { getCurrentCycle } from "@/utils/cycleUtils";
 
 // Selalu render dinamis agar data terbaru dari DB selalu ditampilkan.
 export const dynamic = "force-dynamic";
 
 export default async function Home() {
-  let initialGoals: SavingsGoal[] = [];
+  const cycle = getCurrentCycle();
+  let initialPurchases: Purchase[] = [];
   try {
-    initialGoals = await getGoalsAction();
+    initialPurchases = await getCyclePurchasesAction(cycle);
   } catch (err) {
     // DB mungkin belum dikonfigurasi; render state kosong agar UI tetap muncul.
-    console.error("[page] gagal memuat goals awal:", err);
+    console.error("[page] gagal memuat pembelian awal:", err);
   }
 
-  return <SavingsDashboard initialGoals={initialGoals} />;
+  return <BudgetDashboard initialPurchases={initialPurchases} />;
 }

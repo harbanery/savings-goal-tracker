@@ -1,20 +1,22 @@
+"use client";
+
 import { Card, Col, Progress, Row, Statistic } from "antd";
-import type { SavingsStats } from "@/helpers/stats";
+import type { CycleStats } from "@/helpers/stats";
 import { formatIDR } from "@/utils/currency";
 
 interface Props {
-  stats: SavingsStats;
+  stats: CycleStats;
 }
 
-/** Kartu statistik ringkasan agregat tabungan. */
+/** Kartu statistik ringkasan siklus. */
 export default function StatsCards({ stats }: Props) {
   return (
     <Row gutter={[16, 16]} className="mb-6">
       <Col xs={12} md={6}>
         <Card variant="borderless" className="shadow-sm">
           <Statistic
-            title="Total Tabungan"
-            value={stats.totalSaved}
+            title="Saldo Awal"
+            value={stats.savingsInitial}
             formatter={(value) => formatIDR(Number(value))}
             styles={{ content: { color: "#6366f1" } }}
           />
@@ -23,36 +25,42 @@ export default function StatsCards({ stats }: Props) {
       <Col xs={12} md={6}>
         <Card variant="borderless" className="shadow-sm">
           <Statistic
-            title="Total Target"
-            value={stats.totalTarget}
+            title="Total Pengeluaran"
+            value={stats.totalSpent}
             formatter={(value) => formatIDR(Number(value))}
-            styles={{ content: { color: "#3b82f6" } }}
+            styles={{
+              content: { color: stats.overLimit ? "#ef4444" : "#f59e0b" },
+            }}
           />
         </Card>
       </Col>
       <Col xs={12} md={6}>
         <Card variant="borderless" className="shadow-sm">
           <Statistic
-            title="Progres Keseluruhan"
-            value={stats.overallProgress}
-            suffix="%"
-            styles={{ content: { color: "#f59e0b" } }}
+            title="Sisa Limit"
+            value={stats.limitRemaining}
+            formatter={(value) => formatIDR(Number(value))}
+            styles={{
+              content: {
+                color: stats.overLimit ? "#ef4444" : "#22c55e",
+              },
+            }}
           />
           <Progress
-            percent={stats.overallProgress}
+            percent={stats.limitPercent}
             showInfo={false}
             size="small"
-            strokeColor="#f59e0b"
+            strokeColor={stats.overLimit ? "#ef4444" : "#f59e0b"}
           />
         </Card>
       </Col>
       <Col xs={12} md={6}>
         <Card variant="borderless" className="shadow-sm">
           <Statistic
-            title="Target Tercapai"
-            value={stats.completedGoals}
-            suffix={`/ ${stats.goalsCount}`}
-            styles={{ content: { color: "#22c55e" } }}
+            title="Surplus Bulanan"
+            value={stats.surplus}
+            formatter={(value) => formatIDR(Number(value))}
+            styles={{ content: { color: "#3b82f6" } }}
           />
         </Card>
       </Col>
