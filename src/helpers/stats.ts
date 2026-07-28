@@ -1,6 +1,6 @@
-import { CATEGORIES } from "@/models/categories";
+import { CATEGORIES, TOTAL_ALLOCATION } from "@/models/categories";
 import type { Purchase } from "@/models/types";
-import { SAVINGS_INITIAL, SPENDING_LIMIT } from "@/config/variables";
+import { SAVINGS_INITIAL } from "@/config/variables";
 
 export interface CategoryStat {
   categoryId: string;
@@ -13,27 +13,27 @@ export interface CategoryStat {
   /** Persentase terpakai (0-100). */
   percent: number;
   purchaseCount: number;
+  /** Apakah kategori ini exclude dari alokasi wadah. */
+  excludeFromAllocation: boolean;
 }
 
 export interface CycleStats {
   /** Saldo awal siklus (dari .env). */
   savingsInitial: number;
-  /** Total pengeluaran siklus ini. */
+  /** Total pengeluaran siklus ini (semua kategori termasuk Belanja). */
   totalSpent: number;
   /** Sisa saldo (savingsInitial - totalSpent). */
   remaining: number;
-  /** Target limit pengeluaran (dari .env). */
+  /** Limit pengeluaran = total alokasi wadah (exclude Belanja). */
   spendingLimit: number;
-  /** Sisa dari limit pengeluaran (spendingLimit - totalSpent). */
+  /** Sisa dari limit pengeluaran (spendingLimit - totalSpent, bisa minus). */
   limitRemaining: number;
-  /** Persentase limit terpakai (0-100). */
+  /** Persentase limit terpakai (0-100, cap 100). */
   limitPercent: number;
   /** Apakah sudah melebihi limit? */
   overLimit: boolean;
-  /** Total alokasi semua wadah. */
+  /** Total alokasi wadah (exclude Belanja). */
   totalAllocation: number;
-  /** Surplus bulanan (savingsInitial - totalAllocation). */
-  surplus: number;
   /** Jumlah pembelian. */
   purchaseCount: number;
   /** Breakdown per kategori. */
@@ -42,13 +42,10 @@ export interface CycleStats {
 
 /**
  * Hitung statistik siklus dari daftar pembelian.
+ * Limit pengeluaran = total alokasi wadah (kategori yang tidak di-exclude).
  */
 export function computeCycleStats(purchases: Purchase[]): CycleStats {
-  const totalAllocation = CATEGORIES.reduce(
-    (acc, c) => acc + c.allocation,
-    0,
-  );
-  const surplus = SAVINGS_INITIAL - totalAllocation;
+  const totalAllocation = TOTAL_ALLOCATION;
 
   // Inisialisasi stat per kategori
   const catMap = new Map<string, CategoryStat>();
@@ -63,6 +60,7 @@ export function computeCycleStats(purchases: Purchase[]): CycleStats {
       remaining: c.allocation,
       percent: 0,
       purchaseCount: 0,
+      excludeFromAllocation: !!c.excludeFromAllocation,
     });
   }
 
@@ -89,23 +87,23 @@ export function computeCycleStats(purchases: Purchase[]): CycleStats {
   });
 
   const remaining = SAVINGS_INITIAL - totalSpent;
-  const limitRemaining = SPENDING_LIMIT - totalSpent;
+  const spendingLimit = totalAllocation;
+  const limitRemaining = spendingLimit - totalSpent;
   const limitPercent =
-    SPENDING_LIMIT > 0
-      ? Math.round((totalSpent / SPENDING_LIMIT) * 100)
+    spendingLimit > 0
+      ? Math.min(100, Math.round((totalSpent / spendingLimit) * 100))
       : 0;
-  const overLimit = totalSpent > SPENDING_LIMIT;
+  const overLimit = totalSpent > spendingLimit;
 
   return {
     savingsInitial: SAVINGS_INITIAL,
     totalSpent,
     remaining,
-    spendingLimit: SPENDING_LIMIT,
+    spendingLimit,
     limitRemaining,
     limitPercent,
     overLimit,
     totalAllocation,
-    surplus,
     purchaseCount: purchases.length,
     categories,
   };

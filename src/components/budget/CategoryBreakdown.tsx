@@ -22,7 +22,7 @@ export default function CategoryBreakdown({ stats }: Props) {
     >
       <Row gutter={[16, 12]}>
         {stats.categories.map((cat) => {
-          const overBudget = cat.spent > cat.allocation;
+          const overBudget = cat.allocation > 0 && cat.spent > cat.allocation;
           return (
             <Col key={cat.categoryId} xs={24} sm={12} lg={8}>
               <div className="rounded-lg border border-zinc-100 p-3 dark:border-zinc-700/60">
@@ -49,34 +49,56 @@ export default function CategoryBreakdown({ stats }: Props) {
                   {cat.description}
                 </Text>
                 <div className="mt-2">
-                  <Progress
-                    percent={cat.percent}
-                    size="small"
-                    showInfo={false}
-                    strokeColor={overBudget ? "#ef4444" : cat.color}
-                  />
-                  <div className="flex items-center justify-between">
-                    <Text style={{ fontSize: 12 }}>
-                      {formatIDR(cat.spent)}
-                    </Text>
-                    <Text
-                      type="secondary"
-                      style={{ fontSize: 11 }}
-                    >
-                      / {formatIDR(cat.allocation)}
-                    </Text>
-                  </div>
-                  <Text
-                    style={{
-                      fontSize: 12,
-                      color: overBudget ? "#ef4444" : cat.color,
-                      fontWeight: 600,
-                    }}
-                  >
-                    {overBudget ? "Lebih " : "Sisa "}
-                    {formatIDR(Math.abs(cat.remaining))}
-                    {cat.purchaseCount > 0 && ` (${cat.purchaseCount}x)`}
-                  </Text>
+                  {cat.excludeFromAllocation ? (
+                    <>
+                      <Text style={{ fontSize: 12 }}>
+                        {formatIDR(cat.spent)}
+                      </Text>
+                      <Text
+                        type="secondary"
+                        style={{ fontSize: 11 }}
+                        className="ml-2"
+                      >
+                        (tanpa alokasi)
+                      </Text>
+                      {cat.purchaseCount > 0 && (
+                        <Text
+                          style={{ fontSize: 11, color: cat.color }}
+                          className="block"
+                        >
+                          {cat.purchaseCount}x pembelian
+                        </Text>
+                      )}
+                    </>
+                  ) : (
+                    <>
+                      <Progress
+                        percent={cat.percent}
+                        size="small"
+                        showInfo={false}
+                        strokeColor={overBudget ? "#ef4444" : cat.color}
+                      />
+                      <div className="flex items-center justify-between">
+                        <Text style={{ fontSize: 12 }}>
+                          {formatIDR(cat.spent)}
+                        </Text>
+                        <Text type="secondary" style={{ fontSize: 11 }}>
+                          / {formatIDR(cat.allocation)}
+                        </Text>
+                      </div>
+                      <Text
+                        style={{
+                          fontSize: 12,
+                          color: overBudget ? "#ef4444" : cat.color,
+                          fontWeight: 600,
+                        }}
+                      >
+                        {overBudget ? "Lebih " : "Sisa "}
+                        {formatIDR(Math.abs(cat.remaining))}
+                        {cat.purchaseCount > 0 && ` (${cat.purchaseCount}x)`}
+                      </Text>
+                    </>
+                  )}
                 </div>
               </div>
             </Col>

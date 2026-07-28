@@ -10,6 +10,8 @@ export interface BudgetCategory {
   color: string;
   /** Alokasi saldo per siklus (rupiah). */
   allocation: number;
+  /** Jika true, kategori ini tidak masuk perhitungan alokasi wadah (mis. Belanja). */
+  excludeFromAllocation?: boolean;
 }
 
 /** Satu catatan pembelian/pengeluaran. */

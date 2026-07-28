@@ -57,10 +57,14 @@ export default function StatsCards({ stats }: Props) {
       <Col xs={12} md={6}>
         <Card variant="borderless" className="shadow-sm">
           <Statistic
-            title="Surplus Bulanan"
-            value={stats.surplus}
+            title="Siklus Bulanan"
+            value={stats.remaining}
             formatter={(value) => formatIDR(Number(value))}
-            styles={{ content: { color: "#3b82f6" } }}
+            styles={{
+              content: {
+                color: stats.remaining < 0 ? "#ef4444" : "#3b82f6",
+              },
+            }}
           />
         </Card>
       </Col>
