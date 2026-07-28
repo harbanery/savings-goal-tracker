@@ -11,14 +11,19 @@ interface Props {
 /** Kartu statistik ringkasan siklus. */
 export default function StatsCards({ stats }: Props) {
   return (
-    <Row gutter={[12, 12]} className="mb-4 md:mb-6">
+    <Row gutter={[8, 8]} className="mb-4 md:mb-6">
       <Col xs={12} md={6}>
         <Card variant="borderless" className="shadow-sm">
           <Statistic
             title="Saldo Awal"
             value={stats.savingsInitial}
             formatter={(value) => formatIDR(Number(value))}
-            styles={{ content: { color: "#6366f1", fontSize: "clamp(14px, 3.5vw, 24px)" } }}
+            styles={{
+              content: {
+                color: "#6366f1",
+                fontSize: "clamp(11px, 3.2vw, 24px)",
+              },
+            }}
           />
         </Card>
       </Col>
@@ -29,7 +34,10 @@ export default function StatsCards({ stats }: Props) {
             value={stats.totalSpent}
             formatter={(value) => formatIDR(Number(value))}
             styles={{
-              content: { color: stats.overLimit ? "#ef4444" : "#f59e0b", fontSize: "clamp(14px, 3.5vw, 24px)" },
+              content: {
+                color: stats.overLimit ? "#ef4444" : "#f59e0b",
+                fontSize: "clamp(11px, 3.2vw, 24px)",
+              },
             }}
           />
         </Card>
@@ -43,7 +51,7 @@ export default function StatsCards({ stats }: Props) {
             styles={{
               content: {
                 color: stats.overLimit ? "#ef4444" : "#22c55e",
-                fontSize: "clamp(14px, 3.5vw, 24px)",
+                fontSize: "clamp(11px, 3.2vw, 24px)",
               },
             }}
           />
@@ -64,7 +72,7 @@ export default function StatsCards({ stats }: Props) {
             styles={{
               content: {
                 color: stats.remaining < 0 ? "#ef4444" : "#3b82f6",
-                fontSize: "clamp(14px, 3.5vw, 24px)",
+                fontSize: "clamp(11px, 3.2vw, 24px)",
               },
             }}
           />

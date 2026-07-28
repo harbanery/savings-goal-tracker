@@ -20,7 +20,7 @@ export default function CategoryBreakdown({ stats }: Props) {
       size="small"
       title={<Text strong>Alokasi Wadah</Text>}
     >
-      <Row gutter={[16, 12]}>
+      <Row gutter={{ xs: 12, sm: 16, lg: 16 }} className="[row-gap:8px] sm:[row-gap:12px]">
         {stats.categories.map((cat) => {
           const overBudget = cat.allocation > 0 && cat.spent > cat.allocation;
           return (

@@ -22,6 +22,8 @@ export interface CycleStats {
   savingsInitial: number;
   /** Total pengeluaran siklus ini (semua kategori termasuk Belanja). */
   totalSpent: number;
+  /** Total pengeluaran hanya dari kategori yang dialokasikan (exclude Belanja). */
+  allocatedSpent: number;
   /** Sisa saldo (savingsInitial - totalSpent). */
   remaining: number;
   /** Limit pengeluaran = total alokasi wadah (exclude Belanja). */
@@ -66,6 +68,7 @@ export function computeCycleStats(purchases: Purchase[]): CycleStats {
 
   // Akumulasi pengeluaran per kategori
   let totalSpent = 0;
+  let allocatedSpent = 0;
   for (const p of purchases) {
     const cat = catMap.get(p.categoryId);
     if (cat) {
@@ -73,6 +76,10 @@ export function computeCycleStats(purchases: Purchase[]): CycleStats {
       cat.purchaseCount++;
     }
     totalSpent += p.amount;
+    // Hanya kategori yang punya alokasi yang masuk ke limit.
+    if (cat && !cat.excludeFromAllocation) {
+      allocatedSpent += p.amount;
+    }
   }
 
   // Finalisasi stat per kategori
@@ -88,16 +95,18 @@ export function computeCycleStats(purchases: Purchase[]): CycleStats {
 
   const remaining = SAVINGS_INITIAL - totalSpent;
   const spendingLimit = totalAllocation;
-  const limitRemaining = spendingLimit - totalSpent;
+  // Sisa limit hanya dihitung dari pengeluaran kategori yang dialokasikan.
+  const limitRemaining = spendingLimit - allocatedSpent;
   const limitPercent =
     spendingLimit > 0
-      ? Math.min(100, Math.round((totalSpent / spendingLimit) * 100))
+      ? Math.min(100, Math.round((allocatedSpent / spendingLimit) * 100))
       : 0;
-  const overLimit = totalSpent > spendingLimit;
+  const overLimit = allocatedSpent > spendingLimit;
 
   return {
     savingsInitial: SAVINGS_INITIAL,
     totalSpent,
+    allocatedSpent,
     remaining,
     spendingLimit,
     limitRemaining,
