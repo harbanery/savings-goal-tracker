@@ -16,7 +16,7 @@ export default function StatsCards({ stats }: Props) {
             title="Total Tabungan"
             value={stats.totalSaved}
             formatter={(value) => formatIDR(Number(value))}
-            valueStyle={{ color: "#6366f1" }}
+            styles={{ content: { color: "#6366f1" } }}
           />
         </Card>
       </Col>
@@ -26,7 +26,7 @@ export default function StatsCards({ stats }: Props) {
             title="Total Target"
             value={stats.totalTarget}
             formatter={(value) => formatIDR(Number(value))}
-            valueStyle={{ color: "#3b82f6" }}
+            styles={{ content: { color: "#3b82f6" } }}
           />
         </Card>
       </Col>
@@ -36,7 +36,7 @@ export default function StatsCards({ stats }: Props) {
             title="Progres Keseluruhan"
             value={stats.overallProgress}
             suffix="%"
-            valueStyle={{ color: "#f59e0b" }}
+            styles={{ content: { color: "#f59e0b" } }}
           />
           <Progress
             percent={stats.overallProgress}
@@ -52,7 +52,7 @@ export default function StatsCards({ stats }: Props) {
             title="Target Tercapai"
             value={stats.completedGoals}
             suffix={`/ ${stats.goalsCount}`}
-            valueStyle={{ color: "#22c55e" }}
+            styles={{ content: { color: "#22c55e" } }}
           />
         </Card>
       </Col>
