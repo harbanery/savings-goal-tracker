@@ -6,6 +6,7 @@ import { useCallback, useMemo, useState } from "react";
 import dayjs from "dayjs";
 import ThemeToggle from "@/components/theme/ThemeToggle";
 import {
+  deletePurchasesAction,
   deletePurchaseAction,
   getCyclePurchasesAction,
   getHistoricalPurchasesAction,
@@ -110,6 +111,20 @@ export default function BudgetDashboard({
     [cycle, refreshCycle],
   );
 
+  const handleDeleteBulk = useCallback(
+    async (ids: string[]) => {
+      // Optimistic: hapus dari state lokal dulu
+      setPurchases((prev) => prev.filter((p) => !ids.includes(p.id)));
+      try {
+        await deletePurchasesAction(ids);
+      } catch (err) {
+        console.error("[BudgetDashboard] gagal menghapus bulk:", err);
+        await refreshCycle(cycle);
+      }
+    },
+    [cycle, refreshCycle],
+  );
+
   const handleOpenCreate = useCallback(() => {
     setEditingId(null);
     setFormOpen(true);
@@ -207,6 +222,7 @@ export default function BudgetDashboard({
           purchases={purchases}
           onEdit={handleOpenEdit}
           onDelete={handleDelete}
+          onDeleteBulk={handleDeleteBulk}
           onImported={() => refreshCycle(cycle)}
         />
 

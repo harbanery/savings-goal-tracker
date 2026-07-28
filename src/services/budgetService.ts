@@ -88,3 +88,13 @@ export async function deletePurchase(id: string): Promise<Purchase> {
     }),
   );
 }
+
+/** Hapus banyak pembelian sekaligus berdasarkan daftar id. */
+export async function deleteManyPurchases(ids: string[]): Promise<number> {
+  const result = await withRetry(() =>
+    prisma.purchase.deleteMany({
+      where: { id: { in: ids } },
+    }),
+  );
+  return result.count;
+}

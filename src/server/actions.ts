@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import {
   createPurchase as createPurchaseService,
+  deleteManyPurchases as deleteManyPurchasesService,
   deletePurchase as deletePurchaseService,
   getPurchasesInRange,
   updatePurchase as updatePurchaseService,
@@ -124,6 +125,16 @@ export async function updatePurchaseAction(
 export async function deletePurchaseAction(id: string): Promise<void> {
   if (!isCuid(id)) throw new Error(`Invalid purchase id: ${id}`);
   await deletePurchaseService(id);
+  revalidatePath("/");
+}
+
+/** Hapus banyak pembelian sekaligus. */
+export async function deletePurchasesAction(ids: string[]): Promise<void> {
+  if (ids.length === 0) return;
+  for (const id of ids) {
+    if (!isCuid(id)) throw new Error(`Invalid purchase id: ${id}`);
+  }
+  await deleteManyPurchasesService(ids);
   revalidatePath("/");
 }
 

@@ -6,13 +6,15 @@ import {
   Card,
   Empty,
   Popconfirm,
+  Space,
   Table,
   Tag,
   Tooltip,
   Typography,
 } from "antd";
-import type { ColumnsType } from "antd/es/table";
+import type { ColumnsType, TableProps } from "antd/es/table";
 import dayjs from "dayjs";
+import { useMemo, useState } from "react";
 import { CATEGORY_MAP } from "@/models/categories";
 import type { Purchase } from "@/models/types";
 import { formatIDR } from "@/utils/currency";
@@ -25,6 +27,7 @@ interface Props {
   purchases: Purchase[];
   onEdit: (purchase: Purchase) => void;
   onDelete: (id: string) => void;
+  onDeleteBulk: (ids: string[]) => void;
   onImported: () => void;
 }
 
@@ -34,7 +37,32 @@ interface RowData {
 }
 
 /** Tabel daftar pembelian dengan kolom nama, kategori, jumlah, tanggal, aksi. */
-export default function PurchaseTable({ purchases, onEdit, onDelete, onImported }: Props) {
+export default function PurchaseTable({
+  purchases,
+  onEdit,
+  onDelete,
+  onDeleteBulk,
+  onImported,
+}: Props) {
+  const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
+
+  const dataSource: RowData[] = useMemo(
+    () => purchases.map((p) => ({ key: p.id, purchase: p })),
+    [purchases],
+  );
+
+  const rowSelection: TableProps<RowData>["rowSelection"] = {
+    selectedRowKeys,
+    onChange: (keys) => setSelectedRowKeys(keys),
+  };
+
+  const hasSelected = selectedRowKeys.length > 0;
+
+  const handleBulkDelete = () => {
+    onDeleteBulk(selectedRowKeys.map(String));
+    setSelectedRowKeys([]);
+  };
+
   const columns: ColumnsType<RowData> = [
     {
       title: "Pembelian",
@@ -130,18 +158,37 @@ export default function PurchaseTable({ purchases, onEdit, onDelete, onImported 
     },
   ];
 
-  const dataSource: RowData[] = purchases.map((p) => ({
-    key: p.id,
-    purchase: p,
-  }));
-
   return (
     <Card
       variant="borderless"
       className="shadow-sm"
-      title={<Text strong>Daftar Pembelian</Text>}
+      title={
+        <Space>
+          <Text strong>Daftar Pembelian</Text>
+          {hasSelected && (
+            <Text type="secondary" style={{ fontSize: 12 }}>
+              {selectedRowKeys.length} dipilih
+            </Text>
+          )}
+        </Space>
+      }
       extra={
-        <ImportExportButtons purchases={purchases} onImported={onImported} />
+        <Space size="small" wrap>
+          {hasSelected && (
+            <Popconfirm
+              title={`Hapus ${selectedRowKeys.length} pembelian?`}
+              okText="Hapus"
+              okButtonProps={{ danger: true }}
+              cancelText="Batal"
+              onConfirm={handleBulkDelete}
+            >
+              <Button size="small" danger icon={<DeleteOutlined />}>
+                <span className="hidden md:inline">Hapus</span>
+              </Button>
+            </Popconfirm>
+          )}
+          <ImportExportButtons purchases={purchases} onImported={onImported} />
+        </Space>
       }
       style={{ marginBottom: 24 }}
       styles={{ body: { padding: 0 } }}
@@ -155,6 +202,7 @@ export default function PurchaseTable({ purchases, onEdit, onDelete, onImported 
           {/* Tabel untuk tablet & desktop */}
           <div className="hidden sm:block">
             <Table
+              rowSelection={rowSelection}
               columns={columns}
               dataSource={dataSource}
               pagination={{ pageSize: 10, size: "small" }}
