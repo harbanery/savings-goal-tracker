@@ -86,7 +86,7 @@ export default function CategoryPieChart({ cycles }: Props) {
             );
             const val = Number(item.parsed ?? 0);
             const pct = total > 0 ? Math.round((val / total) * 100) : 0;
-            return ` ${item.label}: ${formatIDR(val)} (${pct}%)`;
+            return ` ${item.label}: ${formatIDR(val, locale)} (${pct}%)`;
           },
         },
       },

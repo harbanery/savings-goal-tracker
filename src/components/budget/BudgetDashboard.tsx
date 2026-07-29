@@ -220,9 +220,9 @@ export default function BudgetDashboard({
             showIcon
             title={t("app.overLimitTitle")}
             description={t("app.overLimitDesc", {
-              spent: formatIDR(stats.totalSpent),
-              limit: formatIDR(stats.spendingLimit),
-              diff: formatIDR(Math.abs(stats.limitRemaining)),
+              spent: formatIDR(stats.totalSpent, locale),
+              limit: formatIDR(stats.spendingLimit, locale),
+              diff: formatIDR(Math.abs(stats.limitRemaining), locale),
             })}
             style={{ marginBottom: 24 }}
           />

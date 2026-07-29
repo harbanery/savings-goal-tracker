@@ -81,7 +81,7 @@ export default function AllocationBarChart({ cycles }: Props) {
         padding: 10,
         callbacks: {
           label: (item) =>
-            ` ${item.dataset.label}: ${formatIDR(Number(item.parsed.y ?? 0))}`,
+            ` ${item.dataset.label}: ${formatIDR(Number(item.parsed.y ?? 0), locale)}`,
         },
       },
     },

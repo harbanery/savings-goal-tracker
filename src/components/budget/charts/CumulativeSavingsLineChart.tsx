@@ -42,7 +42,7 @@ interface Props {
  */
 export default function CumulativeSavingsLineChart({ cycles }: Props) {
   const { mode } = useThemeMode();
-  const { t } = useLocale();
+  const { t, locale } = useLocale();
   const isDark = mode === "dark";
   const gridColor = isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.06)";
   const tickColor = isDark ? "#9ca3af" : "#6b7280";
@@ -119,7 +119,7 @@ export default function CumulativeSavingsLineChart({ cycles }: Props) {
         padding: 10,
         callbacks: {
           label: (item) =>
-            ` ${item.dataset.label}: ${formatIDR(Number(item.parsed.y ?? 0))}`,
+            ` ${item.dataset.label}: ${formatIDR(Number(item.parsed.y ?? 0), locale)}`,
         },
       },
     },

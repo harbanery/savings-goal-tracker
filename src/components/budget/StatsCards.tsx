@@ -14,7 +14,7 @@ interface Props {
 /** Kartu statistik ringkasan siklus (3 kartu). */
 export default function StatsCards({ stats }: Readonly<Props>) {
   const [saldoHidden, setSaldoHidden] = useState(true);
-  const { t } = useLocale();
+  const { t, locale } = useLocale();
 
   return (
     <Row gutter={[8, 8]} className="mb-4 md:mb-6">
@@ -25,7 +25,7 @@ export default function StatsCards({ stats }: Readonly<Props>) {
               title={t("stats.initialBalance")}
               value={saldoHidden ? "••••••" : stats.savingsInitial}
               formatter={(value) =>
-                saldoHidden ? value : formatIDR(Number(value))
+                saldoHidden ? value : formatIDR(Number(value), locale)
               }
               styles={{
                 content: {
@@ -48,7 +48,7 @@ export default function StatsCards({ stats }: Readonly<Props>) {
           <Statistic
             title={t("stats.totalSpent")}
             value={stats.totalSpent}
-            formatter={(value) => formatIDR(Number(value))}
+            formatter={(value) => formatIDR(Number(value), locale)}
             styles={{
               content: {
                 color: stats.overLimit ? "#ef4444" : "#f59e0b",
@@ -63,7 +63,7 @@ export default function StatsCards({ stats }: Readonly<Props>) {
           <Statistic
             title={t("stats.limitRemaining")}
             value={stats.limitRemaining}
-            formatter={(value) => formatIDR(Number(value))}
+            formatter={(value) => formatIDR(Number(value), locale)}
             styles={{
               content: {
                 color: stats.overLimit ? "#ef4444" : "#22c55e",

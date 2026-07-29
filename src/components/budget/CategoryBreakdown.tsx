@@ -55,7 +55,7 @@ export default function CategoryBreakdown({ stats }: Props) {
                   {cat.excludeFromAllocation ? (
                     <>
                       <Text style={{ fontSize: 12 }}>
-                        {formatIDR(cat.spent)}
+                        {formatIDR(cat.spent, locale)}
                       </Text>
                       <Text
                         type="secondary"
@@ -83,10 +83,10 @@ export default function CategoryBreakdown({ stats }: Props) {
                       />
                       <div className="flex items-center justify-between">
                         <Text style={{ fontSize: 12 }}>
-                          {formatIDR(cat.spent)}
+                          {formatIDR(cat.spent, locale)}
                         </Text>
                         <Text type="secondary" style={{ fontSize: 11 }}>
-                          / {formatIDR(cat.allocation)}
+                          / {formatIDR(cat.allocation, locale)}
                         </Text>
                       </div>
                       <Text
@@ -99,7 +99,7 @@ export default function CategoryBreakdown({ stats }: Props) {
                         {overBudget
                           ? t("breakdown.over")
                           : t("breakdown.remaining")}
-                        {formatIDR(Math.abs(cat.remaining))}
+                        {formatIDR(Math.abs(cat.remaining), locale)}
                         {cat.purchaseCount > 0 &&
                           ` (${cat.purchaseCount}x)`}
                       </Text>

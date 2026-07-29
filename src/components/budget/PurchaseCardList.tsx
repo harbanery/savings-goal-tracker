@@ -77,7 +77,7 @@ export default function PurchaseCardList({
               </div>
               <div className="flex flex-col items-end gap-1">
                 <Text strong style={{ color: "#ef4444", fontSize: 13 }}>
-                  {formatIDR(p.amount)}
+                  {formatIDR(p.amount, locale)}
                 </Text>
                 <div className="flex gap-1">
                   <Button

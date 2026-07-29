@@ -29,7 +29,7 @@ interface Props {
  */
 export default function BalanceDonutChart({ stats }: Props) {
   const { mode } = useThemeMode();
-  const { t } = useLocale();
+  const { t, locale } = useLocale();
   const isDark = mode === "dark";
   const tickColor = isDark ? "#9ca3af" : "#6b7280";
 
@@ -73,7 +73,7 @@ export default function BalanceDonutChart({ stats }: Props) {
         padding: 10,
         callbacks: {
           label: (item) =>
-            ` ${item.label}: ${formatIDR(Number(item.parsed ?? 0))}`,
+            ` ${item.label}: ${formatIDR(Number(item.parsed ?? 0), locale)}`,
         },
       },
     },

@@ -115,7 +115,7 @@ export default function PurchaseTable({
       sorter: (a, b) => a.purchase.amount - b.purchase.amount,
       render: (_: unknown, record: RowData) => (
         <Text strong style={{ color: "#ef4444" }}>
-          - {formatIDR(record.purchase.amount)}
+          - {formatIDR(record.purchase.amount, locale)}
         </Text>
       ),
     },
