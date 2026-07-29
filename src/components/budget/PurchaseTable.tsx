@@ -170,7 +170,6 @@ export default function PurchaseTable({
       className="shadow-sm"
       title={
         <Space>
-          <Text strong>Daftar Pembelian</Text>
           {hasSelected && (
             <Text type="secondary" style={{ fontSize: 12 }}>
               {selectedRowKeys.length} dipilih

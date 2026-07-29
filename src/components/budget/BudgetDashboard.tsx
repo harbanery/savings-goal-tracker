@@ -1,7 +1,12 @@
 "use client";
 
-import { LeftOutlined, RightOutlined } from "@ant-design/icons";
-import { Alert, Button, DatePicker, Space, Typography } from "antd";
+import {
+  BarChartOutlined,
+  LeftOutlined,
+  RightOutlined,
+  TableOutlined,
+} from "@ant-design/icons";
+import { Alert, Button, DatePicker, Space, Tabs, Typography } from "antd";
 import { useCallback, useMemo, useState } from "react";
 import dayjs from "dayjs";
 import ThemeToggle from "@/components/theme/ThemeToggle";
@@ -62,6 +67,7 @@ export default function BudgetDashboard({
     useState<Record<string, Purchase[]>>(initialHistorical);
   const [formOpen, setFormOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState("charts");
 
   const stats = useMemo(() => computeCycleStats(purchases), [purchases]);
   const chartData = useMemo(
@@ -211,37 +217,72 @@ export default function BudgetDashboard({
           />
         )}
 
-        {/* Purchase Table */}
-        <PurchaseTable
-          purchases={purchases}
-          onCreate={handleOpenCreate}
-          onEdit={handleOpenEdit}
-          onDelete={handleDelete}
-          onDeleteBulk={handleDeleteBulk}
-          onImported={() => refreshCycle(cycle)}
+        {/* Tabs: Grafik & Daftar */}
+        <Tabs
+          activeKey={activeTab}
+          onChange={setActiveTab}
+          centered
+          destroyOnHidden
+          className="mb-2"
+          items={[
+            {
+              key: "charts",
+              label: (
+                <span className="flex items-center gap-1.5">
+                  <BarChartOutlined />
+                  Grafik
+                </span>
+              ),
+              children: (
+                <div className="pb-2">
+                  {/* Charts Row 1: Donut (saldo) + Pie (kategori) */}
+                  <div className="mb-4 grid grid-cols-1 gap-4 md:mb-6 lg:grid-cols-2">
+                    <BalanceDonutChart stats={stats} />
+                    <CategoryPieChart cycles={chartData} />
+                  </div>
+
+                  {/* Charts Row 2: Allocation Bar */}
+                  <div className="mb-4 md:mb-6">
+                    <AllocationBarChart cycles={chartData} />
+                  </div>
+
+                  {/* Charts Row 3: Savings comparison + Cumulative line */}
+                  <div className="mb-4 grid grid-cols-1 gap-4 md:mb-6 lg:grid-cols-2">
+                    <SavingsComparisonBarChart cycles={chartData} />
+                    <CumulativeSavingsLineChart cycles={chartData} />
+                  </div>
+                </div>
+              ),
+            },
+            {
+              key: "list",
+              label: (
+                <span className="flex items-center gap-1.5">
+                  <TableOutlined />
+                  Daftar
+                </span>
+              ),
+              children: (
+                <div className="pb-2">
+                  {/* Purchase Table */}
+                  <PurchaseTable
+                    purchases={purchases}
+                    onCreate={handleOpenCreate}
+                    onEdit={handleOpenEdit}
+                    onDelete={handleDelete}
+                    onDeleteBulk={handleDeleteBulk}
+                    onImported={() => refreshCycle(cycle)}
+                  />
+
+                  {/* Category Breakdown */}
+                  <div className="mb-4 md:mb-6">
+                    <CategoryBreakdown stats={stats} />
+                  </div>
+                </div>
+              ),
+            },
+          ]}
         />
-
-        {/* Category Breakdown */}
-        <div className="mb-4 md:mb-6">
-          <CategoryBreakdown stats={stats} />
-        </div>
-
-        {/* Charts Row 1: Donut (saldo) + Bar (alokasi per bulan) */}
-        <div className="mb-4 grid grid-cols-1 gap-4 md:mb-6 lg:grid-cols-2">
-          <BalanceDonutChart stats={stats} />
-          <CategoryPieChart cycles={chartData} />
-        </div>
-
-        {/* Charts Row 3: Category Pie */}
-        <div className="mb-4 md:mb-6">
-          <AllocationBarChart cycles={chartData} />
-        </div>
-
-        {/* Charts Row 2: Savings comparison + Cumulative line */}
-        <div className="mb-4 grid grid-cols-1 gap-4 md:mb-6 lg:grid-cols-2">
-          <SavingsComparisonBarChart cycles={chartData} />
-          <CumulativeSavingsLineChart cycles={chartData} />
-        </div>
 
         {/* Modal */}
         <PurchaseFormModal
