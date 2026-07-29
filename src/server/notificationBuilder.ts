@@ -114,7 +114,7 @@ export async function buildWeeklyNotification(): Promise<{
   let body = `Siklus ${cycle.label}: ${formatShortIDR(stats.totalSpent)} terpakai (${stats.limitPercent}% limit), sisa tabungan ${formatShortIDR(savings)} (${savingsPercent}%).`;
 
   if (topCategories.length > 0) {
-    body += ` Terbesar: ${topCategories.map((c) => c.label).join(", ")}.`;
+    body += ` Terbesar: ${topCategories.map((c) => c.label.id).join(", ")}.`;
   }
 
   body += ` vs ${prevCycle.label}: ${diffLabel}.`;
@@ -146,7 +146,7 @@ function getTopCategory(purchases: Purchase[]): string | null {
     }
   }
   if (!topId) return null;
-  return CATEGORY_MAP[topId]?.label ?? topId;
+  return CATEGORY_MAP[topId]?.label.id ?? topId;
 }
 
 interface SendResult {

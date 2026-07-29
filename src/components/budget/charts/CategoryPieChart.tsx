@@ -12,6 +12,8 @@ import {
 } from "chart.js";
 import { useMemo } from "react";
 import { useThemeMode } from "@/components/theme/ThemeProvider";
+import { useLocale } from "@/components/locale/LocaleProvider";
+import { pickText } from "@/components/locale/useTranslatedData";
 import { CATEGORIES } from "@/models/categories";
 import type { CycleChartData } from "@/helpers/chartData";
 import { formatIDR } from "@/utils/currency";
@@ -30,6 +32,7 @@ interface Props {
  */
 export default function CategoryPieChart({ cycles }: Props) {
   const { mode } = useThemeMode();
+  const { t, locale } = useLocale();
   const isDark = mode === "dark";
   const tickColor = isDark ? "#9ca3af" : "#6b7280";
 
@@ -42,7 +45,7 @@ export default function CategoryPieChart({ cycles }: Props) {
     }
     const activeCats = CATEGORIES.filter((c) => (spentMap[c.id] ?? 0) > 0);
     return {
-      labels: activeCats.map((c) => c.label),
+      labels: activeCats.map((c) => pickText(c.label, locale)),
       datasets: [
         {
           data: activeCats.map((c) => spentMap[c.id] ?? 0),
@@ -52,7 +55,7 @@ export default function CategoryPieChart({ cycles }: Props) {
         },
       ],
     };
-  }, [cycles, isDark]);
+  }, [cycles, isDark, locale]);
 
   const options: ChartOptions<"pie"> = {
     responsive: true,
@@ -101,11 +104,11 @@ export default function CategoryPieChart({ cycles }: Props) {
       style={{ height: "100%" }}
       styles={{ body: { padding: 16, height: "100%" } }}
       size="small"
-      title={<Text strong>Pengeluaran per Kategori</Text>}
+      title={<Text strong>{t("chart.categoryTitle")}</Text>}
     >
       {isEmpty ? (
         <div className="flex h-[260px] items-center justify-center">
-          <Empty description="Belum ada pengeluaran" />
+          <Empty description={t("chart.emptySpending")} />
         </div>
       ) : (
         <div className="h-[260px] w-full sm:h-[300px]">

@@ -18,6 +18,8 @@ import { useMemo, useState } from "react";
 import { CATEGORY_MAP } from "@/models/categories";
 import type { Purchase } from "@/models/types";
 import { formatIDR } from "@/utils/currency";
+import { useLocale } from "@/components/locale/LocaleProvider";
+import { pickText } from "@/components/locale/useTranslatedData";
 import ImportExportButtons from "./ImportExportButtons";
 import PurchaseCardList from "./PurchaseCardList";
 
@@ -47,6 +49,7 @@ export default function PurchaseTable({
   onImported,
 }: Props) {
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
+  const { t, locale } = useLocale();
 
   const dataSource: RowData[] = useMemo(
     () => purchases.map((p) => ({ key: p.id, purchase: p })),
@@ -67,7 +70,7 @@ export default function PurchaseTable({
 
   const columns: ColumnsType<RowData> = [
     {
-      title: "Pembelian",
+      title: t("table.colPurchase"),
       key: "name",
       dataIndex: ["purchase", "name"],
       ellipsis: true,
@@ -87,7 +90,7 @@ export default function PurchaseTable({
       ),
     },
     {
-      title: "Kategori",
+      title: t("table.colCategory"),
       key: "category",
       width: 140,
       render: (_: unknown, record: RowData) => {
@@ -99,13 +102,13 @@ export default function PurchaseTable({
             style={{ margin: 0, fontSize: 11 }}
             variant="solid"
           >
-            {cat.label}
+            {pickText(cat.label, locale)}
           </Tag>
         );
       },
     },
     {
-      title: "Jumlah",
+      title: t("table.colAmount"),
       key: "amount",
       width: 140,
       align: "right",
@@ -117,7 +120,7 @@ export default function PurchaseTable({
       ),
     },
     {
-      title: "Tanggal",
+      title: t("table.colDate"),
       key: "date",
       width: 130,
       sorter: (a, b) => a.purchase.date.localeCompare(b.purchase.date),
@@ -130,7 +133,7 @@ export default function PurchaseTable({
       ),
     },
     {
-      title: "Aksi",
+      title: t("table.colAction"),
       key: "action",
       width: 90,
       align: "center",
@@ -142,13 +145,13 @@ export default function PurchaseTable({
             size="small"
             icon={<EditOutlined />}
             onClick={() => onEdit(record.purchase)}
-            aria-label="Edit pembelian"
+            aria-label={t("table.editAria")}
           />
           <Popconfirm
-            title="Hapus pembelian ini?"
-            okText="Hapus"
+            title={t("table.deleteConfirm")}
+            okText={t("common.delete")}
             okButtonProps={{ danger: true }}
-            cancelText="Batal"
+            cancelText={t("common.cancel")}
             onConfirm={() => onDelete(record.purchase.id)}
           >
             <Button
@@ -156,7 +159,7 @@ export default function PurchaseTable({
               size="small"
               danger
               icon={<DeleteOutlined />}
-              aria-label="Hapus pembelian"
+              aria-label={t("table.deleteAria")}
             />
           </Popconfirm>
         </div>
@@ -172,7 +175,7 @@ export default function PurchaseTable({
         <Space>
           {hasSelected && (
             <Text type="secondary" style={{ fontSize: 12 }}>
-              {selectedRowKeys.length} dipilih
+              {t("table.selected", { n: selectedRowKeys.length })}
             </Text>
           )}
         </Space>
@@ -181,14 +184,14 @@ export default function PurchaseTable({
         <Space size="medium" wrap>
           {hasSelected && (
             <Popconfirm
-              title={`Hapus ${selectedRowKeys.length} pembelian?`}
-              okText="Hapus"
+              title={t("table.deleteBulkConfirm", { n: selectedRowKeys.length })}
+              okText={t("common.delete")}
               okButtonProps={{ danger: true }}
-              cancelText="Batal"
+              cancelText={t("common.cancel")}
               onConfirm={handleBulkDelete}
             >
               <Button size="small" danger icon={<DeleteOutlined />}>
-                <span className="hidden md:inline">Hapus</span>
+                <span className="hidden md:inline">{t("common.delete")}</span>
               </Button>
             </Popconfirm>
           )}
@@ -199,7 +202,7 @@ export default function PurchaseTable({
             icon={<PlusOutlined />}
             onClick={onCreate}
           >
-            <span className="hidden md:inline">Tambah Pembelian</span>
+            <span className="hidden md:inline">{t("table.addPurchase")}</span>
           </Button>
         </Space>
       }
@@ -208,7 +211,7 @@ export default function PurchaseTable({
     >
       {purchases.length === 0 ? (
         <div className="flex items-center justify-center py-12">
-          <Empty description="Belum ada pembelian di siklus ini" />
+          <Empty description={t("table.empty")} />
         </div>
       ) : (
         <>

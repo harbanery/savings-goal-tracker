@@ -2,11 +2,17 @@
  * Tipe data UI untuk Monthly Budget Tracker.
  */
 
+/** Locale yang didukung aplikasi. */
+export type Locale = "id" | "en";
+
+/** Teks yang tersedia dalam kedua bahasa. */
+export type LocaleText = { id: string; en: string };
+
 /** Kategori/wadah sistem dengan alokasi saldo. */
 export interface BudgetCategory {
   id: string;
-  label: string;
-  description: string;
+  label: LocaleText;
+  description: LocaleText;
   color: string;
   /** Alokasi saldo per siklus (rupiah). */
   allocation: number;

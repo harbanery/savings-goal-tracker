@@ -64,9 +64,9 @@ export async function getHistoricalPurchasesAction(
   await Promise.all(
     cycles.map(async (c) => {
       try {
-        result[c.label] = await getCyclePurchasesAction(c);
+        result[c.key] = await getCyclePurchasesAction(c);
       } catch {
-        result[c.label] = [];
+        result[c.key] = [];
       }
     }),
   );

@@ -9,8 +9,13 @@ import { Button, message, Space, Tooltip, Upload } from "antd";
 import type { UploadProps } from "antd";
 import { useState } from "react";
 import { importPurchasesAction } from "@/server/actions";
-import { generatePurchasesCsv, generateTemplateCsv, parseCsvToPurchases } from "@/utils/csv";
+import {
+  generatePurchasesCsv,
+  generateTemplateCsv,
+  parseCsvToPurchases,
+} from "@/utils/csv";
 import type { Purchase } from "@/models/types";
+import { useLocale } from "@/components/locale/LocaleProvider";
 
 interface Props {
   purchases: Purchase[];
@@ -23,6 +28,7 @@ export default function ImportExportButtons({
   onImported,
 }: Props) {
   const [importing, setImporting] = useState(false);
+  const { t } = useLocale();
 
   /** Download template CSV kosong (dengan contoh 1 baris). */
   function handleDownloadTemplate() {
@@ -33,7 +39,7 @@ export default function ImportExportButtons({
   /** Export pembelian siklus aktif ke CSV. */
   function handleExport() {
     if (purchases.length === 0) {
-      message.warning("Belum ada pembelian untuk diexport.");
+      message.warning(t("io.noDataExport"));
       return;
     }
     const csv = generatePurchasesCsv(purchases);
@@ -60,13 +66,13 @@ export default function ImportExportButtons({
       reader.onload = async (e) => {
         const text = e.target?.result as string;
         if (!text) {
-          message.error("File kosong atau tidak terbaca.");
+          message.error(t("io.fileEmpty"));
           return;
         }
         const { valid, errors } = parseCsvToPurchases(text);
         if (valid.length === 0) {
           message.error(
-            `Tidak ada baris valid. ${errors.length} error: ${errors[0] ?? ""}`,
+            t("io.noValid", { n: errors.length, first: errors[0] ?? "" }),
           );
           return;
         }
@@ -75,17 +81,23 @@ export default function ImportExportButtons({
           const result = await importPurchasesAction(valid);
           if (result.imported > 0) {
             message.success(
-              `${result.imported} pembelian berhasil diimport.` +
-                (result.errors.length > 0
-                  ? ` ${result.errors.length} baris dilewati.`
-                  : ""),
+              result.errors.length > 0
+                ? t("io.importedPartial", {
+                    n: result.imported,
+                    m: result.errors.length,
+                  })
+                : t("io.imported", { n: result.imported }),
             );
             onImported();
           } else {
-            message.error("Tidak ada pembelian yang berhasil diimport.");
+            message.error(t("io.importNone"));
           }
         } catch (err) {
-          message.error("Gagal import: " + (err instanceof Error ? err.message : String(err)));
+          message.error(
+            t("io.importFail", {
+              msg: err instanceof Error ? err.message : String(err),
+            }),
+          );
         } finally {
           setImporting(false);
         }
@@ -97,27 +109,27 @@ export default function ImportExportButtons({
 
   return (
     <Space size="small" wrap>
-      <Tooltip title="Download template CSV (untuk Google Sheets)">
+      <Tooltip title={t("io.templateTooltip")}>
         <Button
           size="small"
           icon={<DownloadOutlined />}
           onClick={handleDownloadTemplate}
         >
-          <span className="hidden md:inline">Template</span>
+          <span className="hidden md:inline">{t("io.template")}</span>
         </Button>
       </Tooltip>
-      <Tooltip title="Export pembelian ke CSV">
+      <Tooltip title={t("io.exportTooltip")}>
         <Button
           size="small"
           icon={<FileExcelOutlined />}
           onClick={handleExport}
           disabled={purchases.length === 0}
         >
-          <span className="hidden md:inline">Export</span>
+          <span className="hidden md:inline">{t("io.export")}</span>
         </Button>
       </Tooltip>
       <Upload {...uploadProps}>
-        <Tooltip title="Import CSV dari Google Sheets">
+        <Tooltip title={t("io.importTooltip")}>
           <Button
             size="small"
             icon={<UploadOutlined />}
@@ -125,7 +137,7 @@ export default function ImportExportButtons({
             type="primary"
             ghost
           >
-            <span className="hidden md:inline">Import</span>
+            <span className="hidden md:inline">{t("io.import")}</span>
           </Button>
         </Tooltip>
       </Upload>

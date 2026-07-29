@@ -14,6 +14,8 @@ import { useState } from "react";
 import { createPurchaseAction, updatePurchaseAction } from "@/server/actions";
 import { CATEGORIES } from "@/models/categories";
 import type { Purchase } from "@/models/types";
+import { useLocale } from "@/components/locale/LocaleProvider";
+import { pickText } from "@/components/locale/useTranslatedData";
 
 interface Props {
   open: boolean;
@@ -40,12 +42,13 @@ export default function PurchaseFormModal({
   onSaved,
 }: Props) {
   const isEdit = editingPurchase !== null;
+  const { t } = useLocale();
 
   return (
     <Modal
       open={open}
       onCancel={onClose}
-      title={isEdit ? "Edit Pembelian" : "Tambah Pembelian"}
+      title={isEdit ? t("form.editTitle") : t("form.addTitle")}
       width={{ xs: "92%", sm: 520 }}
       destroyOnHidden
       footer={null}
@@ -77,6 +80,7 @@ function PurchaseForm({
   const [form] = Form.useForm<FormValues>();
   const [saving, setSaving] = useState(false);
   const isEdit = editingPurchase !== null;
+  const { t, locale } = useLocale();
 
   async function handleFinish(values: FormValues) {
     setSaving(true);
@@ -121,24 +125,24 @@ function PurchaseForm({
     >
       <Form.Item
         name="name"
-        label="Nama Pembelian"
+        label={t("form.name")}
         rules={[
-          { required: true, message: "Nama pembelian wajib diisi" },
-          { whitespace: true, message: "Nama tidak boleh hanya spasi" },
+          { required: true, message: t("form.nameRequired") },
+          { whitespace: true, message: t("form.nameWhitespace") },
         ]}
       >
         <Input
-          placeholder="Contoh: Makan siang, Bensin, Spotify"
+          placeholder={t("form.namePlaceholder")}
           maxLength={100}
         />
       </Form.Item>
 
       <Form.Item
         name="categoryId"
-        label="Kategori / Wadah"
-        rules={[{ required: true, message: "Kategori wajib dipilih" }]}
+        label={t("form.category")}
+        rules={[{ required: true, message: t("form.categoryRequired") }]}
       >
-        <Select placeholder="Pilih kategori">
+        <Select placeholder={t("form.categoryPlaceholder")}>
           {CATEGORIES.map((c) => (
             <Select.Option key={c.id} value={c.id}>
               <span
@@ -151,7 +155,7 @@ function PurchaseForm({
                   marginRight: 8,
                 }}
               />
-              {c.label} ({c.description})
+              {pickText(c.label, locale)} ({pickText(c.description, locale)})
             </Select.Option>
           ))}
         </Select>
@@ -159,14 +163,14 @@ function PurchaseForm({
 
       <Form.Item
         name="amount"
-        label="Jumlah Biaya"
+        label={t("form.amount")}
         rules={[
-          { required: true, message: "Jumlah wajib diisi" },
+          { required: true, message: t("form.amountRequired") },
           {
             validator: (_, value) =>
               value && value > 0
                 ? Promise.resolve()
-                : Promise.reject(new Error("Jumlah harus lebih dari 0")),
+                : Promise.reject(new Error(t("form.amountPositive"))),
           },
         ]}
       >
@@ -185,28 +189,32 @@ function PurchaseForm({
 
       <Form.Item
         name="date"
-        label={`Tanggal${cycleLabel ? ` (Siklus: ${cycleLabel})` : ""}`}
-        rules={[{ required: true, message: "Tanggal wajib diisi" }]}
+        label={
+          cycleLabel
+            ? t("form.dateWithCycle", { label: cycleLabel })
+            : t("form.date")
+        }
+        rules={[{ required: true, message: t("form.dateRequired") }]}
       >
         <DatePicker
           className="w-full"
           format="DD MMMM YYYY"
-          placeholder="Pilih tanggal"
+          placeholder={t("form.datePlaceholder")}
         />
       </Form.Item>
 
-      <Form.Item name="note" label="Catatan (opsional)">
+      <Form.Item name="note" label={t("form.note")}>
         <Input.TextArea
           rows={2}
-          placeholder="Catatan tambahan..."
+          placeholder={t("form.notePlaceholder")}
           maxLength={500}
         />
       </Form.Item>
 
       <div className="mt-2 flex justify-end gap-2">
-        <Button onClick={onClosed}>Batal</Button>
+        <Button onClick={onClosed}>{t("common.cancel")}</Button>
         <Button type="primary" htmlType="submit" loading={saving}>
-          {isEdit ? "Simpan Perubahan" : "Tambah Pembelian"}
+          {isEdit ? t("form.saveChanges") : t("form.addTitle")}
         </Button>
       </div>
     </Form>

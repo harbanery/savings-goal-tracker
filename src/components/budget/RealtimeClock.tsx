@@ -3,6 +3,7 @@
 import { ClockCircleOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
 import { useEffect, useState } from "react";
+import { useLocale } from "@/components/locale/LocaleProvider";
 
 /**
  * Jam realtime yang diperbarui setiap detik menggunakan `setTimeout` rekursif.
@@ -11,6 +12,7 @@ import { useEffect, useState } from "react";
  */
 export default function RealtimeClock() {
   const [now, setNow] = useState<Date | null>(null);
+  const { t } = useLocale();
 
   useEffect(() => {
     let active = true;
@@ -33,12 +35,12 @@ export default function RealtimeClock() {
   }, []);
 
   const time = now ? dayjs(now).format("HH:mm:ss") : "--:--:--";
-  const date = now ? dayjs(now).format("ddd, D MMM YYYY") : "Memuat...";
+  const date = now ? dayjs(now).format("ddd, D MMM YYYY") : t("clock.loading");
 
   return (
     <output
       className="flex select-none items-center gap-2 rounded-lg border border-zinc-200 bg-white px-3 py-1.5 dark:border-zinc-700 dark:bg-zinc-800"
-      aria-label={`Waktu sekarang ${time}, ${date}`}
+      aria-label={t("clock.ariaTime", { time, date })}
     >
       <ClockCircleOutlined className="text-indigo-500" />
       <div className="flex h-10 flex-col justify-center leading-tight">

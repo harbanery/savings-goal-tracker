@@ -6,6 +6,8 @@ import dayjs from "dayjs";
 import { CATEGORY_MAP } from "@/models/categories";
 import type { Purchase } from "@/models/types";
 import { formatIDR } from "@/utils/currency";
+import { useLocale } from "@/components/locale/LocaleProvider";
+import { pickText } from "@/components/locale/useTranslatedData";
 
 const { Text } = Typography;
 
@@ -21,10 +23,11 @@ export default function PurchaseCardList({
   onEdit,
   onDelete,
 }: Props) {
+  const { t, locale } = useLocale();
   if (purchases.length === 0) {
     return (
       <Card variant="borderless" className="shadow-sm">
-        <Empty description="Belum ada pembelian di siklus ini" />
+        <Empty description={t("table.empty")} />
       </Card>
     );
   }
@@ -55,7 +58,7 @@ export default function PurchaseCardList({
                       style={{ margin: 0, fontSize: 10 }}
                       variant="solid"
                     >
-                      {cat.label}
+                      {pickText(cat.label, locale)}
                     </Tag>
                   )}
                 </div>
@@ -84,10 +87,10 @@ export default function PurchaseCardList({
                     onClick={() => onEdit(p)}
                   />
                   <Popconfirm
-                    title="Hapus pembelian ini?"
-                    okText="Hapus"
+                    title={t("table.deleteConfirm")}
+                    okText={t("common.delete")}
                     okButtonProps={{ danger: true }}
-                    cancelText="Batal"
+                    cancelText={t("common.cancel")}
                     onConfirm={() => onDelete(p.id)}
                   >
                     <Button

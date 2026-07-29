@@ -10,6 +10,8 @@ import { Alert, Button, DatePicker, Space, Tabs, Typography } from "antd";
 import { useCallback, useMemo, useState } from "react";
 import dayjs from "dayjs";
 import ThemeToggle from "@/components/theme/ThemeToggle";
+import LanguageToggle from "@/components/locale/LanguageToggle";
+import { useLocale } from "@/components/locale/LocaleProvider";
 import {
   deletePurchasesAction,
   deletePurchaseAction,
@@ -20,6 +22,7 @@ import { computeCycleStats } from "@/helpers/stats";
 import { buildCycleChartData } from "@/helpers/chartData";
 import type { Purchase } from "@/models/types";
 import {
+  formatCycleLabel,
   getCycleInfo,
   getCurrentCycle,
   shiftCycle,
@@ -69,10 +72,13 @@ export default function BudgetDashboard({
   const [editingId, setEditingId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState("charts");
 
+  const { t, locale } = useLocale();
+  const cycleLabel = formatCycleLabel(cycle.year, cycle.monthIndex, locale);
+
   const stats = useMemo(() => computeCycleStats(purchases), [purchases]);
   const chartData = useMemo(
-    () => buildCycleChartData(historical),
-    [historical],
+    () => buildCycleChartData(historical, locale),
+    [historical, locale],
   );
 
   const editingPurchase = useMemo(
@@ -158,17 +164,17 @@ export default function BudgetDashboard({
               style={{ marginBottom: 4 }}
               className="text-lg! sm:text-2xl! md:text-3xl!"
             >
-              Savings Goal Tracker
+              {t("app.title")}
             </Title>
             <Paragraph
               type="secondary"
               style={{ marginBottom: 0 }}
               className="text-xs! sm:text-sm! md:text-base!"
             >
-              Pantau pengeluaran bulanan dengan sistem wadah.{" "}
+              {t("app.description")}{" "}
               <span className="font-medium text-indigo-500 dark:text-indigo-400">
-                Siklus <b>{cycle.label}</b>:{" "}
-                {dayjs(cycle.startDate).format("D MMM")} s/d{" "}
+                {t("app.cycleLabel", { label: cycleLabel })}:{" "}
+                {dayjs(cycle.startDate).format("D MMM")} {t("app.rangeSeparator")}{" "}
                 {dayjs(cycle.endDate).format("D MMM YYYY")}
               </span>
             </Paragraph>
@@ -179,6 +185,7 @@ export default function BudgetDashboard({
             </div>
             <Space wrap className="w-full justify-end">
               <ThemeToggle />
+              <LanguageToggle />
               <NotificationBell />
               <Button
                 icon={<LeftOutlined />}
@@ -211,8 +218,12 @@ export default function BudgetDashboard({
           <Alert
             type="error"
             showIcon
-            title="Melebihi Limit Pengeluaran!"
-            description={`Pengeluaran sudah ${formatIDR(stats.totalSpent)}, melebihi limit ${formatIDR(stats.spendingLimit)}. Selisih: ${formatIDR(Math.abs(stats.limitRemaining))}.`}
+            title={t("app.overLimitTitle")}
+            description={t("app.overLimitDesc", {
+              spent: formatIDR(stats.totalSpent),
+              limit: formatIDR(stats.spendingLimit),
+              diff: formatIDR(Math.abs(stats.limitRemaining)),
+            })}
             style={{ marginBottom: 24 }}
           />
         )}
@@ -230,7 +241,7 @@ export default function BudgetDashboard({
               label: (
                 <span className="flex items-center gap-1.5">
                   <BarChartOutlined />
-                  Grafik
+                  {t("app.tabCharts")}
                 </span>
               ),
               children: (
@@ -259,7 +270,7 @@ export default function BudgetDashboard({
               label: (
                 <span className="flex items-center gap-1.5">
                   <TableOutlined />
-                  Daftar
+                  {t("app.tabList")}
                 </span>
               ),
               children: (
@@ -288,7 +299,7 @@ export default function BudgetDashboard({
         <PurchaseFormModal
           open={formOpen}
           editingPurchase={editingPurchase}
-          cycleLabel={cycle.label}
+          cycleLabel={cycleLabel}
           onClose={closeForm}
           onSaved={() => refreshCycle(cycle)}
         />

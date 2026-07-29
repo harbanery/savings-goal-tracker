@@ -4,6 +4,7 @@ import { BellOutlined, BellFilled } from "@ant-design/icons";
 import { Badge, Button, Tooltip, message } from "antd";
 import { useCallback, useEffect, useState } from "react";
 import { VAPID_PUBLIC_KEY } from "@/config/variables";
+import { useLocale } from "@/components/locale/LocaleProvider";
 
 /** URL base untuk API calls. */
 const API_BASE = "/api/push";
@@ -39,6 +40,7 @@ export default function NotificationBell() {
   const [supported, setSupported] = useState(false);
   const [subscribed, setSubscribed] = useState(false);
   const [loading, setLoading] = useState(false);
+  const { t } = useLocale();
 
   useEffect(() => {
     if (!isPushSupported()) return;
@@ -59,7 +61,7 @@ export default function NotificationBell() {
     try {
       const permission = await Notification.requestPermission();
       if (permission !== "granted") {
-        message.warning("Izin notifikasi ditolak. Aktifkan di pengaturan browser.");
+        message.warning(t("notif.permissionDenied"));
         return;
       }
 
@@ -81,14 +83,14 @@ export default function NotificationBell() {
 
       if (!res.ok) throw new Error("Failed to subscribe on server");
       setSubscribed(true);
-      message.success("Notifikasi diaktifkan! Anda akan mendapat pengingat pengeluaran & insight tabungan.");
+      message.success(t("notif.enabled"));
     } catch (err) {
       console.error("[NotificationBell] subscribe error:", err);
-      message.error("Gagal mengaktifkan notifikasi.");
+      message.error(t("notif.enableFailed"));
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   const handleUnsubscribe = useCallback(async () => {
     if (!isPushSupported()) return;
@@ -105,23 +107,21 @@ export default function NotificationBell() {
         });
       }
       setSubscribed(false);
-      message.info("Notifikasi dinonaktifkan.");
+      message.info(t("notif.disabled"));
     } catch (err) {
       console.error("[NotificationBell] unsubscribe error:", err);
-      message.error("Gagal menonaktifkan notifikasi.");
+      message.error(t("notif.disableFailed"));
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   if (!supported) return null;
 
   return (
     <Tooltip
       title={
-        subscribed
-          ? "Notifikasi aktif. Klik untuk menonaktifkan."
-          : "Aktifkan notifikasi untuk pengingat pengeluaran harian & insight tabungan mingguan."
+        subscribed ? t("notif.activeTooltip") : t("notif.inactiveTooltip")
       }
     >
       <Badge dot={subscribed} offset={[-2, 2]} color="#6366f1">

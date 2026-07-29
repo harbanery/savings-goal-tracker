@@ -1,12 +1,12 @@
 import { CATEGORIES, TOTAL_ALLOCATION } from "@/models/categories";
-import type { Purchase } from "@/models/types";
+import type { LocaleText, Purchase } from "@/models/types";
 import { SAVINGS_INITIAL } from "@/config/variables";
 
 export interface CategoryStat {
   categoryId: string;
-  label: string;
+  label: LocaleText;
   color: string;
-  description: string;
+  description: LocaleText;
   allocation: number;
   spent: number;
   remaining: number;

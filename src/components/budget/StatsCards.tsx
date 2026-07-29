@@ -5,6 +5,7 @@ import { Button, Card, Col, Progress, Row, Statistic } from "antd";
 import { useState } from "react";
 import type { CycleStats } from "@/helpers/stats";
 import { formatIDR } from "@/utils/currency";
+import { useLocale } from "@/components/locale/LocaleProvider";
 
 interface Props {
   stats: CycleStats;
@@ -13,6 +14,7 @@ interface Props {
 /** Kartu statistik ringkasan siklus (3 kartu). */
 export default function StatsCards({ stats }: Readonly<Props>) {
   const [saldoHidden, setSaldoHidden] = useState(true);
+  const { t } = useLocale();
 
   return (
     <Row gutter={[8, 8]} className="mb-4 md:mb-6">
@@ -20,7 +22,7 @@ export default function StatsCards({ stats }: Readonly<Props>) {
         <Card variant="borderless" className="shadow-sm">
           <div className="flex justify-between items-center">
             <Statistic
-              title="Saldo Awal"
+              title={t("stats.initialBalance")}
               value={saldoHidden ? "••••••" : stats.savingsInitial}
               formatter={(value) =>
                 saldoHidden ? value : formatIDR(Number(value))
@@ -44,7 +46,7 @@ export default function StatsCards({ stats }: Readonly<Props>) {
       <Col xs={24} sm={8}>
         <Card variant="borderless" className="shadow-sm">
           <Statistic
-            title="Total Pengeluaran"
+            title={t("stats.totalSpent")}
             value={stats.totalSpent}
             formatter={(value) => formatIDR(Number(value))}
             styles={{
@@ -59,7 +61,7 @@ export default function StatsCards({ stats }: Readonly<Props>) {
       <Col xs={24} sm={8}>
         <Card variant="borderless" className="shadow-sm">
           <Statistic
-            title="Sisa Limit"
+            title={t("stats.limitRemaining")}
             value={stats.limitRemaining}
             formatter={(value) => formatIDR(Number(value))}
             styles={{

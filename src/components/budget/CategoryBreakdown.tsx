@@ -3,6 +3,8 @@
 import { Card, Col, Progress, Row, Typography } from "antd";
 import type { CycleStats } from "@/helpers/stats";
 import { formatIDR } from "@/utils/currency";
+import { useLocale } from "@/components/locale/LocaleProvider";
+import { pickText } from "@/components/locale/useTranslatedData";
 
 const { Text } = Typography;
 
@@ -12,13 +14,14 @@ interface Props {
 
 /** Breakdown per kategori/wadah dengan alokasi, terpakai, dan sisa. */
 export default function CategoryBreakdown({ stats }: Props) {
+  const { t, locale } = useLocale();
   return (
     <Card
       variant="borderless"
       className="shadow-sm"
       style={{ height: "100%" }}
       size="small"
-      title={<Text strong>Alokasi Wadah</Text>}
+      title={<Text strong>{t("breakdown.title")}</Text>}
     >
       <Row gutter={{ xs: 12, sm: 16, lg: 16 }} className="[row-gap:8px] sm:[row-gap:12px]">
         {stats.categories.map((cat) => {
@@ -38,7 +41,7 @@ export default function CategoryBreakdown({ stats }: Props) {
                     }}
                   />
                   <Text strong style={{ color: cat.color, fontSize: 13 }}>
-                    {cat.label}
+                    {pickText(cat.label, locale)}
                   </Text>
                 </div>
                 <Text
@@ -46,7 +49,7 @@ export default function CategoryBreakdown({ stats }: Props) {
                   style={{ fontSize: 11 }}
                   className="block"
                 >
-                  {cat.description}
+                  {pickText(cat.description, locale)}
                 </Text>
                 <div className="mt-2">
                   {cat.excludeFromAllocation ? (
@@ -59,14 +62,14 @@ export default function CategoryBreakdown({ stats }: Props) {
                         style={{ fontSize: 11 }}
                         className="ml-2"
                       >
-                        (tanpa alokasi)
+                        {t("breakdown.noAllocation")}
                       </Text>
                       {cat.purchaseCount > 0 && (
                         <Text
                           style={{ fontSize: 11, color: cat.color }}
                           className="block"
                         >
-                          {cat.purchaseCount}x pembelian
+                          {t("breakdown.purchases", { n: cat.purchaseCount })}
                         </Text>
                       )}
                     </>
@@ -93,9 +96,12 @@ export default function CategoryBreakdown({ stats }: Props) {
                           fontWeight: 600,
                         }}
                       >
-                        {overBudget ? "Lebih " : "Sisa "}
+                        {overBudget
+                          ? t("breakdown.over")
+                          : t("breakdown.remaining")}
                         {formatIDR(Math.abs(cat.remaining))}
-                        {cat.purchaseCount > 0 && ` (${cat.purchaseCount}x)`}
+                        {cat.purchaseCount > 0 &&
+                          ` (${cat.purchaseCount}x)`}
                       </Text>
                     </>
                   )}

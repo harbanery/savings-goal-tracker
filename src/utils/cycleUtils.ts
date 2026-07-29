@@ -1,4 +1,5 @@
 import { CYCLE_START_DAY } from "@/config/variables";
+import type { Locale } from "@/models/types";
 
 /**
  * Utilitas siklus bulanan (billing cycle).
@@ -21,24 +22,57 @@ export interface CycleInfo {
   startDate: Date;
   /** Tanggal akhir siklus (tanggal 24 bulan ini). */
   endDate: Date;
-  /** Label tampilan, mis. "Agustus 2026". */
+  /** Kunci netral locale, mis. "2026-08". Stabil sebagai key data. */
+  key: string;
+  /** Label tampilan default (locale id), mis. "Agustus 2026". */
   label: string;
 }
 
-const MONTH_NAMES_ID = [
-  "Januari",
-  "Februari",
-  "Maret",
-  "April",
-  "Mei",
-  "Juni",
-  "Juli",
-  "Agustus",
-  "September",
-  "Oktober",
-  "November",
-  "Desember",
-];
+const MONTH_NAMES: Record<Locale, string[]> = {
+  id: [
+    "Januari",
+    "Februari",
+    "Maret",
+    "April",
+    "Mei",
+    "Juni",
+    "Juli",
+    "Agustus",
+    "September",
+    "Oktober",
+    "November",
+    "Desember",
+  ],
+  en: [
+    "January",
+    "February",
+    "March",
+    "April",
+    "May",
+    "June",
+    "July",
+    "August",
+    "September",
+    "October",
+    "November",
+    "December",
+  ],
+};
+
+/** Kunci netral locale untuk sebuah tahun & index bulan, mis. "2026-08". */
+export function getCycleKey(year: number, monthIndex: number): string {
+  return `${year}-${String(monthIndex + 1).padStart(2, "0")}`;
+}
+
+/** Label tampilan siklus sesuai locale, mis. "Agustus 2026" / "August 2026". */
+export function formatCycleLabel(
+  year: number,
+  monthIndex: number,
+  locale: Locale,
+): string {
+  const names = MONTH_NAMES[locale] ?? MONTH_NAMES.id;
+  return `${names[monthIndex]} ${year}`;
+}
 
 /**
  * Tentukan info siklus untuk tahun dan index bulan tertentu.
@@ -54,9 +88,10 @@ export function getCycleInfo(year: number, monthIndex: number): CycleInfo {
   // End: tanggal 24 bulan ini (akhir hari)
   const endDate = new Date(year, monthIndex, 24, 23, 59, 59, 999);
 
-  const label = `${MONTH_NAMES_ID[monthIndex]} ${year}`;
+  const key = getCycleKey(year, monthIndex);
+  const label = formatCycleLabel(year, monthIndex, "id");
 
-  return { year, monthIndex, startDate, endDate, label };
+  return { year, monthIndex, startDate, endDate, key, label };
 }
 
 /**

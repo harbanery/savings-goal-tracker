@@ -12,6 +12,7 @@ import {
 } from "chart.js";
 import { useMemo } from "react";
 import { useThemeMode } from "@/components/theme/ThemeProvider";
+import { useLocale } from "@/components/locale/LocaleProvider";
 import type { CycleStats } from "@/helpers/stats";
 import { formatIDR } from "@/utils/currency";
 
@@ -28,13 +29,14 @@ interface Props {
  */
 export default function BalanceDonutChart({ stats }: Props) {
   const { mode } = useThemeMode();
+  const { t } = useLocale();
   const isDark = mode === "dark";
   const tickColor = isDark ? "#9ca3af" : "#6b7280";
 
   const data: ChartData<"doughnut"> = useMemo(() => {
     const remaining = Math.max(0, stats.savingsInitial - stats.totalSpent);
     return {
-      labels: ["Pengeluaran", "Sisa Saldo"],
+      labels: [t("chart.spending"), t("chart.remaining")],
       datasets: [
         {
           data: [stats.totalSpent, remaining],
@@ -45,7 +47,7 @@ export default function BalanceDonutChart({ stats }: Props) {
         },
       ],
     };
-  }, [stats, isDark]);
+  }, [stats, isDark, t]);
 
   const options: ChartOptions<"doughnut"> = {
     responsive: true,
@@ -86,11 +88,11 @@ export default function BalanceDonutChart({ stats }: Props) {
       style={{ height: "100%" }}
       styles={{ body: { padding: 16, height: "100%" } }}
       size="small"
-      title={<Text strong>Saldo: Pengeluaran vs Sisa</Text>}
+      title={<Text strong>{t("chart.balanceTitle")}</Text>}
     >
       {isEmpty ? (
         <div className="flex h-[260px] items-center justify-center">
-          <Empty description="Belum ada pengeluaran" />
+          <Empty description={t("chart.emptySpending")} />
         </div>
       ) : (
         <div className="relative h-[260px] w-full sm:h-[300px]">

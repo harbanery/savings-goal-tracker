@@ -1,5 +1,6 @@
 import { TOTAL_ALLOCATION } from "@/models/categories";
-import type { Purchase } from "@/models/types";
+import type { Locale, Purchase } from "@/models/types";
+import { formatCycleLabel } from "@/utils/cycleUtils";
 import { SAVINGS_INITIAL } from "@/config/variables";
 
 /**
@@ -12,6 +13,9 @@ const MIN_CHART_SORT_KEY = 2026 * 12 + 7; // Agustus 2026 (monthIndex 7)
  * Data satu siklus untuk chart historis.
  */
 export interface CycleChartData {
+  /** Kunci netral locale, mis. "2026-08". */
+  key: string;
+  /** Label tampilan sesuai locale, mis. "Agustus 2026". */
   label: string;
   savingsInitial: number;
   totalSpent: number;
@@ -23,52 +27,57 @@ export interface CycleChartData {
   categorySpent: Record<string, number>;
 }
 
-const MONTH_NAMES_ID = [
-  "Januari",
-  "Februari",
-  "Maret",
-  "April",
-  "Mei",
-  "Juni",
-  "Juli",
-  "Agustus",
-  "September",
-  "Oktober",
-  "November",
-  "Desember",
-];
-
-/** Parse label "Agustus 2026" menjadi sort key numerik kronologis. */
-function labelToSortKey(label: string): number {
-  const parts = label.split(" ");
+/** Parse kunci netral "YYYY-MM" menjadi sort key numerik kronologis. */
+function keyToSortKey(key: string): number {
+  const parts = key.split("-");
   if (parts.length !== 2) return 0;
-  const monthIdx = MONTH_NAMES_ID.indexOf(parts[0]);
-  const year = Number(parts[1]);
-  if (monthIdx < 0 || !Number.isFinite(year)) return 0;
-  return year * 12 + monthIdx;
+  const year = Number(parts[0]);
+  const month = Number(parts[1]);
+  if (!Number.isFinite(year) || !Number.isFinite(month)) return 0;
+  return year * 12 + (month - 1);
+}
+
+/** Ambil tahun & index bulan dari kunci netral "YYYY-MM". */
+function keyToParts(key: string): { year: number; monthIndex: number } | null {
+  const parts = key.split("-");
+  if (parts.length !== 2) return null;
+  const year = Number(parts[0]);
+  const monthIndex = Number(parts[1]) - 1;
+  if (!Number.isFinite(year) || !Number.isFinite(monthIndex)) return null;
+  return { year, monthIndex };
 }
 
 /**
- * Ubah map label -> purchases menjadi array CycleChartData yang terurut
+ * Ubah map key -> purchases menjadi array CycleChartData yang terurut
  * secara kronologis. Bulan sebelum Agustus 2026 dikosongkan
  * (totalSpent = 0, categorySpent = {}).
+ * @param historical map dengan kunci netral "YYYY-MM"
+ * @param locale locale untuk label tampilan
  */
 export function buildCycleChartData(
   historical: Record<string, Purchase[]>,
+  locale: Locale = "id",
 ): CycleChartData[] {
-  const labels = Object.keys(historical).sort(
-    (a, b) => labelToSortKey(a) - labelToSortKey(b),
+  const keys = Object.keys(historical).sort(
+    (a, b) => keyToSortKey(a) - keyToSortKey(b),
   );
-  return labels.map((label) => {
-    const sortKey = labelToSortKey(label);
-    const purchases = sortKey < MIN_CHART_SORT_KEY ? [] : historical[label] ?? [];
+  return keys.map((key) => {
+    const sortKey = keyToSortKey(key);
+    const purchases =
+      sortKey < MIN_CHART_SORT_KEY ? [] : historical[key] ?? [];
     let totalSpent = 0;
     const categorySpent: Record<string, number> = {};
     for (const p of purchases) {
       totalSpent += p.amount;
-      categorySpent[p.categoryId] = (categorySpent[p.categoryId] ?? 0) + p.amount;
+      categorySpent[p.categoryId] =
+        (categorySpent[p.categoryId] ?? 0) + p.amount;
     }
+    const parts = keyToParts(key);
+    const label = parts
+      ? formatCycleLabel(parts.year, parts.monthIndex, locale)
+      : key;
     return {
+      key,
       label,
       savingsInitial: SAVINGS_INITIAL,
       totalSpent,

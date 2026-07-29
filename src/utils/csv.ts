@@ -23,7 +23,7 @@ function escapeCsv(value: string): string {
 export function generateTemplateCsv(): string {
   const sampleRow = [
     escapeCsv("Contoh: Makan Siang"),
-    escapeCsv(CATEGORIES[0].label),
+    escapeCsv(CATEGORIES[0].label.id),
     "50000",
     "2026-07-25",
     escapeCsv("Makan di warteg"),
@@ -35,7 +35,7 @@ export function generateTemplateCsv(): string {
 export function generatePurchasesCsv(purchases: Purchase[]): string {
   const rows = purchases.map((p) => {
     const cat = CATEGORY_MAP[p.categoryId];
-    const catLabel = cat?.label ?? "";
+    const catLabel = cat?.label.id ?? "";
     const date = p.date.split("T")[0]; // YYYY-MM-DD
     return [
       escapeCsv(p.name),
@@ -85,11 +85,12 @@ export function parseCsvToPurchases(
       continue;
     }
 
-    // Cocokkan kategori berdasarkan label atau ID (case-insensitive)
+    // Cocokkan kategori berdasarkan label (kedua bahasa) atau ID (case-insensitive)
     const trimmedCat = catLabel.trim().toLowerCase();
     const cat = CATEGORIES.find(
       (c) =>
-        c.label.toLowerCase() === trimmedCat ||
+        c.label.id.toLowerCase() === trimmedCat ||
+        c.label.en.toLowerCase() === trimmedCat ||
         c.id.toLowerCase() === trimmedCat,
     );
     if (!cat) {

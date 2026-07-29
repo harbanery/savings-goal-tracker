@@ -2,6 +2,9 @@
 
 import { ConfigProvider, theme } from "antd";
 import idID from "antd/locale/id_ID";
+import enUS from "antd/locale/en_US";
+import dayjs from "dayjs";
+import "dayjs/locale/id";
 import {
   createContext,
   useCallback,
@@ -10,6 +13,7 @@ import {
   useSyncExternalStore,
   type ReactNode,
 } from "react";
+import { useLocale } from "@/components/locale/LocaleProvider";
 
 type ThemeMode = "light" | "dark";
 
@@ -92,16 +96,17 @@ function applyMode(next: ThemeMode): void {
  * - Menyuplai antd ConfigProvider dengan algoritma tema yang sesuai.
  */
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  const mode = useSyncExternalStore(
-    subscribe,
-    getModeSnapshot,
-    getServerSnapshot,
-  );
+  const mode = useSyncExternalStore(subscribe, getModeSnapshot, getServerSnapshot);
   const hydrated = useSyncExternalStore(
     subscribe,
     getHydratedSnapshot,
     getServerHydrated,
   );
+  const { locale } = useLocale();
+
+  useEffect(() => {
+    dayjs.locale(locale === "id" ? "id" : "en");
+  }, [locale]);
 
   useEffect(() => {
     const persisted = readPersistedMode();
@@ -129,7 +134,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   return (
     <ThemeContext.Provider value={{ mode, hydrated, toggle, setMode }}>
       <ConfigProvider
-        locale={idID}
+        locale={locale === "id" ? idID : enUS}
         theme={{
           algorithm: isDark ? theme.darkAlgorithm : theme.defaultAlgorithm,
           token: {

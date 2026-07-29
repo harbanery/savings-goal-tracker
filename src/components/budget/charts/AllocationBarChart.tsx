@@ -14,6 +14,8 @@ import {
 } from "chart.js";
 import { useMemo } from "react";
 import { useThemeMode } from "@/components/theme/ThemeProvider";
+import { useLocale } from "@/components/locale/LocaleProvider";
+import { pickText } from "@/components/locale/useTranslatedData";
 import { CATEGORIES } from "@/models/categories";
 import type { CycleChartData } from "@/helpers/chartData";
 import { formatIDR } from "@/utils/currency";
@@ -38,6 +40,7 @@ interface Props {
  */
 export default function AllocationBarChart({ cycles }: Props) {
   const { mode } = useThemeMode();
+  const { t, locale } = useLocale();
   const isDark = mode === "dark";
   const gridColor = isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.06)";
   const tickColor = isDark ? "#9ca3af" : "#6b7280";
@@ -46,13 +49,13 @@ export default function AllocationBarChart({ cycles }: Props) {
     return {
       labels: cycles.map((c) => c.label),
       datasets: CATEGORIES.map((cat) => ({
-        label: cat.label,
+        label: pickText(cat.label, locale),
         data: cycles.map((c) => c.categorySpent[cat.id] ?? 0),
         backgroundColor: cat.color,
         borderRadius: 4,
       })),
     };
-  }, [cycles]);
+  }, [cycles, locale]);
 
   const options: ChartOptions<"bar"> = {
     responsive: true,
@@ -117,11 +120,11 @@ export default function AllocationBarChart({ cycles }: Props) {
       style={{ height: "100%" }}
       styles={{ body: { padding: 16, height: "100%" } }}
       size="small"
-      title={<Text strong>Total Pengeluaran per Bulan</Text>}
+      title={<Text strong>{t("chart.allocationTitle")}</Text>}
     >
       {isEmpty ? (
         <div className="flex h-[260px] items-center justify-center">
-          <Empty description="Belum ada data" />
+          <Empty description={t("chart.emptyData")} />
         </div>
       ) : (
         <div className="h-[260px] w-full sm:h-[300px]">
