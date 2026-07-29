@@ -28,7 +28,8 @@
   - [Running the Application](#running-the-application)
 - [Usage](#usage)
   - [Features](#features)
-- [Push Notifications](#push-notifications)
+  - [Customizing Categories](#customizing-categories)
+  - [Push Notifications](#push-notifications)
 - [Contributing](#contributing)
 - [License](#license)
 - [Contact](#contact)
@@ -36,15 +37,18 @@
 
 ## About The Project
 
-**Savings Goal Tracker** is a web-based personal finance application designed to help you monitor monthly expenses using the **envelope budgeting system** (sistem wadah). With a cycle-based approach that resets on the 25th of each month, you can track spending across multiple categories (kos, ShopeePay, GoPay, E-Money, Cash, subscriptions), visualize savings progress with interactive charts, and receive real-time push notifications for daily reminders and weekly summaries.
+My web-based application, **Savings Goal Tracker**, is a personal finance dashboard that helps you monitor monthly expenses using the **envelope budgeting system** (sistem wadah). With a cycle-based approach that resets on the 25th of each month, you can track spending across multiple envelopes (Kos, ShopeePay, GoPay, E-Money, Cash, Subscriptions), visualize savings progress with interactive charts, receive real-time push notifications for daily reminders and weekly summaries, and switch instantly between Indonesian and English. Whether you want to stay within budget or grow your savings, **Savings Goal Tracker** keeps your finances on track.
 
 ### Built With
 
 [![Next][Next.js]][Next-url]
 [![React][React.js]][React-url]
+[![Ant Design][Ant Design]][Ant Design-url]
 [![Tailwind][Tailwind]][Tailwind-url]
-[![AntDesign][AntDesign]][AntDesign-url]
 [![Prisma][Prisma]][Prisma-url]
+[![PostgreSQL][PostgreSQL]][PostgreSQL-url]
+[![TypeScript][TypeScript]][TypeScript-url]
+[![Node][Node.js]][Node-url]
 
 ## Getting Started
 
@@ -59,7 +63,7 @@ To get a local copy up and running follow these simple steps.
   npm install npm@latest -g
   ```
 
-- PostgreSQL database (local, Railway, Supabase, etc.)
+- PostgreSQL database (e.g. [Railway](https://railway.app/) or local)
 
 ### Installation
 
@@ -88,9 +92,9 @@ To get a local copy up and running follow these simple steps.
 2. Add the following variables to the `.env` file:
 
    ```sh
-   # App identity
-   TITLE_WEB="Raihan Yusuf's Savings Goal Tracker"
-   APP_WEB="My Savings Goal Tracker"
+   # App identity (optional, for branding/metadata)
+   TITLE_WEB="Savings Goal Tracker"
+   APP_WEB="Savings Goal Tracker"
    DESCRIPTION_WEB="Pantau target tabungan dan progres menabung Anda."
 
    NEXT_PUBLIC_URL="http://localhost:3000"
@@ -107,7 +111,7 @@ To get a local copy up and running follow these simple steps.
    VAPID_PRIVATE_KEY="your-vapid-private-key"
    VAPID_SUBJECT="mailto:you@example.com"
 
-   # Vercel Cron secret
+   # Vercel Cron secret (generate: node -e "console.log(require('crypto').randomBytes(32).toString('hex'))")
    CRON_SECRET="your-cron-secret"
    ```
 
@@ -147,34 +151,71 @@ To get a local copy up and running follow these simple steps.
 
 ## Usage
 
-This application is a personal monthly budget tracker inspired by the envelope budgeting method.
+This application is a personal monthly budget tracker inspired by the envelope budgeting method. Track each purchase by category, monitor your spending limit, and watch your cumulative savings grow across cycles.
 
 ### Features
 
-- **Next.js App Router** with React Server Components for optimal performance.
-- **Envelope budgeting system** (sistem wadah) with 6 categories: Kos, ShopeePay, GoPay, E-Money, Cash, and Subscriptions.
+- **Next.js App Router** with React Server Components and Server Actions for data mutations.
+- **Envelope budgeting system** (sistem wadah) with 6 allocated envelopes: Kos, ShopeePay, GoPay, E-Money, Cash, and Subscriptions, plus a Shopping category excluded from the allocation.
 - **Cycle-based tracking** that resets on the 25th of each month (billing cycle).
-- **Spending limit monitoring** with real-time alerts when exceeding allocated budget.
+- **Spending limit monitoring** with real-time alerts when exceeding the allocated budget.
 - **Interactive charts** powered by Chart.js: balance donut, category pie, allocation bar, savings comparison, and cumulative savings line.
-- **CRUD purchase management** with table and card views (responsive).
-- **CSV import/export** for bulk purchase data.
-- **Push notifications** via Web Push API with Vercel Cron Jobs for daily reminders and weekly summaries.
-- **Dark/light theme** toggle with system preference detection.
+- **CRUD purchase management** with a responsive table for tablet/desktop and card list for mobile.
+- **CSV import/export** for bulk purchase data (compatible with Google Sheets).
+- **Web Push Notifications** for daily spending reminders and weekly savings summaries via [Vercel Cron Jobs](https://vercel.com/docs/cron-jobs).
+- **Multi-language support** (Indonesian & English) with instant switching, integrated with Ant Design and dayjs locales.
 - **Responsive design** for mobile, tablet, and desktop.
-- **Prisma ORM** with PostgreSQL for reliable data persistence and automatic retry on connection errors.
-- **Ant Design** component library styled with **Tailwind CSS** for a polished UI.
+- **Dark/Light mode** with localStorage persistence and system preference detection.
+- **Categories as single source of truth** in [`src/models/categories.ts`](src/models/categories.ts) with built-in multi-language support.
+- **PostgreSQL database** managed via **Prisma ORM** with automatic retry on connection errors.
+- **UI components** with **Ant Design** and **Tailwind CSS** styling.
+- **Chart visualizations** using [Chart.js](https://www.chartjs.org/) and [react-chartjs-2](https://react-chartjs-2.js.org/).
+- **Linting** with **ESLint** for maintaining code quality.
 
-<!-- ### Screenshots
+### Customizing Categories
 
-For more details, feel free to check the reference design below.
+All spending envelopes (categories) are defined in a **single file**: [`src/models/categories.ts`](src/models/categories.ts). This is the single source of truth - you only need to edit this one file to add, remove, or modify categories. No other files need to be changed.
 
-<details>
-  <summary>Show/Hide Reference Image</summary>
-  <br>
-  <img src="./public/references/savings-goal-tracker.png" alt="Savings Goal Tracker Reference">
-</details> -->
+Each category supports **multiple languages** via the `LocaleText` type (`{ id: "...", en: "..." }`):
 
-## Push Notifications
+```typescript
+// src/models/categories.ts
+export const CATEGORIES: BudgetCategory[] = [
+  {
+    id: "kos", // unique identifier (used in database)
+    label: { id: "Bayar Kos", en: "Boarding Rent" }, // label per language
+    description: {
+      // description per language
+      id: "Khusus bayar Kos",
+      en: "Boarding rent only",
+    },
+    color: "#6366f1", // hex color
+    allocation: 1_000_000, // monthly allocation in rupiah
+    // excludeFromAllocation: true,                // uncomment to exclude from spending limit
+  },
+  // ... add or remove categories here
+];
+```
+
+**To add a new category:**
+
+1. Open `src/models/categories.ts`
+2. Add a new object to the `CATEGORIES` array with a unique `id`, `label`, `description`, `color`, and `allocation`
+
+**To exclude a category from the spending limit:**
+
+1. Open `src/models/categories.ts`
+2. Find the category you want to exclude (e.g. Shopping)
+3. Set `excludeFromAllocation: true` - it will not count toward the envelope allocation or the spending limit
+
+**To add a new language:**
+
+1. Add the locale code to the `Locale` type in `src/models/types.ts`
+2. Add the new language key to every `LocaleText` object in `src/models/categories.ts`
+3. Add translations in `src/components/locale/translations.ts`
+4. Add the locale to `LOCALES` and `LOCALE_LABELS` in `src/components/locale/translations.ts`
+
+### Push Notifications
 
 This app supports real-time push notifications via the **Web Push API** and **Vercel Cron Jobs**:
 
@@ -195,34 +236,41 @@ Contributions are what make the open source community such an amazing place to l
 
 ## License
 
-Distributed under the MIT License. See [`LICENSE`](https://github.com/harbanery/savings-goal-tracker/blob/master/LICENSE) for more information.
+Distributed under the MIT License. See [`LICENSE`](LICENSE) for more information.
 
 ## Contact
 
-If you have any questions or inquiries regarding this project, feel free to contact me at ryusuf05@gmail.com
+If you have any questions or inquiries regarding this project, feel free to contact me at [ryusuf05@gmail.com](mailto:ryusuf05@gmail.com)
 
 ## Acknowledgements
 
 Feel free to check it out:
 
+- [Next.js Documentation](https://nextjs.org/docs)
 - [Ant Design](https://ant.design/)
+- [Tailwind CSS](https://tailwindcss.com/)
+- [Prisma](https://www.prisma.io/)
 - [Chart.js](https://www.chartjs.org/)
-- [Prisma ORM](https://www.prisma.io/)
-- [Web Push](https://github.com/web-push-libs/web-push)
+- [Web Push Protocol](https://developer.mozilla.org/en-US/docs/Web/API/Push_API)
 - [Vercel Cron Jobs](https://vercel.com/docs/cron-jobs)
-- [Vercel as Deployment](https://vercel.com/)
 - [Img Shields](https://shields.io)
 - [Choose an Open Source License](https://choosealicense.com/)
 
 <!-- MARKDOWN LINKS & IMAGES -->
 
+[Node.js]: https://img.shields.io/badge/node.js-339933?style=for-the-badge&logo=nodedotjs&logoColor=white
+[Node-url]: https://nodejs.org/en
 [Next.js]: https://img.shields.io/badge/next.js-000000?style=for-the-badge&logo=nextdotjs&logoColor=white
 [Next-url]: https://nextjs.org/
 [React.js]: https://img.shields.io/badge/React-20232A?style=for-the-badge&logo=react&logoColor=white
 [React-url]: https://reactjs.org/
+[Ant Design]: https://img.shields.io/badge/Ant_Design-1677FF?style=for-the-badge&logo=antdesign&logoColor=white
+[Ant Design-url]: https://ant.design/
 [Tailwind]: https://img.shields.io/badge/tailwindcss-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white
 [Tailwind-url]: https://tailwindcss.com/
-[AntDesign]: https://img.shields.io/badge/antdesign-1677FF?style=for-the-badge&logo=antdesign&logoColor=white
-[AntDesign-url]: https://ant.design/
-[Prisma]: https://img.shields.io/badge/prisma-2D3748?style=for-the-badge&logo=prisma&logoColor=white
+[Prisma]: https://img.shields.io/badge/Prisma-2D3748?style=for-the-badge&logo=prisma&logoColor=white
 [Prisma-url]: https://www.prisma.io/
+[PostgreSQL]: https://img.shields.io/badge/PostgreSQL-4169E1?style=for-the-badge&logo=postgresql&logoColor=white
+[PostgreSQL-url]: https://www.postgresql.org/
+[TypeScript]: https://img.shields.io/badge/TypeScript-3178C6?style=for-the-badge&logo=typescript&logoColor=white
+[TypeScript-url]: https://www.typescriptlang.org/
