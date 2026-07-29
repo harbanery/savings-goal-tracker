@@ -1,6 +1,8 @@
 "use client";
 
-import { Card, Col, Progress, Row, Statistic } from "antd";
+import { EyeInvisibleOutlined, EyeOutlined } from "@ant-design/icons";
+import { Button, Card, Col, Progress, Row, Statistic } from "antd";
+import { useState } from "react";
 import type { CycleStats } from "@/helpers/stats";
 import { formatIDR } from "@/utils/currency";
 
@@ -10,21 +12,33 @@ interface Props {
 
 /** Kartu statistik ringkasan siklus (3 kartu). */
 export default function StatsCards({ stats }: Readonly<Props>) {
+  const [saldoHidden, setSaldoHidden] = useState(true);
+
   return (
     <Row gutter={[8, 8]} className="mb-4 md:mb-6">
       <Col xs={24} sm={8}>
         <Card variant="borderless" className="shadow-sm">
-          <Statistic
-            title="Saldo Awal"
-            value={stats.savingsInitial}
-            formatter={(value) => formatIDR(Number(value))}
-            styles={{
-              content: {
-                color: "#6366f1",
-                fontSize: "clamp(24px, 3vw, 24px)",
-              },
-            }}
-          />
+          <div className="flex justify-between items-center">
+            <Statistic
+              title="Saldo Awal"
+              value={saldoHidden ? "••••••" : stats.savingsInitial}
+              formatter={(value) =>
+                saldoHidden ? value : formatIDR(Number(value))
+              }
+              styles={{
+                content: {
+                  color: "#6366f1",
+                  fontSize: "clamp(24px, 3vw, 24px)",
+                },
+              }}
+            />
+            <Button
+              type="text"
+              size="small"
+              icon={saldoHidden ? <EyeInvisibleOutlined /> : <EyeOutlined />}
+              onClick={() => setSaldoHidden((v) => !v)}
+            />
+          </div>
         </Card>
       </Col>
       <Col xs={24} sm={8}>
