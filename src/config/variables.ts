@@ -19,3 +19,13 @@ export const SAVINGS_INITIAL: number = Number(
 
 /** Tanggal mulai siklus (tanggal 25 tiap bulan). */
 export const CYCLE_START_DAY: number = 25;
+
+// Web Push (VAPID keys untuk push notifications)
+export const VAPID_PUBLIC_KEY: string =
+  process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || "";
+export const VAPID_PRIVATE_KEY: string = process.env.VAPID_PRIVATE_KEY || "";
+export const VAPID_SUBJECT: string =
+  process.env.VAPID_SUBJECT || "mailto:noreply@savings-goal-tracker.local";
+
+// Vercel Cron secret (untuk autentikasi cron job endpoints)
+export const CRON_SECRET: string = process.env.CRON_SECRET || "";

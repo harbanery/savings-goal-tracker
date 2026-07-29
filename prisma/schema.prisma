@@ -30,3 +30,15 @@ model Purchase {
   @@index([categoryId])
   @@map("Purchase")
 }
+
+/// Langganan push notification dari browser.
+model PushSubscriptions {
+  id        String   @id @default(cuid())
+  endpoint  String   @unique
+  /// Keys untuk enkripsi push: { p256dh, auth }
+  keys      Json
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("PushSubscriptions")
+}

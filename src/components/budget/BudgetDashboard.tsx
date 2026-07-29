@@ -22,6 +22,7 @@ import {
 } from "@/utils/cycleUtils";
 import { formatIDR } from "@/utils/currency";
 import CategoryBreakdown from "./CategoryBreakdown";
+import NotificationBell from "./NotificationBell";
 import PurchaseFormModal from "./PurchaseFormModal";
 import PurchaseTable from "./PurchaseTable";
 import RealtimeClock from "./RealtimeClock";
@@ -172,6 +173,7 @@ export default function BudgetDashboard({
             </div>
             <Space wrap className="w-full justify-end">
               <ThemeToggle />
+              <NotificationBell />
               <Button
                 icon={<LeftOutlined />}
                 disabled={isAtMinCycle(cycle)}
