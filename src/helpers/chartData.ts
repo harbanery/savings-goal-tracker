@@ -76,13 +76,15 @@ export function buildCycleChartData(
     const label = parts
       ? formatCycleLabel(parts.year, parts.monthIndex, locale)
       : key;
+    // Sebelum Agustus 2026, expected & actual savings dipaksa 0.
+    const isBeforeMin = sortKey < MIN_CHART_SORT_KEY;
     return {
       key,
       label,
       savingsInitial: SAVINGS_INITIAL,
       totalSpent,
-      expectedSavings: SAVINGS_INITIAL - TOTAL_ALLOCATION,
-      actualSavings: SAVINGS_INITIAL - totalSpent,
+      expectedSavings: isBeforeMin ? 0 : SAVINGS_INITIAL - TOTAL_ALLOCATION,
+      actualSavings: isBeforeMin ? 0 : SAVINGS_INITIAL - totalSpent,
       categorySpent,
     };
   });
