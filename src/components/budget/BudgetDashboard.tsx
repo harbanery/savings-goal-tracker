@@ -215,37 +215,39 @@ export default function BudgetDashboard({
               </span>
             </Paragraph>
           </div>
-          <div className="flex flex-col items-end gap-3">
-            <div className="flex w-full justify-end">
-              <RealtimeClock />
+          <div className="flex flex-col justify-start gap-3 items-end">
+            <RealtimeClock />
+            <div className="flex w-full flex-col items-end gap-2 sm:w-auto sm:flex-row sm:flex-wrap sm:justify-end">
+              <Space>
+                <ThemeToggle />
+                <LanguageToggle />
+                <NotificationBell />
+                <CycleStartPicker />
+              </Space>
+              <Space>
+                <Button
+                  icon={<LeftOutlined />}
+                  disabled={isAtMinCycle(cycle)}
+                  onClick={() => handleShiftCycle(-1)}
+                />
+                <DatePicker
+                  picker="month"
+                  allowClear={false}
+                  disabledDate={(d) => d.isBefore(MIN_CYCLE, "month")}
+                  value={dayjs(new Date(cycle.year, cycle.monthIndex, 1))}
+                  onChange={(v) => {
+                    if (v) {
+                      handlePickMonth(v.year(), v.month());
+                    }
+                  }}
+                  format="MMMM YYYY"
+                />
+                <Button
+                  icon={<RightOutlined />}
+                  onClick={() => handleShiftCycle(1)}
+                />
+              </Space>
             </div>
-            <Space wrap className="w-full justify-end">
-              <ThemeToggle />
-              <LanguageToggle />
-              {/* <CycleStartPicker /> */}
-              <NotificationBell />
-              <Button
-                icon={<LeftOutlined />}
-                disabled={isAtMinCycle(cycle)}
-                onClick={() => handleShiftCycle(-1)}
-              />
-              <DatePicker
-                picker="month"
-                allowClear={false}
-                disabledDate={(d) => d.isBefore(MIN_CYCLE, "month")}
-                value={dayjs(new Date(cycle.year, cycle.monthIndex, 1))}
-                onChange={(v) => {
-                  if (v) {
-                    handlePickMonth(v.year(), v.month());
-                  }
-                }}
-                format="MMMM YYYY"
-              />
-              <Button
-                icon={<RightOutlined />}
-                onClick={() => handleShiftCycle(1)}
-              />
-            </Space>
           </div>
         </div>
 
