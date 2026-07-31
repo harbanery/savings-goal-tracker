@@ -7,11 +7,13 @@ import {
   TableOutlined,
 } from "@ant-design/icons";
 import { Alert, Button, DatePicker, Space, Tabs, Typography } from "antd";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import dayjs from "dayjs";
 import ThemeToggle from "@/components/theme/ThemeToggle";
 import LanguageToggle from "@/components/locale/LanguageToggle";
 import { useLocale } from "@/components/locale/LocaleProvider";
+import { useCycleConfig } from "@/components/config/CycleConfigProvider";
+import CycleStartPicker from "@/components/config/CycleStartPicker";
 import {
   deletePurchasesAction,
   deletePurchaseAction,
@@ -25,7 +27,6 @@ import {
   formatCycleLabel,
   getCycleInfo,
   getCurrentCycle,
-  shiftCycle,
   type CycleInfo,
 } from "@/utils/cycleUtils";
 import { formatIDR } from "@/utils/currency";
@@ -64,7 +65,13 @@ export default function BudgetDashboard({
   initialPurchases,
   initialHistorical,
 }: Props) {
-  const [cycle, setCycle] = useState<CycleInfo>(getCurrentCycle());
+  // Track selected cycle month (year + monthIndex), independent dari startDay.
+  // startDay dari store mengubah range tanggal, bukan posisi bulan.
+  const initialCycle = getCurrentCycle();
+  const [selectedYear, setSelectedYear] = useState(initialCycle.year);
+  const [selectedMonthIndex, setSelectedMonthIndex] = useState(
+    initialCycle.monthIndex,
+  );
   const [purchases, setPurchases] = useState<Purchase[]>(initialPurchases);
   const [historical, setHistorical] =
     useState<Record<string, Purchase[]>>(initialHistorical);
@@ -73,6 +80,15 @@ export default function BudgetDashboard({
   const [activeTab, setActiveTab] = useState("charts");
 
   const { t, locale } = useLocale();
+  const { startDay } = useCycleConfig();
+
+  // Derive info siklus dari pilihan bulan + startDay aktif (tidak perlu
+  // setState di effect). Saat startDay berubah, range tanggal recompute otomatis.
+  const cycle = useMemo(
+    () => getCycleInfo(selectedYear, selectedMonthIndex, startDay),
+    [selectedYear, selectedMonthIndex, startDay],
+  );
+
   const cycleLabel = formatCycleLabel(cycle.year, cycle.monthIndex, locale);
 
   const stats = useMemo(() => computeCycleStats(purchases), [purchases]);
@@ -102,13 +118,32 @@ export default function BudgetDashboard({
     }
   }, []);
 
-  const handleCycleChange = useCallback(
-    async (next: CycleInfo) => {
-      setCycle(next);
-      await refreshCycle(next);
+  // Muat ulang data dari server saat range siklus berubah (baik karena
+  // navigasi bulan atau perubahan startDay). Fetch async; setState terjadi
+  // setelah promise resolve, bukan synchronous di effect body.
+  /* eslint-disable react-hooks/set-state-in-effect */
+  useEffect(() => {
+    refreshCycle(cycle).catch((err) =>
+      console.error("[BudgetDashboard] gagal memuat pembelian:", err),
+    );
+  }, [cycle, refreshCycle]);
+  /* eslint-enable react-hooks/set-state-in-effect */
+
+  /** Geser ke siklus bulan lain (delta dalam bulan). */
+  const handleShiftCycle = useCallback(
+    (deltaMonths: number) => {
+      const total = selectedYear * 12 + selectedMonthIndex + deltaMonths;
+      setSelectedYear(Math.floor(total / 12));
+      setSelectedMonthIndex(((total % 12) + 12) % 12);
     },
-    [refreshCycle],
+    [selectedYear, selectedMonthIndex],
   );
+
+  /** Lompat ke bulan/tahun tertentu (dari DatePicker). */
+  const handlePickMonth = useCallback((year: number, monthIndex: number) => {
+    setSelectedYear(year);
+    setSelectedMonthIndex(monthIndex);
+  }, []);
 
   const handleDelete = useCallback(
     async (id: string) => {
@@ -174,7 +209,8 @@ export default function BudgetDashboard({
               {t("app.description")}{" "}
               <span className="font-medium text-indigo-500 dark:text-indigo-400">
                 {t("app.cycleLabel", { label: cycleLabel })}:{" "}
-                {dayjs(cycle.startDate).format("D MMM")} {t("app.rangeSeparator")}{" "}
+                {dayjs(cycle.startDate).format("D MMM")}{" "}
+                {t("app.rangeSeparator")}{" "}
                 {dayjs(cycle.endDate).format("D MMM YYYY")}
               </span>
             </Paragraph>
@@ -186,11 +222,12 @@ export default function BudgetDashboard({
             <Space wrap className="w-full justify-end">
               <ThemeToggle />
               <LanguageToggle />
+              {/* <CycleStartPicker /> */}
               <NotificationBell />
               <Button
                 icon={<LeftOutlined />}
                 disabled={isAtMinCycle(cycle)}
-                onClick={() => handleCycleChange(shiftCycle(cycle, -1))}
+                onClick={() => handleShiftCycle(-1)}
               />
               <DatePicker
                 picker="month"
@@ -199,14 +236,14 @@ export default function BudgetDashboard({
                 value={dayjs(new Date(cycle.year, cycle.monthIndex, 1))}
                 onChange={(v) => {
                   if (v) {
-                    handleCycleChange(getCycleInfo(v.year(), v.month()));
+                    handlePickMonth(v.year(), v.month());
                   }
                 }}
                 format="MMMM YYYY"
               />
               <Button
                 icon={<RightOutlined />}
-                onClick={() => handleCycleChange(shiftCycle(cycle, 1))}
+                onClick={() => handleShiftCycle(1)}
               />
             </Space>
           </div>

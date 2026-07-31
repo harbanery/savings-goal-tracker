@@ -3,6 +3,7 @@ import { AntdRegistry } from "@ant-design/nextjs-registry";
 import type { Metadata } from "next";
 import { ThemeProvider } from "@/components/theme/ThemeProvider";
 import { LocaleProvider } from "@/components/locale/LocaleProvider";
+import { CycleConfigProvider } from "@/components/config/CycleConfigProvider";
 import Footer from "@/components/footer";
 import { VercelCompatibleComponents } from "@/components/vercel";
 import { geistMono, geistSans } from "@/utils/fonts/next-google";
@@ -92,10 +93,12 @@ export default function RootLayout({
       <body className="min-h-full flex flex-col">
         <AntdRegistry>
           <LocaleProvider>
-            <ThemeProvider>
-              {children}
-              <Footer />
-            </ThemeProvider>
+            <CycleConfigProvider>
+              <ThemeProvider>
+                {children}
+                <Footer />
+              </ThemeProvider>
+            </CycleConfigProvider>
           </LocaleProvider>
         </AntdRegistry>
         <VercelCompatibleComponents.Analytics />
