@@ -1,6 +1,6 @@
 "use client";
 
-import { ConfigProvider, theme } from "antd";
+import { App, ConfigProvider, theme } from "antd";
 import idID from "antd/locale/id_ID";
 import enUS from "antd/locale/en_US";
 import dayjs from "dayjs";
@@ -145,7 +145,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
           },
         }}
       >
-        {children}
+        <App>{children}</App>
       </ConfigProvider>
     </ThemeContext.Provider>
   );

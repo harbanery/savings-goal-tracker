@@ -5,7 +5,7 @@ import {
   UploadOutlined,
   FileExcelOutlined,
 } from "@ant-design/icons";
-import { Button, message, Space, Tooltip, Upload } from "antd";
+import { App, Button, Space, Tooltip, Upload } from "antd";
 import type { UploadProps } from "antd";
 import { useState } from "react";
 import { importPurchasesAction } from "@/server/actions";
@@ -29,6 +29,7 @@ export default function ImportExportButtons({
 }: Props) {
   const [importing, setImporting] = useState(false);
   const { t } = useLocale();
+  const { message } = App.useApp();
 
   /** Download template CSV kosong (dengan contoh 1 baris). */
   function handleDownloadTemplate() {

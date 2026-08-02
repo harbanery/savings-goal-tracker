@@ -1,7 +1,7 @@
 "use client";
 
 import { BellOutlined, BellFilled } from "@ant-design/icons";
-import { Badge, Button, Tooltip, message } from "antd";
+import { App, Badge, Button, Tooltip } from "antd";
 import { useCallback, useEffect, useState } from "react";
 import { VAPID_PUBLIC_KEY } from "@/config/variables";
 import { useLocale } from "@/components/locale/LocaleProvider";
@@ -41,6 +41,7 @@ export default function NotificationBell() {
   const [subscribed, setSubscribed] = useState(false);
   const [loading, setLoading] = useState(false);
   const { t } = useLocale();
+  const { message } = App.useApp();
 
   useEffect(() => {
     if (!isPushSupported()) return;
@@ -90,7 +91,7 @@ export default function NotificationBell() {
     } finally {
       setLoading(false);
     }
-  }, [t]);
+  }, [t, message]);
 
   const handleUnsubscribe = useCallback(async () => {
     if (!isPushSupported()) return;
@@ -114,7 +115,7 @@ export default function NotificationBell() {
     } finally {
       setLoading(false);
     }
-  }, [t]);
+  }, [t, message]);
 
   if (!supported) return null;
 
