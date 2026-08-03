@@ -190,21 +190,21 @@ export default function BudgetDashboard({
 
   return (
     <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950">
-      <div className="mx-auto max-w-7xl px-3 py-4 sm:px-4 sm:py-6 md:px-8">
+      <div className="mx-auto max-w-350 px-4 py-6 md:px-8">
         {/* Header */}
-        <div className="mb-4 flex flex-col gap-4 md:mb-6 md:flex-row md:items-start md:justify-between">
-          <div className="min-w-0">
+        <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+          <div>
             <Title
               level={2}
               style={{ marginBottom: 4 }}
-              className="text-lg! sm:text-2xl! md:text-3xl!"
+              className="text-xl! sm:text-2xl! md:text-3xl!"
             >
               {t("app.title")}
             </Title>
             <Paragraph
               type="secondary"
               style={{ marginBottom: 0 }}
-              className="text-xs! sm:text-sm! md:text-base!"
+              className="text-sm sm:text-base"
             >
               {t("app.description")}{" "}
               <span className="font-medium text-indigo-500 dark:text-indigo-400">
