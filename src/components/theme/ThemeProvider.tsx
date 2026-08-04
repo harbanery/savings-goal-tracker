@@ -138,7 +138,10 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
         theme={{
           algorithm: isDark ? theme.darkAlgorithm : theme.defaultAlgorithm,
           token: {
-            colorPrimary: "#6366f1",
+            colorPrimary: "#4f46e5",
+            // Gelapkan teks sekunder pada mode terang agar rasio kontras warna
+            // memenuhi WCAG AA (>= 4.5:1) untuk Statistic title & Typography.
+            ...(isDark ? {} : { colorTextSecondary: "#595959" }),
             borderRadius: 10,
             fontFamily:
               "var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif",

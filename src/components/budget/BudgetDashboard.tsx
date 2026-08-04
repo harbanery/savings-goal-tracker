@@ -6,14 +6,15 @@ import {
   RightOutlined,
   TableOutlined,
 } from "@ant-design/icons";
-import { Alert, Button, DatePicker, Space, Tabs, Typography } from "antd";
+import { Alert, Button, Card, DatePicker, Space, Spin, Tabs, Typography } from "antd";
+import dynamic from "next/dynamic";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import dayjs from "dayjs";
 import ThemeToggle from "@/components/theme/ThemeToggle";
 import LanguageToggle from "@/components/locale/LanguageToggle";
 import { useLocale } from "@/components/locale/LocaleProvider";
 import { useCycleConfig } from "@/components/config/CycleConfigProvider";
-import CycleStartPicker from "@/components/config/CycleStartPicker";
+// import CycleStartPicker from "@/components/config/CycleStartPicker";
 import {
   deletePurchasesAction,
   deletePurchaseAction,
@@ -36,11 +37,51 @@ import PurchaseFormModal from "./PurchaseFormModal";
 import PurchaseTable from "./PurchaseTable";
 import RealtimeClock from "./RealtimeClock";
 import StatsCards from "./StatsCards";
-import AllocationBarChart from "./charts/AllocationBarChart";
-import BalanceDonutChart from "./charts/BalanceDonutChart";
-import CategoryPieChart from "./charts/CategoryPieChart";
-import CumulativeSavingsLineChart from "./charts/CumulativeSavingsLineChart";
-import SavingsComparisonBarChart from "./charts/SavingsComparisonBarChart";
+
+/**
+ * Komponen chart dimuat secara lazy (code-splitting) agar pustaka chart.js
+ * (~230 KB) berada di chunk terpisah dan tidak dievaluasi pada critical path.
+ * Ini menurunkan Total Blocking Time (TBT) dan mempercepat FCP/LCP.
+ */
+const ChartLoading = () => (
+  <Card
+    variant="borderless"
+    className="shadow-sm"
+    style={{ height: "100%" }}
+    styles={{
+      body: {
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        height: "100%",
+        minHeight: 260,
+      },
+    }}
+  >
+    <Spin />
+  </Card>
+);
+
+const AllocationBarChart = dynamic(
+  () => import("./charts/AllocationBarChart"),
+  { ssr: false, loading: ChartLoading },
+);
+const BalanceDonutChart = dynamic(() => import("./charts/BalanceDonutChart"), {
+  ssr: false,
+  loading: ChartLoading,
+});
+const CategoryPieChart = dynamic(() => import("./charts/CategoryPieChart"), {
+  ssr: false,
+  loading: ChartLoading,
+});
+const CumulativeSavingsLineChart = dynamic(
+  () => import("./charts/CumulativeSavingsLineChart"),
+  { ssr: false, loading: ChartLoading },
+);
+const SavingsComparisonBarChart = dynamic(
+  () => import("./charts/SavingsComparisonBarChart"),
+  { ssr: false, loading: ChartLoading },
+);
 
 /** Batas bawah siklus yang dapat dipilih: Juli 2026 (Agustus = 25 Juli 2026). */
 const MIN_CYCLE = dayjs("2026-08-01");
@@ -207,7 +248,7 @@ export default function BudgetDashboard({
               className="text-sm sm:text-base"
             >
               {t("app.description")}{" "}
-              <span className="font-medium text-indigo-500 dark:text-indigo-400">
+              <span className="font-medium text-indigo-600 dark:text-indigo-400">
                 {t("app.cycleLabel", { label: cycleLabel })}:{" "}
                 {dayjs(cycle.startDate).format("D MMM")}{" "}
                 {t("app.rangeSeparator")}{" "}
@@ -222,7 +263,6 @@ export default function BudgetDashboard({
                 <ThemeToggle />
                 <LanguageToggle />
                 <NotificationBell />
-                {/* <CycleStartPicker /> */}
               </Space>
               <Space>
                 <Button

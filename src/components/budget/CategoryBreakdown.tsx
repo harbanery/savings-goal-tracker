@@ -79,6 +79,7 @@ export default function CategoryBreakdown({ stats }: Props) {
                         percent={cat.percent}
                         size="small"
                         showInfo={false}
+                        aria-label={pickText(cat.label, locale)}
                         strokeColor={overBudget ? "#ef4444" : cat.color}
                       />
                       <div className="flex items-center justify-between">

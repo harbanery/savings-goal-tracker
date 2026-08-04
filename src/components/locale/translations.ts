@@ -84,12 +84,12 @@ const id: TranslationDict = {
   "chart.emptyData": "Belum ada data",
   "chart.allocationTitle": "Total Pengeluaran per Bulan",
   "chart.categoryTitle": "Pengeluaran per Kategori",
-  "chart.cumulativeTitle": "Cumulative Savings",
-  "chart.comparisonTitle": "Expected vs Actual Savings",
-  "chart.expectedSavings": "Expected Savings",
-  "chart.actualSavings": "Actual Savings",
-  "chart.expectedCumulative": "Expected Cumulative",
-  "chart.actualCumulative": "Actual Cumulative",
+  "chart.cumulativeTitle": "Tabungan Kumulatif",
+  "chart.comparisonTitle": "Tabungan Target vs Aktual",
+  "chart.expectedSavings": "Tabungan Target",
+  "chart.actualSavings": "Tabungan Aktual",
+  "chart.expectedCumulative": "Kumulatif Target",
+  "chart.actualCumulative": "Kumulatif Aktual",
 
   // Import / Export
   "io.template": "Template",

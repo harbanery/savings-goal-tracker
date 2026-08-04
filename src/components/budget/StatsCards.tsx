@@ -29,7 +29,7 @@ export default function StatsCards({ stats }: Readonly<Props>) {
               }
               styles={{
                 content: {
-                  color: "#6366f1",
+                  color: "#4f46e5",
                   fontSize: "clamp(24px, 3vw, 24px)",
                 },
               }}
@@ -51,7 +51,7 @@ export default function StatsCards({ stats }: Readonly<Props>) {
             formatter={(value) => formatIDR(Number(value), locale)}
             styles={{
               content: {
-                color: stats.overLimit ? "#ef4444" : "#f59e0b",
+                color: stats.overLimit ? "#ef4444" : "#d97706",
                 fontSize: "clamp(24px, 3vw, 24px)",
               },
             }}
@@ -66,7 +66,7 @@ export default function StatsCards({ stats }: Readonly<Props>) {
             formatter={(value) => formatIDR(Number(value), locale)}
             styles={{
               content: {
-                color: stats.overLimit ? "#ef4444" : "#22c55e",
+                color: stats.overLimit ? "#ef4444" : "#16a34a",
                 fontSize: "clamp(24px, 3vw, 24px)",
               },
             }}
@@ -75,7 +75,8 @@ export default function StatsCards({ stats }: Readonly<Props>) {
             percent={stats.limitPercent}
             showInfo={false}
             size="small"
-            strokeColor={stats.overLimit ? "#ef4444" : "#f59e0b"}
+            aria-label={t("stats.limitRemaining")}
+            strokeColor={stats.overLimit ? "#ef4444" : "#d97706"}
           />
         </Card>
       </Col>
