@@ -28,11 +28,11 @@ export const metadata: Metadata = {
   openGraph: {
     title: META_TITLE,
     ...(META_DESCRIPTION && { description: META_DESCRIPTION }),
-    type: "profile",
+    type: "website",
     siteName: META_APP,
     countryName: "Indonesia",
-    locale: "en-US",
-    alternateLocale: "id-ID",
+    locale: "id-ID",
+    alternateLocale: "en-US",
     url: `/`,
     images: [
       {
@@ -58,7 +58,9 @@ export const metadata: Metadata = {
   //   ],
   // },
   creator: "Raihan Yusuf",
-  authors: [{ name: "Raihan Yusuf" }],
+  authors: [
+    { name: "Raihan Yusuf", url: "https://www.linkedin.com/in/raihan-yusuf" },
+  ],
   icons: [
     {
       rel: "icon",
