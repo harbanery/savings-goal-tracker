@@ -4,8 +4,8 @@ import {
   BarChartOutlined,
   LeftOutlined,
   RightOutlined,
-  RadarChartOutlined,
   TableOutlined,
+  UnorderedListOutlined,
 } from "@ant-design/icons";
 import {
   Alert,
@@ -122,7 +122,7 @@ interface Props {
 export default function BudgetDashboard({
   initialPurchases,
   initialHistorical,
-}: Props) {
+}: Readonly<Props>) {
   // Track selected cycle month (year + monthIndex), independent dari startDay.
   // startDay dari store mengubah range tanggal, bukan posisi bulan.
   const initialCycle = getCurrentCycle();
@@ -366,11 +366,11 @@ export default function BudgetDashboard({
               ),
             },
             {
-              key: "analytics",
+              key: "list",
               label: (
                 <span className="flex items-center gap-1.5">
-                  <RadarChartOutlined />
-                  {t("app.tabAnalytics")}
+                  <UnorderedListOutlined />
+                  {t("app.tabList")}
                 </span>
               ),
               children: (
@@ -382,11 +382,11 @@ export default function BudgetDashboard({
               ),
             },
             {
-              key: "list",
+              key: "records",
               label: (
                 <span className="flex items-center gap-1.5">
                   <TableOutlined />
-                  {t("app.tabList")}
+                  {t("app.tabRecords")}
                 </span>
               ),
               children: (

@@ -25,7 +25,7 @@ const id: TranslationDict = {
   "app.rangeSeparator": "s/d",
   "app.tabCharts": "Grafik",
   "app.tabList": "Daftar",
-  "app.tabAnalytics": "Analitik",
+  "app.tabRecords": "Catatan",
   "app.overLimitTitle": "Melebihi Limit Pengeluaran!",
   "app.overLimitDesc":
     "Pengeluaran sudah {spent}, melebihi limit {limit}. Selisih: {diff}.",
@@ -141,12 +141,9 @@ const id: TranslationDict = {
   // Insights / Analitik
   "insights.topKeywordsTitle": "Top 10 Keyword Pembelian",
   "insights.empty": "Belum ada data",
-  "insights.keywordStat":
-    "{count}x transaksi — total {total}",
-  "insights.wadahTooltip":
-    "Muncul di {n} wadah alokasi",
-  "insights.keywordFreqTooltip":
-    "Frekuensi: {val}x",
+  "insights.keywordStat": "{count}x transaksi — total {total}",
+  "insights.wadahTooltip": "Muncul di {n} wadah alokasi",
+  "insights.keywordFreqTooltip": "Frekuensi: {val}x",
 };
 
 const en: TranslationDict = {
@@ -160,7 +157,7 @@ const en: TranslationDict = {
   "app.rangeSeparator": "to",
   "app.tabCharts": "Charts",
   "app.tabList": "List",
-  "app.tabAnalytics": "Analytics",
+  "app.tabRecords": "Records",
   "app.overLimitTitle": "Spending Limit Exceeded!",
   "app.overLimitDesc":
     "Spending is {spent}, exceeding the limit of {limit}. Difference: {diff}.",
@@ -266,12 +263,9 @@ const en: TranslationDict = {
   // Insights / Analytics
   "insights.topKeywordsTitle": "Top 10 Purchase Keywords",
   "insights.empty": "No data yet",
-  "insights.keywordStat":
-    "{count}x transactions — total {total}",
-  "insights.wadahTooltip":
-    "Appears in {n} allocation envelopes",
-  "insights.keywordFreqTooltip":
-    "Frequency: {val}x",
+  "insights.keywordStat": "{count}x transactions — total {total}",
+  "insights.wadahTooltip": "Appears in {n} allocation envelopes",
+  "insights.keywordFreqTooltip": "Frequency: {val}x",
 };
 
 export const TRANSLATIONS: Record<Locale, TranslationDict> = { id, en };
