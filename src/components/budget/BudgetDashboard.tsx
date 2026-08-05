@@ -2,6 +2,7 @@
 
 import {
   BarChartOutlined,
+  BulbOutlined,
   LeftOutlined,
   RightOutlined,
   TableOutlined,
@@ -366,11 +367,11 @@ export default function BudgetDashboard({
               ),
             },
             {
-              key: "list",
+              key: "top-facts",
               label: (
                 <span className="flex items-center gap-1.5">
-                  <UnorderedListOutlined />
-                  {t("app.tabList")}
+                  <BulbOutlined />
+                  {t("app.tabFacts")}
                 </span>
               ),
               children: (

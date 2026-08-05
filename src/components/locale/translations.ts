@@ -24,7 +24,7 @@ const id: TranslationDict = {
   "app.cycleLabel": "Siklus {label}",
   "app.rangeSeparator": "s/d",
   "app.tabCharts": "Grafik",
-  "app.tabList": "Daftar",
+  "app.tabFacts": "Insight",
   "app.tabRecords": "Catatan",
   "app.overLimitTitle": "Melebihi Limit Pengeluaran!",
   "app.overLimitDesc":
@@ -156,7 +156,7 @@ const en: TranslationDict = {
   "app.cycleLabel": "{label}",
   "app.rangeSeparator": "to",
   "app.tabCharts": "Charts",
-  "app.tabList": "List",
+  "app.tabFacts": "Insights",
   "app.tabRecords": "Records",
   "app.overLimitTitle": "Spending Limit Exceeded!",
   "app.overLimitDesc":
