@@ -1,6 +1,10 @@
 import { CATEGORY_MAP } from "@/models/categories";
 import type { Purchase } from "@/models/types";
-import { SAVINGS_INITIAL } from "@/config/variables";
+import {
+  SAVINGS_INITIAL,
+  BASE_URL,
+  NOTIFICATION_LOCALE,
+} from "@/config/variables";
 import { computeCycleStats } from "@/helpers/stats";
 import { toPurchases } from "@/helpers/purchaseTransformer";
 import { formatShortIDR } from "@/utils/currency";
@@ -9,6 +13,26 @@ import {
   shiftCycle,
 } from "@/utils/cycleUtils";
 import { getPurchasesInRange } from "@/services/budgetService";
+
+/**
+ * Builder payload notifikasi (web push + email).
+ *
+ * Konten dilokalkan sesuai env `NOTIFICATION_LOCALE` (id | en).
+ * Channel email (Nodemailer SMTP) dikirim otomatis saat terkonfigurasi,
+ * sebagai pelengkap web push.
+ */
+
+/** Pilih teks sesuai locale notifikasi. */
+function L(id: string, en: string): string {
+  return NOTIFICATION_LOCALE === "en" ? en : id;
+}
+
+export interface NotificationPayload {
+  title: string;
+  body: string;
+  tag: string;
+  url: string;
+}
 
 /** Cek apakah sebuah pembelian terjadi hari ini (lokal). */
 function isToday(dateStr: string): boolean {
@@ -25,12 +49,7 @@ function isToday(dateStr: string): boolean {
  * Bangun payload notifikasi harian: pengingat catat pengeluaran + insight siklus.
  * Mengambil data siklus saat ini dan menampilkan progres pengeluaran vs limit.
  */
-export async function buildDailyNotification(): Promise<{
-  title: string;
-  body: string;
-  tag: string;
-  url: string;
-}> {
+export async function buildDailyNotification(): Promise<NotificationPayload> {
   const cycle = getCurrentCycle();
   const records = await getPurchasesInRange(cycle.startDate, cycle.endDate);
   const purchases = toPurchases(records);
@@ -43,21 +62,46 @@ export async function buildDailyNotification(): Promise<{
 
   if (stats.overLimit) {
     // Sudah melebihi limit pengeluaran
-    body = `Limit siklus ${cycle.label} terlampaui! Terpakai ${stats.limitPercent}% (${formatShortIDR(stats.allocatedSpent)} dari ${formatShortIDR(stats.spendingLimit)}).`;
+    body = L(
+      `Limit siklus ${cycle.label} terlampaui! Terpakai ${stats.limitPercent}% (${formatShortIDR(stats.allocatedSpent)} dari ${formatShortIDR(stats.spendingLimit)}).`,
+      `${cycle.label} cycle limit exceeded! Used ${stats.limitPercent}% (${formatShortIDR(stats.allocatedSpent)} of ${formatShortIDR(stats.spendingLimit)}).`,
+    );
   } else if (stats.limitPercent >= 80) {
     // Mendekati limit (>= 80%)
-    body = `Hati-hati, pengeluaran ${stats.limitPercent}% dari limit. Sisa ${formatShortIDR(stats.limitRemaining)}. ${todayPurchases.length > 0 ? `Hari ini: ${formatShortIDR(todaySpent)}.` : "Belum ada pengeluaran hari ini."}`;
+    const tail =
+      todayPurchases.length > 0
+        ? L(
+            `Hari ini: ${formatShortIDR(todaySpent)}.`,
+            `Today: ${formatShortIDR(todaySpent)}.`,
+          )
+        : L(
+            "Belum ada pengeluaran hari ini.",
+            "No spending recorded today.",
+          );
+    body = L(
+      `Hati-hati, pengeluaran ${stats.limitPercent}% dari limit. Sisa ${formatShortIDR(stats.limitRemaining)}. ${tail}`,
+      `Careful, spending at ${stats.limitPercent}% of limit. ${formatShortIDR(stats.limitRemaining)} left. ${tail}`,
+    );
   } else if (todayPurchases.length > 0) {
     // Ada pengeluaran hari ini
     const topCat = getTopCategory(todayPurchases);
-    body = `Hari ini belanja ${formatShortIDR(todaySpent)}${topCat ? ` (${topCat})` : ""}. Total siklus: ${formatShortIDR(stats.totalSpent)}, sisa limit ${formatShortIDR(stats.limitRemaining)}.`;
+    body = L(
+      `Hari ini belanja ${formatShortIDR(todaySpent)}${topCat ? ` (${topCat})` : ""}. Total siklus: ${formatShortIDR(stats.totalSpent)}, sisa limit ${formatShortIDR(stats.limitRemaining)}.`,
+      `Spent ${formatShortIDR(todaySpent)} today${topCat ? ` (${topCat})` : ""}. Cycle total: ${formatShortIDR(stats.totalSpent)}, ${formatShortIDR(stats.limitRemaining)} limit left.`,
+    );
   } else {
     // Belum ada pengeluaran hari ini
-    body = `Belum ada pengeluaran tercatat hari ini. Total siklus ${cycle.label}: ${formatShortIDR(stats.totalSpent)} dari ${formatShortIDR(stats.spendingLimit)}.`;
+    body = L(
+      `Belum ada pengeluaran tercatat hari ini. Total siklus ${cycle.label}: ${formatShortIDR(stats.totalSpent)} dari ${formatShortIDR(stats.spendingLimit)}.`,
+      `No spending recorded today. ${cycle.label} cycle total: ${formatShortIDR(stats.totalSpent)} of ${formatShortIDR(stats.spendingLimit)}.`,
+    );
   }
 
   return {
-    title: `Pengingat Tabungan - ${cycle.label}`,
+    title: L(
+      `Pengingat Tabungan - ${cycle.label}`,
+      `Savings Reminder - ${cycle.label}`,
+    ),
     body,
     tag: "daily-reminder",
     url: "/",
@@ -69,12 +113,7 @@ export async function buildDailyNotification(): Promise<{
  * Menampilkan progres tabungan, kategori pengeluaran terbesar, dan perbandingan
  * dengan siklus sebelumnya.
  */
-export async function buildWeeklyNotification(): Promise<{
-  title: string;
-  body: string;
-  tag: string;
-  url: string;
-}> {
+export async function buildWeeklyNotification(): Promise<NotificationPayload> {
   const cycle = getCurrentCycle();
   const prevCycle = shiftCycle(cycle, -1);
 
@@ -101,8 +140,11 @@ export async function buildWeeklyNotification(): Promise<{
     diff > 0
       ? `+${formatShortIDR(diff)}`
       : diff < 0
-        ? `hemat ${formatShortIDR(Math.abs(diff))}`
-        : "sama";
+        ? L(
+            `hemat ${formatShortIDR(Math.abs(diff))}`,
+            `saved ${formatShortIDR(Math.abs(diff))}`,
+          )
+        : L("sama", "same");
 
   // Sisa tabungan
   const savings = stats.remaining;
@@ -111,20 +153,32 @@ export async function buildWeeklyNotification(): Promise<{
       ? Math.round((savings / SAVINGS_INITIAL) * 100)
       : 0;
 
-  let body = `Siklus ${cycle.label}: ${formatShortIDR(stats.totalSpent)} terpakai (${stats.limitPercent}% limit), sisa tabungan ${formatShortIDR(savings)} (${savingsPercent}%).`;
+  let body = L(
+    `Siklus ${cycle.label}: ${formatShortIDR(stats.totalSpent)} terpakai (${stats.limitPercent}% limit), sisa tabungan ${formatShortIDR(savings)} (${savingsPercent}%).`,
+    `${cycle.label} cycle: ${formatShortIDR(stats.totalSpent)} used (${stats.limitPercent}% of limit), savings left ${formatShortIDR(savings)} (${savingsPercent}%).`,
+  );
 
   if (topCategories.length > 0) {
-    body += ` Terbesar: ${topCategories.map((c) => c.label.id).join(", ")}.`;
+    body += L(
+      ` Terbesar: ${topCategories.map((c) => c.label.id).join(", ")}.`,
+      ` Top: ${topCategories.map((c) => c.label.en).join(", ")}.`,
+    );
   }
 
-  body += ` vs ${prevCycle.label}: ${diffLabel}.`;
+  body += L(` vs ${prevCycle.label}: `, ` vs ${prevCycle.label}: `) + diffLabel + ".";
 
   if (stats.overLimit) {
-    body += " Perhatian: sudah melebihi limit!";
+    body += L(
+      " Perhatian: sudah melebihi limit!",
+      " Warning: limit exceeded!",
+    );
   }
 
   return {
-    title: "Ringkasan Tabungan Mingguan",
+    title: L(
+      "Ringkasan Tabungan Mingguan",
+      "Weekly Savings Summary",
+    ),
     body,
     tag: "weekly-summary",
     url: "/",
@@ -146,29 +200,52 @@ function getTopCategory(purchases: Purchase[]): string | null {
     }
   }
   if (!topId) return null;
-  return CATEGORY_MAP[topId]?.label.id ?? topId;
+  const label = CATEGORY_MAP[topId]?.label[NOTIFICATION_LOCALE];
+  return label ?? topId;
+}
+
+/** Bangun versi HTML sederhana dari payload notifikasi untuk email. */
+function toEmailHtml(payload: NotificationPayload): string {
+  const link = `${BASE_URL}${payload.url}`;
+  const openLabel = L("Buka Dashboard", "Open Dashboard");
+  return `<div style="font-family:Arial,Helvetica,sans-serif;max-width:560px;margin:0 auto;color:#1f2937">
+  <h2 style="margin:0 0 12px">${escapeHtml(payload.title)}</h2>
+  <p style="font-size:15px;line-height:1.6;margin:0 0 16px">${escapeHtml(payload.body)}</p>
+  <p style="margin:0">
+    <a href="${escapeHtml(link)}" style="display:inline-block;padding:10px 18px;background:#6366f1;color:#fff;border-radius:6px;text-decoration:none;font-size:14px">${openLabel}</a>
+  </p>
+</div>`;
+}
+
+/** Escape karakter HTML agar aman di email. */
+function escapeHtml(s: string): string {
+  return s
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
 }
 
 interface SendResult {
   sent: number;
   failed: number;
   cleanedUp: number;
+  emailed: boolean;
 }
 
 /**
- * Kirim notifikasi ke semua subscriber.
- * Menghapus subscription yang sudah expired (404/410).
+ * Kirim notifikasi ke semua channel yang terkonfigurasi:
+ * - Web Push ke semua subscriber (dihapus bila endpoint expired).
+ * - Email ke penerima yang dikonfigurasi (bila SMTP aktif).
  */
-export async function broadcastNotification(payload: {
-  title: string;
-  body: string;
-  tag: string;
-  url: string;
-}): Promise<SendResult> {
+export async function broadcastNotification(
+  payload: NotificationPayload,
+): Promise<SendResult> {
   const { getAllSubscriptions, removeStaleSubscription } = await import(
     "@/services/pushService"
   );
   const { sendPushNotification } = await import("@/server/webPush");
+  const { sendEmail, isEmailConfigured } = await import("@/server/email");
 
   const subs = await getAllSubscriptions();
   let sent = 0;
@@ -195,5 +272,15 @@ export async function broadcastNotification(payload: {
     }),
   );
 
-  return { sent, failed, cleanedUp };
+  // Channel email (opsional): kirim bila SMTP + penerima terkonfigurasi.
+  let emailed = false;
+  if (isEmailConfigured()) {
+    emailed = await sendEmail({
+      subject: payload.title,
+      text: payload.body,
+      html: toEmailHtml(payload),
+    });
+  }
+
+  return { sent, failed, cleanedUp, emailed };
 }
