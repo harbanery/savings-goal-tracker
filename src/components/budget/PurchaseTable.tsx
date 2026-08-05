@@ -198,9 +198,9 @@ export default function PurchaseTable({
       className="shadow-sm"
       title={
         <Space size="small" wrap>
-          {/* Search & Filter bar */}
+          {/* Search & Filter bar laptop */}
           {purchases.length > 0 && (
-            <div className="flex flex-col gap-2 border-b border-zinc-100 px-4 py-3 dark:border-zinc-800 sm:flex-row sm:items-center">
+            <div className="hidden lg:flex flex-col gap-2 border-b border-zinc-100 px-4 py-3 dark:border-zinc-800 sm:flex-row sm:items-center">
               <Input
                 prefix={<SearchOutlined className="text-zinc-400" />}
                 placeholder={t("table.searchPlaceholder")}
@@ -230,14 +230,6 @@ export default function PurchaseTable({
                   ),
                 }))}
               />
-              {(searchText || filterCategory) && (
-                <Text type="secondary" className="!text-xs">
-                  {t("table.filterResult", {
-                    shown: filteredPurchases.length,
-                    total: purchases.length,
-                  })}
-                </Text>
-              )}
             </div>
           )}
           {hasSelected && (
@@ -278,6 +270,41 @@ export default function PurchaseTable({
       style={{ marginBottom: 24 }}
       styles={{ body: { padding: 0 } }}
     >
+      {/* Search & Filter bar laptop */}
+      {purchases.length > 0 && (
+        <div className="flex lg:hidden flex-row items-center gap-2 border-b border-zinc-100 px-4 py-3 dark:border-zinc-800">
+          <Input
+            prefix={<SearchOutlined className="text-zinc-400" />}
+            placeholder={t("table.searchPlaceholder")}
+            allowClear
+            size="small"
+            value={searchText}
+            onChange={(e) => setSearchText(e.target.value)}
+            style={{ maxWidth: "60%" }}
+          />
+          <Select
+            placeholder={t("table.filterCategoryPlaceholder")}
+            allowClear
+            size="small"
+            value={filterCategory}
+            onChange={(val) => setFilterCategory(val ?? null)}
+            style={{ minWidth: "40%" }}
+            options={CATEGORIES.map((c) => ({
+              value: c.id,
+              label: (
+                <span className="flex items-center gap-1.5">
+                  <span
+                    className="inline-block h-2.5 w-2.5 rounded-full"
+                    style={{ backgroundColor: c.color }}
+                  />
+                  {pickText(c.label, locale)}
+                </span>
+              ),
+            }))}
+          />
+        </div>
+      )}
+
       {purchases.length === 0 ? (
         <div className="flex items-center justify-center py-12">
           <Empty description={t("table.empty")} />
