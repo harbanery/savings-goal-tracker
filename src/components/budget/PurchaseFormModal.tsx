@@ -118,9 +118,7 @@ function PurchaseForm({
         categoryId: editingPurchase?.categoryId ?? CATEGORIES[0]?.id,
         amount: editingPurchase?.amount,
         note: editingPurchase?.note ?? "",
-        date: editingPurchase
-          ? dayjs(editingPurchase.date)
-          : dayjs(),
+        date: editingPurchase ? dayjs(editingPurchase.date) : dayjs(),
       }}
     >
       <Form.Item
@@ -131,10 +129,7 @@ function PurchaseForm({
           { whitespace: true, message: t("form.nameWhitespace") },
         ]}
       >
-        <Input
-          placeholder={t("form.namePlaceholder")}
-          maxLength={100}
-        />
+        <Input placeholder={t("form.namePlaceholder")} maxLength={100} />
       </Form.Item>
 
       <Form.Item
@@ -183,6 +178,7 @@ function PurchaseForm({
           formatter={(value) =>
             `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ".")
           }
+          type="number"
           parser={(value) => Number((value ?? "").replace(/\D/g, "") || 0)}
         />
       </Form.Item>
