@@ -138,6 +138,14 @@ const id: TranslationDict = {
   // Language
   "lang.toggleAria": "Ganti bahasa",
 
+  // PWA Install Prompt
+  "pwa.installTitle": "Pasang Aplikasi",
+  "pwa.installDesc": "Pasang aplikasi ini ke perangkat Anda untuk akses cepat.",
+  "pwa.installBtn": "Pasang",
+  "pwa.laterBtn": "Nanti Saja",
+  "pwa.iosHint":
+    "Untuk memasang di iOS: ketuk tombol Share, lalu pilih Add to Home Screen.",
+
   // Insights / Analitik
   "insights.topKeywordsTitle": "Top 10 Keyword Pembelian",
   "insights.empty": "Belum ada data",
@@ -259,6 +267,14 @@ const en: TranslationDict = {
   "theme.enableDark": "Enable dark mode",
 
   "lang.toggleAria": "Switch language",
+
+  // PWA Install Prompt
+  "pwa.installTitle": "Install App",
+  "pwa.installDesc": "Install this app to your device for quick access.",
+  "pwa.installBtn": "Install",
+  "pwa.laterBtn": "Maybe later",
+  "pwa.iosHint":
+    "To install on iOS: tap the Share button, then choose Add to Home Screen.",
 
   // Insights / Analytics
   "insights.topKeywordsTitle": "Top 10 Purchase Keywords",

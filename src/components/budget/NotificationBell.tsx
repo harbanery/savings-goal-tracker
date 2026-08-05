@@ -68,7 +68,7 @@ export default function NotificationBell() {
     if (!supported) return;
     // Cek status subscription saat ini
     navigator.serviceWorker
-      .register("/sw.js")
+      .register("/sw.js", { scope: "/", updateViaCache: "none" })
       .then(async (reg) => {
         const sub = await reg.pushManager.getSubscription();
         setSubscribed(!!sub);
