@@ -51,108 +51,111 @@ export default function DailySpendingLineChart({ purchases, cycle }: Props) {
   const gridColor = isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.06)";
   const tickColor = isDark ? "#9ca3af" : "#6b7280";
 
-  const { labels, amounts } = useMemo(
-    () => {
-      const points = buildDailySpending(purchases, cycle, locale);
-      return {
-        labels: points.map((p) => p.label),
-        amounts: points.map((p) => p.amount),
-      };
-    },
-    [purchases, cycle, locale],
-  );
+  const { labels, amounts } = useMemo(() => {
+    const points = buildDailySpending(purchases, cycle, locale);
+    return {
+      labels: points.map((p) => p.label),
+      amounts: points.map((p) => p.amount),
+    };
+  }, [purchases, cycle, locale]);
 
   const primary = "#6366f1";
 
-  const data: ChartData<"line"> = useMemo(() => ({
-    labels,
-    datasets: [
-      {
-        label: t("chart.dailySpending"),
-        data: amounts,
-        borderColor: primary,
-        backgroundColor: (ctx) => {
-          const { chart } = ctx;
-          const { ctx: canvasCtx, chartArea } = chart;
-          if (!chartArea) return "rgba(99,102,241,0.15)";
-          const gradient = canvasCtx.createLinearGradient(
-            0,
-            chartArea.top,
-            0,
-            chartArea.bottom,
-          );
-          gradient.addColorStop(0, "rgba(99,102,241,0.35)");
-          gradient.addColorStop(1, "rgba(99,102,241,0.02)");
-          return gradient;
+  const data: ChartData<"line"> = useMemo(
+    () => ({
+      labels,
+      datasets: [
+        {
+          label: t("chart.dailySpending"),
+          data: amounts,
+          borderColor: primary,
+          backgroundColor: (ctx) => {
+            const { chart } = ctx;
+            const { ctx: canvasCtx, chartArea } = chart;
+            if (!chartArea) return "rgba(99,102,241,0.15)";
+            const gradient = canvasCtx.createLinearGradient(
+              0,
+              chartArea.top,
+              0,
+              chartArea.bottom,
+            );
+            gradient.addColorStop(0, "rgba(99,102,241,0.35)");
+            gradient.addColorStop(1, "rgba(99,102,241,0.02)");
+            return gradient;
+          },
+          borderWidth: 2,
+          pointRadius: amounts.some((v) => v > 0) ? 2.5 : 0,
+          pointHoverRadius: 6,
+          pointBackgroundColor: primary,
+          fill: true,
+          tension: 0.35,
         },
-        borderWidth: 2,
-        pointRadius: amounts.some((v) => v > 0) ? 2.5 : 0,
-        pointHoverRadius: 6,
-        pointBackgroundColor: primary,
-        fill: true,
-        tension: 0.35,
-      },
-    ],
-  }), [labels, amounts, primary, t]);
+      ],
+    }),
+    [labels, amounts, primary, t],
+  );
 
-  const options: ChartOptions<"line"> = useMemo(() => ({
-    responsive: true,
-    maintainAspectRatio: false,
-    interaction: { mode: "index", intersect: false },
-    plugins: {
-      legend: {
-        display: true,
-        position: "bottom",
-        labels: {
-          color: tickColor,
-          font: { size: 11 },
-          usePointStyle: true,
-          boxWidth: 8,
-          padding: 12,
-        },
-      },
-      tooltip: {
-        backgroundColor: isDark ? "#1f2937" : "#ffffff",
-        titleColor: isDark ? "#f9fafb" : "#111827",
-        bodyColor: isDark ? "#e5e7eb" : "#374151",
-        borderColor: gridColor,
-        borderWidth: 1,
-        padding: 10,
-        callbacks: {
-          label: (item) =>
-            ` ${item.dataset.label}: ${formatIDR(Number(item.parsed.y ?? 0), locale)}`,
-        },
-      },
-    },
-    scales: {
-      x: {
-        grid: { display: false },
-        ticks: {
-          color: tickColor,
-          font: { size: 10 },
-          maxTicksLimit: 15,
-          maxRotation: 45,
-          minRotation: 0,
-        },
-        border: { display: false },
-      },
-      y: {
-        beginAtZero: true,
-        grid: { color: gridColor },
-        ticks: {
-          color: tickColor,
-          font: { size: 10 },
-          callback: (value) => {
-            const v = Number(value);
-            if (v >= 1_000_000) return `${(v / 1_000_000).toFixed(1)} jt`;
-            if (v >= 1_000) return `${(v / 1_000).toFixed(0)} rb`;
-            return String(v);
+  const options: ChartOptions<"line"> = useMemo(
+    () => ({
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { mode: "index", intersect: false },
+      plugins: {
+        legend: {
+          display: true,
+          position: "bottom",
+          labels: {
+            color: tickColor,
+            font: { size: 11 },
+            usePointStyle: true,
+            boxWidth: 8,
+            padding: 12,
           },
         },
-        border: { display: false },
+        tooltip: {
+          backgroundColor: isDark ? "#1f2937" : "#ffffff",
+          titleColor: isDark ? "#f9fafb" : "#111827",
+          bodyColor: isDark ? "#e5e7eb" : "#374151",
+          borderColor: gridColor,
+          borderWidth: 1,
+          padding: 10,
+          callbacks: {
+            label: (item) =>
+              ` ${item.dataset.label}: ${formatIDR(Number(item.parsed.y ?? 0), locale)}`,
+          },
+        },
       },
-    },
-  }), [isDark, tickColor, gridColor, locale, t]);
+      scales: {
+        x: {
+          grid: { display: false },
+          ticks: {
+            color: tickColor,
+            font: { size: 10 },
+            maxTicksLimit: 15,
+            maxRotation: 45,
+            minRotation: 0,
+          },
+          border: { display: false },
+        },
+        y: {
+          beginAtZero: true,
+          grid: { color: gridColor },
+          ticks: {
+            color: tickColor,
+            font: { size: 10 },
+            callback: (value) => {
+              const v = Number(value);
+              if (v >= 1_000_000) return `${(v / 1_000_000).toFixed(1)} jt`;
+              if (v >= 1_000) return `${(v / 1_000).toFixed(0)} rb`;
+              return String(v);
+            },
+          },
+          border: { display: false },
+        },
+      },
+    }),
+    [isDark, tickColor, gridColor, locale, t],
+  );
 
   const isEmpty = amounts.length === 0 || amounts.every((v) => v === 0);
 
