@@ -4,9 +4,19 @@ import {
   BarChartOutlined,
   LeftOutlined,
   RightOutlined,
+  RadarChartOutlined,
   TableOutlined,
 } from "@ant-design/icons";
-import { Alert, Button, Card, DatePicker, Space, Spin, Tabs, Typography } from "antd";
+import {
+  Alert,
+  Button,
+  Card,
+  DatePicker,
+  Space,
+  Spin,
+  Tabs,
+  Typography,
+} from "antd";
 import dynamic from "next/dynamic";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import dayjs from "dayjs";
@@ -78,10 +88,17 @@ const CumulativeSavingsLineChart = dynamic(
   () => import("./charts/CumulativeSavingsLineChart"),
   { ssr: false, loading: ChartLoading },
 );
+const DailySpendingLineChart = dynamic(
+  () => import("./charts/DailySpendingLineChart"),
+  { ssr: false, loading: ChartLoading },
+);
 const SavingsComparisonBarChart = dynamic(
   () => import("./charts/SavingsComparisonBarChart"),
   { ssr: false, loading: ChartLoading },
 );
+const TopKeywordsInsights = dynamic(() => import("./TopKeywordsInsights"), {
+  ssr: false,
+});
 
 /** Batas bawah siklus yang dapat dipilih: Juli 2026 (Agustus = 25 Juli 2026). */
 const MIN_CYCLE = dayjs("2026-08-01");
@@ -331,15 +348,35 @@ export default function BudgetDashboard({
                     <CategoryPieChart cycles={chartData} />
                   </div>
 
-                  {/* Charts Row 2: Allocation Bar */}
-                  <div className="mb-4 md:mb-6">
+                  {/* Charts Row 2: Allocation Bar + Daily Spending Line */}
+                  <div className="mb-4 grid grid-cols-1 gap-4 md:mb-6 lg:grid-cols-2">
                     <AllocationBarChart cycles={chartData} />
+                    <DailySpendingLineChart
+                      purchases={purchases}
+                      cycle={cycle}
+                    />
                   </div>
 
                   {/* Charts Row 3: Savings comparison + Cumulative line */}
                   <div className="mb-4 grid grid-cols-1 gap-4 md:mb-6 lg:grid-cols-2">
                     <SavingsComparisonBarChart cycles={chartData} />
                     <CumulativeSavingsLineChart cycles={chartData} />
+                  </div>
+                </div>
+              ),
+            },
+            {
+              key: "analytics",
+              label: (
+                <span className="flex items-center gap-1.5">
+                  <RadarChartOutlined />
+                  {t("app.tabAnalytics")}
+                </span>
+              ),
+              children: (
+                <div className="pb-2">
+                  <div className="mb-4 md:mb-6">
+                    <TopKeywordsInsights purchases={purchases} />
                   </div>
                 </div>
               ),

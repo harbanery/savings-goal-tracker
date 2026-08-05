@@ -1,11 +1,18 @@
 "use client";
 
-import { DeleteOutlined, EditOutlined, PlusOutlined } from "@ant-design/icons";
+import {
+  DeleteOutlined,
+  EditOutlined,
+  PlusOutlined,
+  SearchOutlined,
+} from "@ant-design/icons";
 import {
   Button,
   Card,
   Empty,
+  Input,
   Popconfirm,
+  Select,
   Space,
   Table,
   Tag,
@@ -15,7 +22,7 @@ import {
 import type { ColumnsType, TableProps } from "antd/es/table";
 import dayjs from "dayjs";
 import { useMemo, useState } from "react";
-import { CATEGORY_MAP } from "@/models/categories";
+import { CATEGORIES, CATEGORY_MAP } from "@/models/categories";
 import type { Purchase } from "@/models/types";
 import { formatIDR } from "@/utils/currency";
 import { useLocale } from "@/components/locale/LocaleProvider";
@@ -49,11 +56,29 @@ export default function PurchaseTable({
   onImported,
 }: Props) {
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
+  const [searchText, setSearchText] = useState("");
+  const [filterCategory, setFilterCategory] = useState<string | null>(null);
   const { t, locale } = useLocale();
 
+  /** Filter purchases berdasarkan search text & kategori. */
+  const filteredPurchases = useMemo(() => {
+    let result = purchases;
+    if (searchText.trim()) {
+      const q = searchText.trim().toLowerCase();
+      result = result.filter(
+        (p) =>
+          p.name.toLowerCase().includes(q) || p.note.toLowerCase().includes(q),
+      );
+    }
+    if (filterCategory) {
+      result = result.filter((p) => p.categoryId === filterCategory);
+    }
+    return result;
+  }, [purchases, searchText, filterCategory]);
+
   const dataSource: RowData[] = useMemo(
-    () => purchases.map((p) => ({ key: p.id, purchase: p })),
-    [purchases],
+    () => filteredPurchases.map((p) => ({ key: p.id, purchase: p })),
+    [filteredPurchases],
   );
 
   const rowSelection: TableProps<RowData>["rowSelection"] = {
@@ -172,7 +197,49 @@ export default function PurchaseTable({
       variant="borderless"
       className="shadow-sm"
       title={
-        <Space>
+        <Space size="small" wrap>
+          {/* Search & Filter bar */}
+          {purchases.length > 0 && (
+            <div className="flex flex-col gap-2 border-b border-zinc-100 px-4 py-3 dark:border-zinc-800 sm:flex-row sm:items-center">
+              <Input
+                prefix={<SearchOutlined className="text-zinc-400" />}
+                placeholder={t("table.searchPlaceholder")}
+                allowClear
+                size="small"
+                value={searchText}
+                onChange={(e) => setSearchText(e.target.value)}
+                style={{ maxWidth: 280 }}
+              />
+              <Select
+                placeholder={t("table.filterCategoryPlaceholder")}
+                allowClear
+                size="small"
+                value={filterCategory}
+                onChange={(val) => setFilterCategory(val ?? null)}
+                style={{ minWidth: 160 }}
+                options={CATEGORIES.map((c) => ({
+                  value: c.id,
+                  label: (
+                    <span className="flex items-center gap-1.5">
+                      <span
+                        className="inline-block h-2.5 w-2.5 rounded-full"
+                        style={{ backgroundColor: c.color }}
+                      />
+                      {pickText(c.label, locale)}
+                    </span>
+                  ),
+                }))}
+              />
+              {(searchText || filterCategory) && (
+                <Text type="secondary" className="!text-xs">
+                  {t("table.filterResult", {
+                    shown: filteredPurchases.length,
+                    total: purchases.length,
+                  })}
+                </Text>
+              )}
+            </div>
+          )}
           {hasSelected && (
             <Text type="secondary" style={{ fontSize: 12 }}>
               {t("table.selected", { n: selectedRowKeys.length })}
@@ -184,7 +251,9 @@ export default function PurchaseTable({
         <Space size="medium" wrap>
           {hasSelected && (
             <Popconfirm
-              title={t("table.deleteBulkConfirm", { n: selectedRowKeys.length })}
+              title={t("table.deleteBulkConfirm", {
+                n: selectedRowKeys.length,
+              })}
               okText={t("common.delete")}
               okButtonProps={{ danger: true }}
               cancelText={t("common.cancel")}
@@ -213,6 +282,10 @@ export default function PurchaseTable({
         <div className="flex items-center justify-center py-12">
           <Empty description={t("table.empty")} />
         </div>
+      ) : filteredPurchases.length === 0 ? (
+        <div className="flex items-center justify-center py-12">
+          <Empty description={t("table.noMatch")} />
+        </div>
       ) : (
         <>
           {/* Tabel untuk tablet & desktop */}
@@ -229,7 +302,7 @@ export default function PurchaseTable({
           {/* Kartu untuk mobile */}
           <div className="block p-3 sm:hidden">
             <PurchaseCardList
-              purchases={purchases}
+              purchases={filteredPurchases}
               onEdit={onEdit}
               onDelete={onDelete}
             />

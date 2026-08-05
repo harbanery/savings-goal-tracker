@@ -25,6 +25,7 @@ const id: TranslationDict = {
   "app.rangeSeparator": "s/d",
   "app.tabCharts": "Grafik",
   "app.tabList": "Daftar",
+  "app.tabAnalytics": "Analitik",
   "app.overLimitTitle": "Melebihi Limit Pengeluaran!",
   "app.overLimitDesc":
     "Pengeluaran sudah {spent}, melebihi limit {limit}. Selisih: {diff}.",
@@ -47,6 +48,10 @@ const id: TranslationDict = {
   "table.deleteBulkConfirm": "Hapus {n} pembelian?",
   "table.addPurchase": "Tambah Pembelian",
   "table.empty": "Belum ada pembelian di siklus ini",
+  "table.searchPlaceholder": "Cari nama pembelian...",
+  "table.filterCategoryPlaceholder": "Semua Kategori",
+  "table.filterResult": "Menampilkan {shown} dari {total}",
+  "table.noMatch": "Tidak ada pembelian yang cocok",
 
   // Form
   "form.editTitle": "Edit Pembelian",
@@ -90,6 +95,8 @@ const id: TranslationDict = {
   "chart.actualSavings": "Tabungan Aktual",
   "chart.expectedCumulative": "Kumulatif Target",
   "chart.actualCumulative": "Kumulatif Aktual",
+  "chart.dailySpending": "Pengeluaran Harian",
+  "chart.dailySpendingTitle": "Pengeluaran Harian per Tanggal",
 
   // Import / Export
   "io.template": "Template",
@@ -130,6 +137,16 @@ const id: TranslationDict = {
 
   // Language
   "lang.toggleAria": "Ganti bahasa",
+
+  // Insights / Analitik
+  "insights.topKeywordsTitle": "Top 10 Keyword Pembelian",
+  "insights.empty": "Belum ada data",
+  "insights.keywordStat":
+    "{count}x transaksi — total {total}",
+  "insights.wadahTooltip":
+    "Muncul di {n} wadah alokasi",
+  "insights.keywordFreqTooltip":
+    "Frekuensi: {val}x",
 };
 
 const en: TranslationDict = {
@@ -143,6 +160,7 @@ const en: TranslationDict = {
   "app.rangeSeparator": "to",
   "app.tabCharts": "Charts",
   "app.tabList": "List",
+  "app.tabAnalytics": "Analytics",
   "app.overLimitTitle": "Spending Limit Exceeded!",
   "app.overLimitDesc":
     "Spending is {spent}, exceeding the limit of {limit}. Difference: {diff}.",
@@ -163,6 +181,10 @@ const en: TranslationDict = {
   "table.deleteBulkConfirm": "Delete {n} purchases?",
   "table.addPurchase": "Add Purchase",
   "table.empty": "No purchases in this cycle",
+  "table.searchPlaceholder": "Search purchase name...",
+  "table.filterCategoryPlaceholder": "All Categories",
+  "table.filterResult": "Showing {shown} of {total}",
+  "table.noMatch": "No matching purchases found",
 
   "form.editTitle": "Edit Purchase",
   "form.addTitle": "Add Purchase",
@@ -203,6 +225,8 @@ const en: TranslationDict = {
   "chart.actualSavings": "Actual Savings",
   "chart.expectedCumulative": "Expected Cumulative",
   "chart.actualCumulative": "Actual Cumulative",
+  "chart.dailySpending": "Daily Spending",
+  "chart.dailySpendingTitle": "Daily Spending by Date",
 
   "io.template": "Template",
   "io.export": "Export",
@@ -238,6 +262,16 @@ const en: TranslationDict = {
   "theme.enableDark": "Enable dark mode",
 
   "lang.toggleAria": "Switch language",
+
+  // Insights / Analytics
+  "insights.topKeywordsTitle": "Top 10 Purchase Keywords",
+  "insights.empty": "No data yet",
+  "insights.keywordStat":
+    "{count}x transactions — total {total}",
+  "insights.wadahTooltip":
+    "Appears in {n} allocation envelopes",
+  "insights.keywordFreqTooltip":
+    "Frequency: {val}x",
 };
 
 export const TRANSLATIONS: Record<Locale, TranslationDict> = { id, en };
