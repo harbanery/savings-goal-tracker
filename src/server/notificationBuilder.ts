@@ -226,26 +226,28 @@ function escapeHtml(s: string): string {
     .replace(/"/g, "&quot;");
 }
 
-interface SendResult {
+export interface PushSendResult {
   sent: number;
   failed: number;
   cleanedUp: number;
+}
+
+export interface EmailSendResult {
   emailed: boolean;
 }
 
 /**
- * Kirim notifikasi ke semua channel yang terkonfigurasi:
- * - Web Push ke semua subscriber (dihapus bila endpoint expired).
- * - Email ke penerima yang dikonfigurasi (bila SMTP aktif).
+ * Kirim notifikasi push ke semua subscriber.
+ * Endpoint yang sudah expired (404/410) otomatis dihapus dari database.
+ * Digunakan oleh daily-reminder (hanya notifikasi push).
  */
-export async function broadcastNotification(
+export async function broadcastPushNotification(
   payload: NotificationPayload,
-): Promise<SendResult> {
+): Promise<PushSendResult> {
   const { getAllSubscriptions, removeStaleSubscription } = await import(
     "@/services/pushService"
   );
   const { sendPushNotification } = await import("@/server/webPush");
-  const { sendEmail, isEmailConfigured } = await import("@/server/email");
 
   const subs = await getAllSubscriptions();
   let sent = 0;
@@ -272,7 +274,18 @@ export async function broadcastNotification(
     }),
   );
 
-  // Channel email (opsional): kirim bila SMTP + penerima terkonfigurasi.
+  return { sent, failed, cleanedUp };
+}
+
+/**
+ * Kirim email notifikasi ke penerima yang dikonfigurasi (bila SMTP aktif).
+ * Digunakan oleh weekly-summary (hanya email).
+ */
+export async function broadcastEmailNotification(
+  payload: NotificationPayload,
+): Promise<EmailSendResult> {
+  const { sendEmail, isEmailConfigured } = await import("@/server/email");
+
   let emailed = false;
   if (isEmailConfigured()) {
     emailed = await sendEmail({
@@ -282,5 +295,5 @@ export async function broadcastNotification(
     });
   }
 
-  return { sent, failed, cleanedUp, emailed };
+  return { emailed };
 }

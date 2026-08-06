@@ -117,13 +117,13 @@ const id: TranslationDict = {
   "notif.permissionDenied":
     "Izin notifikasi ditolak. Aktifkan di pengaturan browser.",
   "notif.enabled":
-    "Notifikasi diaktifkan! Anda akan mendapat pengingat pengeluaran & insight tabungan.",
+    "Notifikasi diaktifkan! Anda akan mendapat pengingat pengeluaran harian.",
   "notif.enableFailed": "Gagal mengaktifkan notifikasi.",
   "notif.disabled": "Notifikasi dinonaktifkan.",
   "notif.disableFailed": "Gagal menonaktifkan notifikasi.",
   "notif.activeTooltip": "Notifikasi aktif. Klik untuk menonaktifkan.",
   "notif.inactiveTooltip":
-    "Aktifkan notifikasi untuk pengingat pengeluaran harian & insight tabungan mingguan.",
+    "Aktifkan notifikasi untuk pengingat pengeluaran harian.",
 
   // Clock
   "clock.loading": "Memuat...",
@@ -250,13 +250,13 @@ const en: TranslationDict = {
   "notif.permissionDenied":
     "Notification permission denied. Enable it in browser settings.",
   "notif.enabled":
-    "Notifications enabled! You'll receive spending reminders & savings insights.",
+    "Notifications enabled! You'll receive daily spending reminders.",
   "notif.enableFailed": "Failed to enable notifications.",
   "notif.disabled": "Notifications disabled.",
   "notif.disableFailed": "Failed to disable notifications.",
   "notif.activeTooltip": "Notifications active. Click to disable.",
   "notif.inactiveTooltip":
-    "Enable notifications for daily spending reminders & weekly savings insights.",
+    "Enable notifications for daily spending reminders.",
 
   "clock.loading": "Loading...",
   "clock.ariaTime": "Current time {time}, {date}",

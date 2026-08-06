@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
 import { CRON_SECRET } from "@/config/variables";
-import { buildWeeklyNotification, broadcastNotification } from "@/server/notificationBuilder";
+import { buildWeeklyNotification, broadcastEmailNotification } from "@/server/notificationBuilder";
 
 /**
  * GET /api/cron/weekly-summary
  * Dipanggil oleh Vercel Cron setiap hari Minggu jam 20:00 WIB (13:00 UTC).
- * Mengirim ringkasan statistik siklus + insight (pengeluaran, tabungan, kategori).
+ * Mengirim ringkasan statistik siklus + insight via email saja.
  */
 export async function GET(request: Request) {
   // Verifikasi CRON_SECRET dari header Authorization
@@ -16,7 +16,7 @@ export async function GET(request: Request) {
 
   try {
     const payload = await buildWeeklyNotification();
-    const result = await broadcastNotification(payload);
+    const result = await broadcastEmailNotification(payload);
     return NextResponse.json({
       success: true,
       ...result,
@@ -25,7 +25,7 @@ export async function GET(request: Request) {
   } catch (err) {
     console.error("[cron/weekly-summary] error:", err);
     return NextResponse.json(
-      { error: "Failed to send weekly notification" },
+      { error: "Failed to send weekly email summary" },
       { status: 500 },
     );
   }
