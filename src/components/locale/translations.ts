@@ -17,6 +17,7 @@ const id: TranslationDict = {
   "common.cancel": "Batal",
   "common.delete": "Hapus",
   "common.save": "Simpan",
+  "common.close": "Tutup",
 
   // App / Dashboard
   "app.title": "Savings Goal Tracker",
@@ -152,12 +153,22 @@ const id: TranslationDict = {
   "insights.keywordStat": "{count}x transaksi — total {total}",
   "insights.wadahTooltip": "Muncul di {n} wadah alokasi",
   "insights.keywordFreqTooltip": "Frekuensi: {val}x",
+
+  // Dev / Development (hanya tampil saat NODE_ENV === "development")
+  "dev.title": "Tes Notifikasi",
+  "dev.dailyBtn": "Daily Reminder",
+  "dev.dailyTooltip": "Kirim push notification harian manual",
+  "dev.weeklyBtn": "Weekly Summary",
+  "dev.weeklyTooltip": "Kirim ringkasan mingguan via email manual",
+  "dev.pushSuccess": "Notifikasi terkirim ({val} subscriber).",
+  "dev.pushFailed": "Gagal mengirim notifikasi.",
 };
 
 const en: TranslationDict = {
   "common.cancel": "Cancel",
   "common.delete": "Delete",
   "common.save": "Save",
+  "common.close": "Close",
 
   "app.title": "Savings Goal Tracker",
   "app.description": "Track monthly spending with an envelope system.",
@@ -282,6 +293,15 @@ const en: TranslationDict = {
   "insights.keywordStat": "{count}x transactions — total {total}",
   "insights.wadahTooltip": "Appears in {n} allocation envelopes",
   "insights.keywordFreqTooltip": "Frequency: {val}x",
+
+  // Dev / Development (only shown when NODE_ENV === "development")
+  "dev.title": "Test Notifications",
+  "dev.dailyBtn": "Daily Reminder",
+  "dev.dailyTooltip": "Manually trigger the daily push notification",
+  "dev.weeklyBtn": "Weekly Summary",
+  "dev.weeklyTooltip": "Manually trigger the weekly summary email",
+  "dev.pushSuccess": "Notification sent ({val} subscriber).",
+  "dev.pushFailed": "Failed to send notification.",
 };
 
 export const TRANSLATIONS: Record<Locale, TranslationDict> = { id, en };

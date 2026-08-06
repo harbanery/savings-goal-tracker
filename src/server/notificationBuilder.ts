@@ -4,6 +4,7 @@ import {
   SAVINGS_INITIAL,
   BASE_URL,
   NOTIFICATION_LOCALE,
+  META_APP,
 } from "@/config/variables";
 import { computeCycleStats } from "@/helpers/stats";
 import { toPurchases } from "@/helpers/purchaseTransformer";
@@ -14,12 +15,16 @@ import {
 } from "@/utils/cycleUtils";
 import { getPurchasesInRange } from "@/services/budgetService";
 
+/** Nama aplikasi untuk header/tanda tangan email (fallback bila env kosong). */
+const APP_NAME = META_APP ?? "Savings Goal Tracker";
+
 /**
  * Builder payload notifikasi (web push + email).
  *
  * Konten dilokalkan sesuai env `NOTIFICATION_LOCALE` (id | en).
- * Channel email (Nodemailer SMTP) dikirim otomatis saat terkonfigurasi,
- * sebagai pelengkap web push.
+ * Setiap cron memilih channel yang relevan:
+ * - daily-reminder → web push saja.
+ * - weekly-summary → email saja.
  */
 
 /** Pilih teks sesuai locale notifikasi. */
@@ -32,7 +37,19 @@ export interface NotificationPayload {
   body: string;
   tag: string;
   url: string;
+  /** Versi HTML email kaya (kartu). Hanya untuk channel email (weekly-summary). */
+  html?: string;
+  /** Preheader email (preview text di inbox). */
+  previewText?: string;
+  /** Ikon push notification (path absolut, mis. "/android/launchericon-192x192.png"). */
+  icon?: string;
+  /** Badge push notification (path absolut). */
+  badge?: string;
 }
+
+/** Ikon & badge push default (launcher icon resolusi tinggi). */
+const PUSH_ICON = "/android/launchericon-192x192.png";
+const PUSH_BADGE = "/android/launchericon-96x96.png";
 
 /** Cek apakah sebuah pembelian terjadi hari ini (lokal). */
 function isToday(dateStr: string): boolean {
@@ -105,6 +122,8 @@ export async function buildDailyNotification(): Promise<NotificationPayload> {
     body,
     tag: "daily-reminder",
     url: "/",
+    icon: PUSH_ICON,
+    badge: PUSH_BADGE,
   };
 }
 
@@ -174,14 +193,107 @@ export async function buildWeeklyNotification(): Promise<NotificationPayload> {
     );
   }
 
+  // --- Komponen email kaya (channel weekly-summary) ---
+  const themeColor = "#4f46e5";
+
+  // Preheader email (preview text di inbox).
+  const previewText = L(
+    `Penggunaan limit ${stats.limitPercent}% siklus ${cycle.label}${diff < 0 ? `, hemat ${formatShortIDR(Math.abs(diff))} dari siklus lalu` : ""}. Lihat insight lengkapnya.`,
+    `${stats.limitPercent}% limit used in the ${cycle.label} cycle${diff < 0 ? `, saving ${formatShortIDR(Math.abs(diff))} vs last cycle` : ""}. See the full insights.`,
+  );
+
+  // Warna metrik sesuai kondisi.
+  const limitColor = stats.overLimit
+    ? "#ef4444"
+    : stats.limitPercent >= 80
+      ? "#f59e0b"
+      : "#22c55e";
+  const savingsColor = savings > 0 ? "#22c55e" : "#ef4444";
+
+  const emailTitle = L("📊 Ringkasan Tabungan Mingguan", "📊 Weekly Savings Summary");
+  const subtitle = `${APP_NAME} · ${L(`Siklus ${cycle.label}`, `Cycle ${cycle.label}`)}`;
+  const greeting = L("Halo! 👋", "Hello! 👋");
+  const bluf = L(
+    `<strong>Insight utama:</strong> Penggunaan limit siklus ${cycle.label} mencapai <strong>${stats.limitPercent}%</strong>, dengan sisa tabungan <strong>${formatShortIDR(savings)}</strong> (${savingsPercent}%).`,
+    `<strong>Key insight:</strong> The ${cycle.label} cycle limit usage reached <strong>${stats.limitPercent}%</strong>, with savings left of <strong>${formatShortIDR(savings)}</strong> (${savingsPercent}%).`,
+  );
+  const categoryHeader = L("Pengeluaran per Wadah", "Spending by Envelope");
+  const ctaText = L("Buka Dashboard Lengkap", "Open Full Dashboard");
+  const link = `${BASE_URL}/`;
+
+  // Insight per wadah (kategori yang dialokasikan, diurutkan dari pengeluaran terbesar).
+  const categoryInsights = stats.categories
+    .filter((c) => !c.excludeFromAllocation && c.spent > 0)
+    .sort((a, b) => b.spent - a.spent)
+    .slice(0, 5)
+    .map((c) => ({
+      name: c.label[NOTIFICATION_LOCALE] ?? c.label.id,
+      detail: `${formatShortIDR(c.spent)} · ${c.percent}%`,
+      dotColor: c.color,
+    }));
+
+  // Penutup sesuai kondisi siklus.
+  let closing: string;
+  if (stats.overLimit) {
+    closing = L(
+      "Pengeluaran sudah melebihi limit wadah. Yuk evaluasi kategori yang paling boros minggu depan! 💪",
+      "Spending has exceeded the envelope limit. Let's review the biggest categories next week! 💪",
+    );
+  } else if (diff < 0) {
+    closing = L(
+      `Mantap! Anda hemat ${formatShortIDR(Math.abs(diff))} dibanding siklus ${prevCycle.label}. Terus pertahankan! 💪`,
+      `Great job! You saved ${formatShortIDR(Math.abs(diff))} compared to the ${prevCycle.label} cycle. Keep it up! 💪`,
+    );
+  } else {
+    closing = L(
+      "Terima kasih sudah mencatat pengeluaran minggu ini. Tetap konsisten menabung! 💪",
+      "Thanks for tracking your spending this week. Stay consistent with your savings! 💪",
+    );
+  }
+  const signature = L(
+    `Salam hangat,<br/><strong style="color:#1f2937">${APP_NAME}</strong>`,
+    `Best regards,<br/><strong style="color:#1f2937">${APP_NAME}</strong>`,
+  );
+
+  const html = buildRichEmailHtml({
+    themeColor,
+    title: emailTitle,
+    subtitle,
+    greeting,
+    bluf,
+    previewText,
+    metrics: [
+      {
+        label: L("Penggunaan Limit", "Limit Usage"),
+        value: `${stats.limitPercent}%`,
+        color: limitColor,
+      },
+      {
+        label: L("Total Pengeluaran", "Total Spent"),
+        value: formatShortIDR(stats.totalSpent),
+        color: "#1f2937",
+      },
+      {
+        label: L("Sisa Tabungan", "Savings Left"),
+        value: formatShortIDR(savings),
+        color: savingsColor,
+      },
+    ],
+    categoryHeader,
+    categories: categoryInsights,
+    ctaText,
+    ctaUrl: link,
+    closing,
+    signature,
+  });
+
   return {
-    title: L(
-      "Ringkasan Tabungan Mingguan",
-      "Weekly Savings Summary",
-    ),
+    title: emailTitle,
     body,
     tag: "weekly-summary",
     url: "/",
+    html,
+    previewText,
   };
 }
 
@@ -204,7 +316,90 @@ function getTopCategory(purchases: Purchase[]): string | null {
   return label ?? topId;
 }
 
-/** Bangun versi HTML sederhana dari payload notifikasi untuk email. */
+/**
+ * Bangun template email HTML kaya (kartu dengan header, preheader, metrik,
+ * tabel wadah, CTA). Desain disesuaikan dengan notif-mail-whatsapp reference.
+ * Font Geist dimuat via Google Fonts (link embed), dengan fallback aman.
+ */
+function buildRichEmailHtml(params: {
+  themeColor: string;
+  title: string;
+  subtitle: string;
+  greeting: string;
+  bluf: string;
+  previewText?: string;
+  metrics: { label: string; value: string; color?: string }[];
+  categoryHeader: string;
+  categories: { name: string; detail: string; dotColor: string }[];
+  ctaText: string;
+  ctaUrl: string;
+  closing: string;
+  signature: string;
+}): string {
+  const font =
+    "'Geist','Google Sans',Roboto,Helvetica,Arial,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif";
+  const m = params.metrics;
+  // Preheader tersembunyi (preview text di inbox) — ditarik ke luar layar.
+  const preheader = params.previewText
+    ? `<div style="display:none;max-height:0;overflow:hidden;opacity:0;color:transparent;height:0;width:0;max-width:0">${escapeHtml(params.previewText)}</div>`
+    : "";
+  return `<!DOCTYPE html>
+<html lang="${NOTIFICATION_LOCALE}">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Geist:ital,wght@0,100..900;1,100..900&display=swap" rel="stylesheet">
+<title>${escapeHtml(params.title)}</title>
+<style type="text/css">
+@media screen{body,table,td,p,a,span,strong,h1,h2,h3{font-family:${font}}}
+</style>
+<!--[if mso]>
+<style type="text/css">body,table,td,p,a,span,strong,h1,h2,h3{font-family:Arial,sans-serif!important}</style>
+<![endif]-->
+</head>
+<body style="margin:0;padding:24px;background:#f3f4f6;font-family:${font}">
+${preheader}
+<div style="font-family:${font};max-width:560px;margin:0 auto;color:#1f2937;padding:0">
+  <div style="background:${params.themeColor};color:#fff;padding:24px;text-align:center;border-radius:12px 12px 0 0">
+    <h1 style="font-family:${font};margin:0;font-size:22px;font-weight:700">${escapeHtml(params.title)}</h1>
+    <p style="font-family:${font};margin:4px 0 0;font-size:13px;opacity:0.9">${escapeHtml(params.subtitle)}</p>
+  </div>
+  <div style="background:#f9fafb;padding:28px 24px;border:1px solid #e5e7eb;border-top:none;border-radius:0 0 12px 12px">
+    <p style="font-family:${font};margin:0 0 16px;font-size:15px">${params.greeting}</p>
+    <p style="font-family:${font};margin:0 0 20px;font-size:15px;line-height:1.6">${params.bluf}</p>
+    <hr style="border:none;border-top:1px solid #e5e7eb;margin:0 0 20px" />
+    <p style="font-family:${font};margin:0 0 8px;font-size:13px;font-weight:600;color:#6b7280;text-transform:uppercase;letter-spacing:0.5px">${escapeHtml(L("Metrik", "Metrics"))}</p>
+    <table style="width:100%;border-collapse:collapse;margin:0 0 20px;font-size:14px">
+      <tr>
+        ${m.map((metric, i) => `<td style="padding:8px 12px;background:#fff;border:1px solid #e5e7eb;${i === 0 ? "border-radius:6px 0 0 6px;" : "border-left:none;"}${i === m.length - 1 ? "border-radius:0 6px 6px 0;" : ""}">
+          <span style="font-family:${font};color:#6b7280;font-size:12px">${escapeHtml(metric.label)}</span><br/>
+          <strong style="font-family:${font};font-size:18px;color:${metric.color || params.themeColor}">${escapeHtml(metric.value)}</strong>
+        </td>`).join("")}
+      </tr>
+    </table>
+    <p style="font-family:${font};margin:0 0 8px;font-size:13px;font-weight:600;color:#6b7280;text-transform:uppercase;letter-spacing:0.5px">${escapeHtml(params.categoryHeader)}</p>
+    <table style="width:100%;border-collapse:collapse;margin:0 0 20px;font-size:14px">
+      ${params.categories.map((cat, i) => `<tr><td style="padding:8px 0;${i < params.categories.length - 1 ? "border-bottom:1px solid #e5e7eb;" : ""}">
+        <span style="display:inline-block;width:10px;height:10px;background:${cat.dotColor};border-radius:50%;margin-right:8px"></span>
+        ${escapeHtml(cat.name)}<br/><span style="font-family:${font};color:#6b7280;font-size:12px">${escapeHtml(cat.detail)}</span>
+      </td></tr>`).join("")}
+    </table>
+    <div style="text-align:center;margin:24px 0 16px">
+      <a href="${escapeHtml(params.ctaUrl)}" style="font-family:${font};display:inline-block;padding:12px 32px;background:${params.themeColor};color:#fff;border-radius:8px;text-decoration:none;font-weight:600;font-size:14px">${escapeHtml(params.ctaText)}</a>
+    </div>
+    <p style="font-family:${font};margin:0 0 4px;font-size:14px;line-height:1.6">${params.closing}</p>
+    <hr style="border:none;border-top:1px solid #e5e7eb;margin:20px 0 12px" />
+    <p style="font-family:${font};margin:0;font-size:13px;color:#6b7280;line-height:1.5">${params.signature}</p>
+  </div>
+</div>
+</body>
+</html>`;
+}
+
+/** Bangun versi HTML sederhana dari payload notifikasi untuk email (fallback). */
 function toEmailHtml(payload: NotificationPayload): string {
   const link = `${BASE_URL}${payload.url}`;
   const openLabel = L("Buka Dashboard", "Open Dashboard");
@@ -291,7 +486,7 @@ export async function broadcastEmailNotification(
     emailed = await sendEmail({
       subject: payload.title,
       text: payload.body,
-      html: toEmailHtml(payload),
+      html: payload.html ?? toEmailHtml(payload),
     });
   }
 

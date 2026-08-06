@@ -6,6 +6,7 @@ import { LocaleProvider } from "@/components/locale/LocaleProvider";
 import { CycleConfigProvider } from "@/components/config/CycleConfigProvider";
 import Footer from "@/components/footer";
 import InstallPrompt from "@/components/pwa/InstallPrompt";
+import NotificationTest from "@/components/dev/NotificationTest";
 import { VercelCompatibleComponents } from "@/components/vercel";
 import { geistMono, geistSans } from "@/utils/fonts/next-google";
 import {
@@ -140,6 +141,7 @@ export default function RootLayout({
                 {children}
                 <Footer />
                 <InstallPrompt />
+                <NotificationTest />
               </ThemeProvider>
             </CycleConfigProvider>
           </LocaleProvider>
