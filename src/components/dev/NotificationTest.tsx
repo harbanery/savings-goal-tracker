@@ -36,7 +36,8 @@ type NotifKey =
   | "new-cycle-kickoff"
   | "monthly-summary"
   | "csv-export-reminder"
-  | "quarterly-trend";
+  | "quarterly-trend"
+  | "yearly-recap";
 
 /** Channel per notifikasi: push = Web Push, email = Email. */
 const NOTIF_CHANNELS: Record<NotifKey, "push" | "email"> = {
@@ -47,6 +48,7 @@ const NOTIF_CHANNELS: Record<NotifKey, "push" | "email"> = {
   "monthly-summary": "email",
   "csv-export-reminder": "email",
   "quarterly-trend": "email",
+  "yearly-recap": "email",
 };
 
 export default function NotificationTest() {
@@ -66,6 +68,7 @@ export default function NotificationTest() {
     "monthly-summary": false,
     "csv-export-reminder": false,
     "quarterly-trend": false,
+    "yearly-recap": false,
   });
   const [visible, setVisible] = useState(true);
 
@@ -158,6 +161,13 @@ export default function NotificationTest() {
       path: "/api/cron/quarterly-trend",
       labelKey: "dev.quarterlyTrendBtn",
       tooltipKey: "dev.quarterlyTrendTooltip",
+      icon: MailOutlined,
+    },
+    {
+      key: "yearly-recap",
+      path: "/api/cron/yearly-recap",
+      labelKey: "dev.yearlyRecapBtn",
+      tooltipKey: "dev.yearlyRecapTooltip",
       icon: MailOutlined,
     },
   ];

@@ -13,6 +13,7 @@ import {
   getCurrentCycle,
   shiftCycle,
   formatDateLabel,
+  formatCycleLabel,
 } from "@/utils/cycleUtils";
 import { getPurchasesInRange } from "@/services/budgetService";
 
@@ -31,6 +32,7 @@ const APP_NAME = META_APP ?? "Savings Goal Tracker";
  * - monthly-summary (D3)     → email
  * - csv-export-reminder (E2) → email
  * - quarterly-trend (E1)      → email
+ * - yearly-recap (F1)        → email
  */
 
 /** Pilih teks sesuai locale notifikasi. */
@@ -854,6 +856,177 @@ export async function buildQuarterlyTrend(): Promise<NotificationPayload> {
     title: emailTitle,
     body,
     tag: "quarterly-trend",
+    url: "/",
+    html,
+    previewText,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// F1 – Yearly Recap (Rekap Akhir Tahunan)
+// Tahunan, tanggal 31 Desember jam 23:59 WIB.
+// Channel: email (rich HTML).
+// ---------------------------------------------------------------------------
+
+/**
+ * Bangun payload notifikasi F1: Yearly Recap.
+ * Menampilkan laporan tren tahunan, rekap akhir tahunan, dan top 3 wadah
+ * pengeluaran terbesar selama 1 tahun (1 Jan s/d 31 Des).
+ */
+export async function buildYearlyRecap(): Promise<NotificationPayload> {
+  const now = new Date();
+  const currentYear = now.getFullYear();
+  const prevYear = currentYear - 1;
+
+  // Rentang tahunan: 1 Jan - 31 Des (masa depan jam 23:59 WIB)
+  const startDate = new Date(currentYear, 0, 1, 0, 0, 0, 0);
+  const endDate = new Date(currentYear, 11, 31, 23, 59, 59, 999);
+
+  const prevStartDate = new Date(prevYear, 0, 1, 0, 0, 0, 0);
+  const prevEndDate = new Date(prevYear, 11, 31, 23, 59, 59, 999);
+
+  const [recCurrent, recPrev] = await Promise.all([
+    getPurchasesInRange(startDate, endDate),
+    getPurchasesInRange(prevStartDate, prevEndDate),
+  ]);
+
+  const purchasesCurrent = toPurchases(recCurrent);
+  const purchasesPrev = toPurchases(recPrev);
+
+  // Hitung statistik sederhana untuk seluruh tahun
+  const totalSpentCurrent = purchasesCurrent.reduce((sum, p) => sum + p.amount, 0);
+  const totalSpentPrev = purchasesPrev.reduce((sum, p) => sum + p.amount, 0);
+  const transactionCountCurrent = purchasesCurrent.length;
+  const transactionCountPrev = purchasesPrev.length;
+
+  // Hitung pengeluaran per wadah (hanya dialokasikan)
+  const spentByEnvelope = new Map<string, number>();
+  const allocatedCats = Object.values(CATEGORY_MAP).filter((c) => !c.excludeFromAllocation);
+  for (const p of purchasesCurrent) {
+    if (!spentByEnvelope.has(p.categoryId)) spentByEnvelope.set(p.categoryId, 0);
+    spentByEnvelope.set(p.categoryId, spentByEnvelope.get(p.categoryId)! + p.amount);
+  }
+
+  // Top 3 wadah terboros tahun ini
+  const topEnvelopes = allocatedCats
+    .map((cat) => ({
+      id: cat.id,
+      label: cat.label[NOTIFICATION_LOCALE] ?? cat.label.id,
+      color: cat.color,
+      spent: spentByEnvelope.get(cat.id) ?? 0,
+      allocation: cat.allocation,
+    }))
+    .filter((e) => e.spent > 0)
+    .sort((a, b) => b.spent - a.spent)
+    .slice(0, 3);
+
+  // Hitung tren pengeluaran (tahun ini vs tahun lalu)
+  const spentDiff = totalSpentCurrent - totalSpentPrev;
+  const spentDiffLabel =
+    spentDiff > 0
+      ? `+${formatShortIDR(spentDiff)}`
+      : spentDiff < 0
+        ? L(
+            `hemat ${formatShortIDR(Math.abs(spentDiff))}`,
+            `saved ${formatShortIDR(Math.abs(spentDiff))}`,
+          )
+        : L("sama", "same");
+  const spentTrendColor = spentDiff <= 0 ? "#22c55e" : "#ef4444";
+
+  // Perkiraan tabungan (karena siklus tidak selalu sama, pakai estimasi kasar)
+  // Estimasi: SAVINGS_INITIAL * 12 - totalSpentCurrent (asumsi 12 siklus)
+  const estimatedSavings = SAVINGS_INITIAL * 12 - totalSpentCurrent;
+  const savingsColor = estimatedSavings > 0 ? "#22c55e" : "#ef4444";
+
+  const themeColor = "#f59e0b";
+  const link = `${BASE_URL}/`;
+
+  const emailTitle = L(
+    `🎊 Rekap Akhir Tahun ${currentYear}`,
+    `🎊 End-of-Year Recap ${currentYear}`,
+  );
+  const subtitle = `${APP_NAME} · ${currentYear}`;
+  const previewText = L(
+    `Rekap akhir tahun ${currentYear}: ${formatShortIDR(totalSpentCurrent)} pengeluaran tahunan. Top wadah: ${topEnvelopes.map((e) => e.label).join(", ")}. Lihat detail lengkap.`,
+    `End of ${currentYear} recap: ${formatShortIDR(totalSpentCurrent)} annual spending. Top envelopes: ${topEnvelopes.map((e) => e.label).join(", ")}. See the full report.`,
+  );
+  const greeting = L("Selamat tahun baru! 🎉", "Happy New Year! 🎉");
+  const bluf = L(
+    `<strong>Ringkasan tahun ${currentYear}:</strong> ${transactionCountCurrent} transaksi tercatat dengan total pengeluaran <strong>${formatShortIDR(totalSpentCurrent)}</strong>.${spentDiff < 0 ? ` Anda hemat ${formatShortIDR(Math.abs(spentDiff))} dibanding ${prevYear}.` : spentDiff > 0 ? ` Pengeluaran naik ${formatShortIDR(spentDiff)} dibanding ${prevYear}.` : ""}`,
+    `<strong>${currentYear} summary:</strong> ${transactionCountCurrent} transactions logged with total spending of <strong>${formatShortIDR(totalSpentCurrent)}</strong>.${spentDiff < 0 ? ` You saved ${formatShortIDR(Math.abs(spentDiff))} vs ${prevYear}.` : spentDiff > 0 ? ` Spending rose ${formatShortIDR(spentDiff)} vs ${prevYear}.` : ""}`,
+  );
+  const ctaText = L("Buka Dashboard", "Open Dashboard");
+
+  // Metrik grid 2x2
+  const metricsGrid = [
+    [
+      {
+        label: L("Total Pengeluaran Tahunan", "Annual Total Spent"),
+        value: formatShortIDR(totalSpentCurrent),
+        color: "#1f2937",
+      },
+      {
+        label: L("Estimasi Tabungan", "Est. Savings"),
+        value: formatShortIDR(estimatedSavings),
+        color: savingsColor,
+      },
+    ],
+    [
+      {
+        label: L(`vs Tahun ${prevYear}`, `vs ${prevYear}`),
+        value: spentDiffLabel,
+        color: spentTrendColor,
+      },
+      {
+        label: L("Jumlah Transaksi", "Transactions"),
+        value: String(transactionCountCurrent),
+        color: "#6b7280",
+      },
+    ],
+  ];
+
+  // Tabel top 3 wadah terboros
+  const categoryHeader = L("Top 3 Wadah Tahunan", "Top 3 Annual Envelopes");
+  const categories = topEnvelopes.map((env, i) => ({
+    name: `${i + 1}. ${env.label}`,
+    detail: `${formatShortIDR(env.spent)}${env.allocation > 0 ? ` dari alokasi ${formatShortIDR(env.allocation)}` : ""}`,
+    dotColor: env.color,
+  }));
+
+  const closing = L(
+    `🎊 Terima kasih sudah mencatat pengeluaran selama tahun ${currentYear}! ${topEnvelopes.length > 0 ? `Wadah terboros: ${topEnvelopes.map((e) => e.label).join(", ")}. ` : ""}Tahun depan lebih hemat lagi! 💪`,
+    `🎊 Thanks for tracking your spending throughout ${currentYear}! ${topEnvelopes.length > 0 ? `Top spending envelopes: ${topEnvelopes.map((e) => e.label).join(", ")}. ` : ""}Save even more next year! 💪`,
+  );
+  const signature = L(
+    `Salam hangat,<br/><strong style="color:#1f2937">${APP_NAME}</strong>`,
+    `Best regards,<br/><strong style="color:#1f2937">${APP_NAME}</strong>`,
+  );
+
+  const html = buildRichEmailHtml({
+    themeColor,
+    title: emailTitle,
+    subtitle,
+    greeting,
+    bluf,
+    previewText,
+    metricsGrid,
+    categoryHeader,
+    categories,
+    ctaText,
+    ctaUrl: link,
+    closing,
+    signature,
+  });
+
+  const body = L(
+    `🎊 Rekap akhir tahun ${currentYear}: ${formatShortIDR(totalSpentCurrent)} pengeluaran tahunan (${transactionCountCurrent} transaksi).${topEnvelopes.length > 0 ? ` Top wadah: ${topEnvelopes.map((e) => e.label).join(", ")}.` : ""} vs ${prevYear}: ${spentDiffLabel}.`,
+    `🎊 End of ${currentYear} recap: ${formatShortIDR(totalSpentCurrent)} annual spending (${transactionCountCurrent} transactions).${topEnvelopes.length > 0 ? ` Top envelopes: ${topEnvelopes.map((e) => e.label).join(", ")}.` : ""} vs ${prevYear}: ${spentDiffLabel}.`,
+  );
+
+  return {
+    title: emailTitle,
+    body,
+    tag: "yearly-recap",
     url: "/",
     html,
     previewText,
