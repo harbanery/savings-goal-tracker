@@ -1,4 +1,4 @@
-import { CATEGORY_MAP } from "@/models/categories";
+import { CATEGORY_MAP, TOTAL_ALLOCATION } from "@/models/categories";
 import type { Purchase } from "@/models/types";
 import {
   SAVINGS_INITIAL,
@@ -956,8 +956,8 @@ export async function buildYearlyRecap(): Promise<NotificationPayload> {
     );
   }
 
-  // Top 3 wadah terboros tahun ini
-  const topEnvelopes = allocatedCats
+  // Pengeluaran per Wadah (semua wadah dialokasikan, urut terbesar)
+  const allEnvelopes = allocatedCats
     .map((cat) => ({
       id: cat.id,
       label: cat.label[NOTIFICATION_LOCALE] ?? cat.label.id,
@@ -965,9 +965,7 @@ export async function buildYearlyRecap(): Promise<NotificationPayload> {
       spent: spentByEnvelope.get(cat.id) ?? 0,
       allocation: cat.allocation,
     }))
-    .filter((e) => e.spent > 0)
-    .sort((a, b) => b.spent - a.spent)
-    .slice(0, 3);
+    .sort((a, b) => b.spent - a.spent);
 
   // Hitung tren pengeluaran (tahun ini vs tahun lalu)
   const spentDiff = totalSpentCurrent - totalSpentPrev;
@@ -975,7 +973,21 @@ export async function buildYearlyRecap(): Promise<NotificationPayload> {
   // Perkiraan tabungan / kumulatif aktual
   // Estimasi: SAVINGS_INITIAL * 12 - totalSpentCurrent (asumsi 12 siklus)
   const estimatedSavings = SAVINGS_INITIAL * 12 - totalSpentCurrent;
-  const savingsColor = estimatedSavings > 0 ? "#22c55e" : "#ef4444";
+
+  // Selisih target kumulatif dengan aktual kumulatif
+  // Target kumulatif savings = (SAVINGS_INITIAL - TOTAL_ALLOCATION) * 12
+  // Aktual kumulatif savings = estimatedSavings
+  // Selisih = aktual - target = TOTAL_ALLOCATION * 12 - totalSpentCurrent
+  const cumulativeTargetSavings = (SAVINGS_INITIAL - TOTAL_ALLOCATION) * 12;
+  const cumulativeDiff = estimatedSavings - cumulativeTargetSavings;
+  const cumulativeDiffLabel =
+    cumulativeDiff >= 0
+      ? `+${formatShortIDR(cumulativeDiff)}`
+      : L(
+          `−${formatShortIDR(Math.abs(cumulativeDiff))}`,
+          `−${formatShortIDR(Math.abs(cumulativeDiff))}`,
+        );
+  const cumulativeDiffColor = cumulativeDiff >= 0 ? "#22c55e" : "#ef4444";
 
   // Hitung bulan dengan pengeluaran terbanyak tahun ini
   const spentByMonth = new Map<number, number>();
@@ -1000,6 +1012,16 @@ export async function buildYearlyRecap(): Promise<NotificationPayload> {
       ? `${busiestMonthLabel}`
       : L("Belum ada data", "No data");
 
+  // Top 3 bulan pengeluaran terbesar tahun ini
+  const topMonths = Array.from(spentByMonth.entries())
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 3)
+    .map(([monthIdx, spent]) => ({
+      name: formatCycleLabel(currentYear, monthIdx, NOTIFICATION_LOCALE),
+      detail: formatShortIDR(spent),
+      dotColor: "#f59e0b",
+    }));
+
   const themeColor = "#f59e0b";
   const link = `${BASE_URL}/`;
 
@@ -1009,8 +1031,8 @@ export async function buildYearlyRecap(): Promise<NotificationPayload> {
   );
   const subtitle = `${APP_NAME} · ${currentYear}`;
   const previewText = L(
-    `Rekap akhir tahun ${currentYear}: Sisa tabungan ${formatShortIDR(estimatedSavings)}.${spentDiff < 0 ? ` Hemat ${formatShortIDR(Math.abs(spentDiff))} dari ${prevYear}.` : ""} Top wadah: ${topEnvelopes.map((e) => e.label).join(", ")}. Lihat detail lengkap.`,
-    `End of ${currentYear} recap: Savings left ${formatShortIDR(estimatedSavings)}.${spentDiff < 0 ? ` Saved ${formatShortIDR(Math.abs(spentDiff))} vs ${prevYear}.` : ""} Top envelopes: ${topEnvelopes.map((e) => e.label).join(", ")}. See the full report.`,
+    `Rekap akhir tahun ${currentYear}: Sisa tabungan ${formatShortIDR(estimatedSavings)}, selisih target ${cumulativeDiffLabel}.${spentDiff < 0 ? ` Hemat ${formatShortIDR(Math.abs(spentDiff))} dari ${prevYear}.` : ""}${busiestMonthIdx >= 0 ? ` Bulan terbanyak: ${busiestMonthLabel}.` : ""} Lihat detail lengkap.`,
+    `End of ${currentYear} recap: Savings left ${formatShortIDR(estimatedSavings)}, target diff ${cumulativeDiffLabel}.${spentDiff < 0 ? ` Saved ${formatShortIDR(Math.abs(spentDiff))} vs ${prevYear}.` : ""}${busiestMonthIdx >= 0 ? ` Top month: ${busiestMonthLabel}.` : ""} See the full report.`,
   );
   const greeting = L("Selamat tahun baru! 🎉", "Happy New Year! 🎉");
   const bluf = L(
@@ -1035,9 +1057,12 @@ export async function buildYearlyRecap(): Promise<NotificationPayload> {
     ],
     [
       {
-        label: L("Estimasi Tabungan", "Est. Savings"),
-        value: formatShortIDR(estimatedSavings),
-        color: savingsColor,
+        label: L(
+          "Selisih Target vs Aktual",
+          "Target vs Actual Diff",
+        ),
+        value: cumulativeDiffLabel,
+        color: cumulativeDiffColor,
       },
       {
         label: L("Bulan Pengeluaran Terbanyak", "Top Spending Month"),
@@ -1047,11 +1072,11 @@ export async function buildYearlyRecap(): Promise<NotificationPayload> {
     ],
   ];
 
-  // Tabel top 3 wadah terboros
-  const categoryHeader = L("Top 3 Wadah Tahunan", "Top 3 Annual Envelopes");
-  const categories = topEnvelopes.map((env, i) => ({
-    name: `${i + 1}. ${env.label}`,
-    detail: `${formatShortIDR(env.spent)}${env.allocation > 0 ? ` dari alokasi ${formatShortIDR(env.allocation)}` : ""}`,
+  // Tabel Pengeluaran per Wadah (semua wadah, urut terbesar)
+  const categoryHeader = L("Pengeluaran per Wadah", "Spending by Envelope");
+  const categories = allEnvelopes.map((env) => ({
+    name: env.label,
+    detail: `${formatShortIDR(env.spent)}${env.allocation > 0 ? ` dari alokasi ${formatShortIDR(env.allocation * 12)}` : ""}`,
     dotColor: env.color,
   }));
 
@@ -1074,6 +1099,17 @@ export async function buildYearlyRecap(): Promise<NotificationPayload> {
     metricsGrid,
     categoryHeader,
     categories,
+    extraSections: topMonths.length > 0
+      ? [
+          {
+            header: L(
+              "Top 3 Bulan Pengeluaran Terbesar",
+              "Top 3 Highest Spending Months",
+            ),
+            rows: topMonths,
+          },
+        ]
+      : [],
     ctaText,
     ctaUrl: link,
     closing,
@@ -1081,8 +1117,8 @@ export async function buildYearlyRecap(): Promise<NotificationPayload> {
   });
 
   const body = L(
-    `🎊 Rekap akhir tahun ${currentYear}: Sisa tabungan ${formatShortIDR(estimatedSavings)} (${transactionCountCurrent} transaksi).${topEnvelopes.length > 0 ? ` Top wadah: ${topEnvelopes.map((e) => e.label).join(", ")}.` : ""}${busiestMonthIdx >= 0 ? ` Bulan terbanyak: ${busiestMonthLabel}.` : ""} Pengeluaran ${spentDiff < 0 ? "turun " : spentDiff > 0 ? "naik " : "sama "}${spentDiff !== 0 ? formatShortIDR(Math.abs(spentDiff)) + " " : ""}dibanding ${prevYear}.`,
-    `🎊 End of ${currentYear} recap: Savings left ${formatShortIDR(estimatedSavings)} (${transactionCountCurrent} transactions).${topEnvelopes.length > 0 ? ` Top envelopes: ${topEnvelopes.map((e) => e.label).join(", ")}.` : ""}${busiestMonthIdx >= 0 ? ` Top month: ${busiestMonthLabel}.` : ""} Spending ${spentDiff < 0 ? "dropped " : spentDiff > 0 ? "rose " : "unchanged "}${spentDiff !== 0 ? formatShortIDR(Math.abs(spentDiff)) + " " : ""}vs ${prevYear}.`,
+    `🎊 Rekap akhir tahun ${currentYear}: Sisa tabungan ${formatShortIDR(estimatedSavings)} (${transactionCountCurrent} transaksi), selisih target ${cumulativeDiffLabel}.${busiestMonthIdx >= 0 ? ` Bulan terbanyak: ${busiestMonthLabel}.` : ""} Pengeluaran ${spentDiff < 0 ? "turun " : spentDiff > 0 ? "naik " : "sama "}${spentDiff !== 0 ? formatShortIDR(Math.abs(spentDiff)) + " " : ""}dibanding ${prevYear}.`,
+    `🎊 End of ${currentYear} recap: Savings left ${formatShortIDR(estimatedSavings)} (${transactionCountCurrent} transactions), target diff ${cumulativeDiffLabel}.${busiestMonthIdx >= 0 ? ` Top month: ${busiestMonthLabel}.` : ""} Spending ${spentDiff < 0 ? "dropped " : spentDiff > 0 ? "rose " : "unchanged "}${spentDiff !== 0 ? formatShortIDR(Math.abs(spentDiff)) + " " : ""}vs ${prevYear}.`,
   );
 
   return {
@@ -1241,6 +1277,47 @@ function buildRichEmailHtml(params: {
 <title>${escapeHtml(params.title)}</title>
 <style type="text/css">
 @media screen{body,table,td,p,a,span,strong,h1,h2,h3{font-family:${font}}}
+/* ===== Responsive: Mobile-first ===== */
+.email-container{width:100%!important;max-width:560px!important}
+.email-card{padding:28px 24px!important}
+.email-header{padding:24px!important}
+.email-title{font-size:22px!important}
+.email-subtitle{font-size:13px!important}
+.metric-value{font-size:18px!important}
+.metric-label{font-size:12px!important}
+.bluf-text{font-size:15px!important;line-height:1.6!important}
+.section-header{font-size:13px!important}
+.cat-name{font-size:14px!important}
+.cat-detail{font-size:12px!important}
+.cta-btn{padding:12px 32px!important;font-size:14px!important}
+.closing-text{font-size:14px!important}
+.signature-text{font-size:13px!important}
+@media screen and (max-width:600px){
+  body{padding:12px!important}
+  .email-card{padding:20px 16px!important}
+  .email-header{padding:20px 16px!important}
+  .email-title{font-size:19px!important}
+  .email-subtitle{font-size:12px!important}
+  .bluf-text{font-size:14px!important}
+  .metric-grid-table,.metric-grid-table tr,.metric-grid-table td{display:block!important;width:100%!important;box-sizing:border-box!important}
+  .metric-grid-table td{border-radius:6px!important;border:1px solid #e5e7eb!important;margin-bottom:8px!important}
+  .metric-grid-table tr{border:none!important}
+  .metric-value{font-size:16px!important}
+  .metric-label{font-size:11px!important}
+  .section-header{font-size:12px!important}
+  .cat-name{font-size:13px!important}
+  .cat-detail{font-size:11px!important}
+  .cta-btn{display:block!important;width:100%!important;padding:12px 0!important;box-sizing:border-box!important}
+  .closing-text{font-size:13px!important}
+  .signature-text{font-size:12px!important}
+}
+@media screen and (max-width:380px){
+  .email-card{padding:16px 12px!important}
+  .email-header{padding:16px 12px!important}
+  .email-title{font-size:17px!important}
+  .bluf-text{font-size:13px!important}
+  .metric-value{font-size:15px!important}
+}
 </style>
 <!--[if mso]>
 <style type="text/css">body,table,td,p,a,span,strong,h1,h2,h3{font-family:Arial,sans-serif!important}</style>
@@ -1248,22 +1325,22 @@ function buildRichEmailHtml(params: {
 </head>
 <body style="margin:0;padding:24px;background:#f3f4f6;font-family:${font}">
 ${preheader}
-<div style="font-family:${font};max-width:560px;margin:0 auto;color:#1f2937;padding:0">
-  <div style="background:${params.themeColor};color:#fff;padding:24px;text-align:center;border-radius:12px 12px 0 0">
-    <h1 style="font-family:${font};margin:0;font-size:22px;font-weight:700">${escapeHtml(params.title)}</h1>
-    <p style="font-family:${font};margin:4px 0 0;font-size:13px;opacity:0.9">${escapeHtml(params.subtitle)}</p>
+<div class="email-container" style="font-family:${font};max-width:560px;margin:0 auto;color:#1f2937;padding:0">
+  <div class="email-header" style="background:${params.themeColor};color:#fff;padding:24px;text-align:center;border-radius:12px 12px 0 0">
+    <h1 class="email-title" style="font-family:${font};margin:0;font-size:22px;font-weight:700">${escapeHtml(params.title)}</h1>
+    <p class="email-subtitle" style="font-family:${font};margin:4px 0 0;font-size:13px;opacity:0.9">${escapeHtml(params.subtitle)}</p>
   </div>
-  <div style="background:#f9fafb;padding:28px 24px;border:1px solid #e5e7eb;border-top:none;border-radius:0 0 12px 12px">
+  <div class="email-card" style="background:#f9fafb;padding:28px 24px;border:1px solid #e5e7eb;border-top:none;border-radius:0 0 12px 12px">
     <p style="font-family:${font};margin:0 0 16px;font-size:15px">${params.greeting}</p>
-    <p style="font-family:${font};margin:0 0 20px;font-size:15px;line-height:1.6">${params.bluf}</p>
+    <p class="bluf-text" style="font-family:${font};margin:0 0 20px;font-size:15px;line-height:1.6">${params.bluf}</p>
     ${metricsRow}${metricsGridBlock}
     ${categoryBlock}${extraSectionsBlock}
     <div style="text-align:center;margin:24px 0 16px">
-      <a href="${escapeHtml(params.ctaUrl)}" style="font-family:${font};display:inline-block;padding:12px 32px;background:${params.themeColor};color:#fff;border-radius:8px;text-decoration:none;font-weight:600;font-size:14px">${escapeHtml(params.ctaText)}</a>
+      <a class="cta-btn" href="${escapeHtml(params.ctaUrl)}" style="font-family:${font};display:inline-block;padding:12px 32px;background:${params.themeColor};color:#fff;border-radius:8px;text-decoration:none;font-weight:600;font-size:14px">${escapeHtml(params.ctaText)}</a>
     </div>
-    <p style="font-family:${font};margin:0 0 4px;font-size:14px;line-height:1.6">${params.closing}</p>
+    <p class="closing-text" style="font-family:${font};margin:0 0 4px;font-size:14px;line-height:1.6">${params.closing}</p>
     <hr style="border:none;border-top:1px solid #e5e7eb;margin:20px 0 12px" />
-    <p style="font-family:${font};margin:0;font-size:13px;color:#6b7280;line-height:1.5">${params.signature}</p>
+    <p class="signature-text" style="font-family:${font};margin:0;font-size:13px;color:#6b7280;line-height:1.5">${params.signature}</p>
   </div>
 </div>
 </body>
