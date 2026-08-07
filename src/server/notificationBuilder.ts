@@ -314,8 +314,8 @@ export async function buildNewCycleKickoff(): Promise<NotificationPayload> {
     "A fresh cycle begins! 🎉",
   );
   const bluf = L(
-    `Siklus <strong>${cycle.label}</strong> resmi dimulai hari ini. Saldo awal <strong>${formatShortIDR(SAVINGS_INITIAL)}</strong> dengan wadah yang sudah direset. Semoga lebih hemat dari siklus lalu! 💪`,
-    `The <strong>${cycle.label}</strong> cycle officially starts today. Initial balance: <strong>${formatShortIDR(SAVINGS_INITIAL)}</strong> with envelopes reset. Hope you save more than last cycle! 💪`,
+    `Siklus <strong>${cycle.label}</strong> resmi dimulai hari ini dengan wadah yang sudah direset. Semoga lebih hemat dari siklus lalu! 💪`,
+    `The <strong>${cycle.label}</strong> cycle officially starts today with envelopes reset. Hope you save more than last cycle! 💪`,
   );
   const ctaText = L("Buka Dashboard", "Open Dashboard");
 
@@ -399,6 +399,11 @@ export async function buildNewCycleKickoff(): Promise<NotificationPayload> {
         label: L("Saldo Awal", "Initial Balance"),
         value: formatShortIDR(SAVINGS_INITIAL),
         color: "#22c55e",
+      },
+      {
+        label: L("Sisa Limit", "Limit Remaining"),
+        value: formatShortIDR(stats1.spendingLimit - stats1.allocatedSpent),
+        color: "#4f46e5",
       },
     ],
     categoryHeader,
@@ -524,26 +529,46 @@ export async function buildMonthlySummary(): Promise<NotificationPayload> {
           )
         : L("sama", "same");
 
-  // Sisa tabungan
-  const savings = stats.remaining;
-  const savingsPercent =
-    SAVINGS_INITIAL > 0 ? Math.round((savings / SAVINGS_INITIAL) * 100) : 0;
+  // Persentase sisa limit
+  const remainingLimitPercent =
+    stats.spendingLimit > 0
+      ? Math.max(
+          0,
+          Math.round((stats.limitRemaining / stats.spendingLimit) * 100),
+        )
+      : 0;
+
+  // Top 3 tanggal pengeluaran terbesar
+  const topDates = [...currentPurchases]
+    .sort((a, b) => b.amount - a.amount)
+    .slice(0, 3)
+    .map((p) => {
+      const cat = CATEGORY_MAP[p.categoryId];
+      const catLabel = cat
+        ? (cat.label[NOTIFICATION_LOCALE] ?? cat.label.id)
+        : p.categoryId;
+      const dateLabel = formatDateLabel(new Date(p.date), NOTIFICATION_LOCALE);
+      return {
+        name: `${p.name} (${dateLabel})`,
+        detail: `${formatShortIDR(p.amount)} · ${catLabel}`,
+        dotColor: cat?.color ?? "#6b7280",
+      };
+    });
 
   // --- Komponen email kaya ---
   const themeColor = "#4f46e5";
 
   const previewText = L(
-    `Siklus ${cycle.label} selesai. Tabungan tersisa ${formatShortIDR(savings)} (${savingsPercent}%).${diff < 0 ? ` Hemat ${formatShortIDR(Math.abs(diff))} dari siklus lalu.` : ""} Lihat rekap lengkap.`,
-    `${cycle.label} cycle complete. Savings left ${formatShortIDR(savings)} (${savingsPercent}%).${diff < 0 ? ` Saved ${formatShortIDR(Math.abs(diff))} vs last cycle.` : ""} See the full recap.`,
+    `Siklus ${cycle.label} selesai. Total pengeluaran ${formatShortIDR(stats.totalSpent)}, sisa limit ${remainingLimitPercent}%.${diff < 0 ? ` Hemat ${formatShortIDR(Math.abs(diff))} dari ${prevCycle.label}.` : ""} Lihat rekap lengkap.`,
+    `${cycle.label} cycle complete. Total spent ${formatShortIDR(stats.totalSpent)}, ${remainingLimitPercent}% limit remaining.${diff < 0 ? ` Saved ${formatShortIDR(Math.abs(diff))} vs ${prevCycle.label}.` : ""} See the full recap.`,
   );
 
   // Warna metrik sesuai kondisi.
   const limitColor = stats.overLimit
     ? "#ef4444"
-    : stats.limitPercent >= 80
+    : remainingLimitPercent <= 20
       ? "#f59e0b"
       : "#22c55e";
-  const savingsColor = savings > 0 ? "#22c55e" : "#ef4444";
 
   const emailTitle = L(
     `📊 Rekap Akhir Siklus ${cycle.label}`,
@@ -551,9 +576,27 @@ export async function buildMonthlySummary(): Promise<NotificationPayload> {
   );
   const subtitle = `${APP_NAME} · ${L(`Siklus ${cycle.label}`, `Cycle ${cycle.label}`)}`;
   const greeting = L("Halo! 👋", "Hello! 👋");
+
+  // Bandingan dengan siklus sebelumnya
+  const comparisonNote =
+    diff > 0
+      ? L(
+          `Pengeluaran naik <strong>${formatShortIDR(diff)}</strong> dibanding ${prevCycle.label}.`,
+          `Spending rose by <strong>${formatShortIDR(diff)}</strong> compared to ${prevCycle.label}.`,
+        )
+      : diff < 0
+        ? L(
+            `Pengeluaran turun <strong>${formatShortIDR(Math.abs(diff))}</strong> dibanding ${prevCycle.label}.`,
+            `Spending dropped by <strong>${formatShortIDR(Math.abs(diff))}</strong> compared to ${prevCycle.label}.`,
+          )
+        : L(
+            `Pengeluaran sama dengan ${prevCycle.label}.`,
+            `Spending is the same as ${prevCycle.label}.`,
+          );
+
   const bluf = L(
-    `<strong>Ringkasan siklus ${cycle.label}:</strong> Total pengeluaran <strong>${formatShortIDR(stats.totalSpent)}</strong> (${stats.limitPercent}% limit), sisa tabungan <strong>${formatShortIDR(savings)}</strong> (${savingsPercent}%).${stats.overLimit ? " ⚠️ Limit terlampaui!" : ""}`,
-    `<strong>${cycle.label} cycle summary:</strong> Total spent <strong>${formatShortIDR(stats.totalSpent)}</strong> (${stats.limitPercent}% of limit), savings left <strong>${formatShortIDR(savings)}</strong> (${savingsPercent}%).${stats.overLimit ? " ⚠️ Limit exceeded!" : ""}`,
+    `<strong>Ringkasan siklus ${cycle.label}:</strong> ${comparisonNote}`,
+    `<strong>${cycle.label} cycle summary:</strong> ${comparisonNote}`,
   );
   const categoryHeader = L("Pengeluaran per Wadah", "Spending by Envelope");
   const ctaText = L("Buka Dashboard Lengkap", "Open Full Dashboard");
@@ -600,34 +643,32 @@ export async function buildMonthlySummary(): Promise<NotificationPayload> {
     greeting,
     bluf,
     previewText,
-    metricsGrid: [
-      [
-        {
-          label: L("Penggunaan Limit", "Limit Usage"),
-          value: `${stats.limitPercent}%`,
-          color: limitColor,
-        },
-        {
-          label: L("Total Pengeluaran", "Total Spent"),
-          value: formatShortIDR(stats.totalSpent),
-          color: "#1f2937",
-        },
-      ],
-      [
-        {
-          label: L("Sisa Tabungan", "Savings Left"),
-          value: formatShortIDR(savings),
-          color: savingsColor,
-        },
-        {
-          label: L(`vs ${prevCycle.label}`, `vs ${prevCycle.label}`),
-          value: diffLabel,
-          color: diff <= 0 ? "#22c55e" : "#ef4444",
-        },
-      ],
+    metrics: [
+      {
+        label: L("Total Pengeluaran", "Total Spent"),
+        value: formatShortIDR(stats.totalSpent),
+        color: "#1f2937",
+      },
+      {
+        label: L("Penggunaan Alokasi Wadah", "Envelope Usage"),
+        value: `${remainingLimitPercent}% ${L("sisa", "left")}`,
+        color: limitColor,
+      },
     ],
     categoryHeader,
     categories: categoryInsights,
+    extraSections:
+      topDates.length > 0
+        ? [
+            {
+              header: L(
+                "Top 3 Tanggal Pengeluaran Terbesar",
+                "Top 3 Highest Spending Dates",
+              ),
+              rows: topDates,
+            },
+          ]
+        : [],
     ctaText,
     ctaUrl: link,
     closing,
@@ -639,8 +680,8 @@ export async function buildMonthlySummary(): Promise<NotificationPayload> {
     .map((c) => c.label[NOTIFICATION_LOCALE] ?? c.label.id)
     .join(", ");
   const body = L(
-    `Siklus ${cycle.label} selesai. Total pengeluaran ${formatShortIDR(stats.totalSpent)}, tabungan tersisa ${formatShortIDR(savings)} (${savingsPercent}%).${topCatNames ? ` Wadah terboros: ${topCatNames}.` : ""} vs ${prevCycle.label}: ${diffLabel}.`,
-    `${cycle.label} cycle complete. Total spent ${formatShortIDR(stats.totalSpent)}, savings left ${formatShortIDR(savings)} (${savingsPercent}%).${topCatNames ? ` Top spending: ${topCatNames}.` : ""} vs ${prevCycle.label}: ${diffLabel}.`,
+    `Siklus ${cycle.label} selesai. Total pengeluaran ${formatShortIDR(stats.totalSpent)}, sisa limit ${remainingLimitPercent}%.${topCatNames ? ` Wadah terboros: ${topCatNames}.` : ""} vs ${prevCycle.label}: ${diffLabel}.`,
+    `${cycle.label} cycle complete. Total spent ${formatShortIDR(stats.totalSpent)}, ${remainingLimitPercent}% limit remaining.${topCatNames ? ` Top spending: ${topCatNames}.` : ""} vs ${prevCycle.label}: ${diffLabel}.`,
   );
 
   return {
@@ -894,17 +935,25 @@ export async function buildYearlyRecap(): Promise<NotificationPayload> {
   const purchasesPrev = toPurchases(recPrev);
 
   // Hitung statistik sederhana untuk seluruh tahun
-  const totalSpentCurrent = purchasesCurrent.reduce((sum, p) => sum + p.amount, 0);
+  const totalSpentCurrent = purchasesCurrent.reduce(
+    (sum, p) => sum + p.amount,
+    0,
+  );
   const totalSpentPrev = purchasesPrev.reduce((sum, p) => sum + p.amount, 0);
   const transactionCountCurrent = purchasesCurrent.length;
-  const transactionCountPrev = purchasesPrev.length;
 
   // Hitung pengeluaran per wadah (hanya dialokasikan)
   const spentByEnvelope = new Map<string, number>();
-  const allocatedCats = Object.values(CATEGORY_MAP).filter((c) => !c.excludeFromAllocation);
+  const allocatedCats = Object.values(CATEGORY_MAP).filter(
+    (c) => !c.excludeFromAllocation,
+  );
   for (const p of purchasesCurrent) {
-    if (!spentByEnvelope.has(p.categoryId)) spentByEnvelope.set(p.categoryId, 0);
-    spentByEnvelope.set(p.categoryId, spentByEnvelope.get(p.categoryId)! + p.amount);
+    if (!spentByEnvelope.has(p.categoryId))
+      spentByEnvelope.set(p.categoryId, 0);
+    spentByEnvelope.set(
+      p.categoryId,
+      spentByEnvelope.get(p.categoryId)! + p.amount,
+    );
   }
 
   // Top 3 wadah terboros tahun ini
@@ -922,21 +971,34 @@ export async function buildYearlyRecap(): Promise<NotificationPayload> {
 
   // Hitung tren pengeluaran (tahun ini vs tahun lalu)
   const spentDiff = totalSpentCurrent - totalSpentPrev;
-  const spentDiffLabel =
-    spentDiff > 0
-      ? `+${formatShortIDR(spentDiff)}`
-      : spentDiff < 0
-        ? L(
-            `hemat ${formatShortIDR(Math.abs(spentDiff))}`,
-            `saved ${formatShortIDR(Math.abs(spentDiff))}`,
-          )
-        : L("sama", "same");
-  const spentTrendColor = spentDiff <= 0 ? "#22c55e" : "#ef4444";
 
-  // Perkiraan tabungan (karena siklus tidak selalu sama, pakai estimasi kasar)
+  // Perkiraan tabungan / kumulatif aktual
   // Estimasi: SAVINGS_INITIAL * 12 - totalSpentCurrent (asumsi 12 siklus)
   const estimatedSavings = SAVINGS_INITIAL * 12 - totalSpentCurrent;
   const savingsColor = estimatedSavings > 0 ? "#22c55e" : "#ef4444";
+
+  // Hitung bulan dengan pengeluaran terbanyak tahun ini
+  const spentByMonth = new Map<number, number>();
+  for (const p of purchasesCurrent) {
+    const monthIdx = new Date(p.date).getMonth();
+    spentByMonth.set(monthIdx, (spentByMonth.get(monthIdx) ?? 0) + p.amount);
+  }
+  let busiestMonthIdx = -1;
+  let busiestMonthSpent = 0;
+  for (const [monthIdx, spent] of spentByMonth) {
+    if (spent > busiestMonthSpent) {
+      busiestMonthSpent = spent;
+      busiestMonthIdx = monthIdx;
+    }
+  }
+  const busiestMonthLabel =
+    busiestMonthIdx >= 0
+      ? formatCycleLabel(currentYear, busiestMonthIdx, NOTIFICATION_LOCALE)
+      : L("-", "-");
+  const busiestMonthValue =
+    busiestMonthIdx >= 0
+      ? `${busiestMonthLabel}`
+      : L("Belum ada data", "No data");
 
   const themeColor = "#f59e0b";
   const link = `${BASE_URL}/`;
@@ -947,13 +1009,13 @@ export async function buildYearlyRecap(): Promise<NotificationPayload> {
   );
   const subtitle = `${APP_NAME} · ${currentYear}`;
   const previewText = L(
-    `Rekap akhir tahun ${currentYear}: ${formatShortIDR(totalSpentCurrent)} pengeluaran tahunan. Top wadah: ${topEnvelopes.map((e) => e.label).join(", ")}. Lihat detail lengkap.`,
-    `End of ${currentYear} recap: ${formatShortIDR(totalSpentCurrent)} annual spending. Top envelopes: ${topEnvelopes.map((e) => e.label).join(", ")}. See the full report.`,
+    `Rekap akhir tahun ${currentYear}: Sisa tabungan ${formatShortIDR(estimatedSavings)}.${spentDiff < 0 ? ` Hemat ${formatShortIDR(Math.abs(spentDiff))} dari ${prevYear}.` : ""} Top wadah: ${topEnvelopes.map((e) => e.label).join(", ")}. Lihat detail lengkap.`,
+    `End of ${currentYear} recap: Savings left ${formatShortIDR(estimatedSavings)}.${spentDiff < 0 ? ` Saved ${formatShortIDR(Math.abs(spentDiff))} vs ${prevYear}.` : ""} Top envelopes: ${topEnvelopes.map((e) => e.label).join(", ")}. See the full report.`,
   );
   const greeting = L("Selamat tahun baru! 🎉", "Happy New Year! 🎉");
   const bluf = L(
-    `<strong>Ringkasan tahun ${currentYear}:</strong> ${transactionCountCurrent} transaksi tercatat dengan total pengeluaran <strong>${formatShortIDR(totalSpentCurrent)}</strong>.${spentDiff < 0 ? ` Anda hemat ${formatShortIDR(Math.abs(spentDiff))} dibanding ${prevYear}.` : spentDiff > 0 ? ` Pengeluaran naik ${formatShortIDR(spentDiff)} dibanding ${prevYear}.` : ""}`,
-    `<strong>${currentYear} summary:</strong> ${transactionCountCurrent} transactions logged with total spending of <strong>${formatShortIDR(totalSpentCurrent)}</strong>.${spentDiff < 0 ? ` You saved ${formatShortIDR(Math.abs(spentDiff))} vs ${prevYear}.` : spentDiff > 0 ? ` Spending rose ${formatShortIDR(spentDiff)} vs ${prevYear}.` : ""}`,
+    `<strong>Ringkasan tahun ${currentYear}:</strong> Total tabungan <strong>${formatShortIDR(estimatedSavings)}</strong>.${spentDiff < 0 ? ` Pengeluaran turun ${formatShortIDR(Math.abs(spentDiff))} dibanding ${prevYear}.` : spentDiff > 0 ? ` Pengeluaran naik ${formatShortIDR(spentDiff)} dibanding ${prevYear}.` : ` Pengeluaran sama dengan ${prevYear}.`}`,
+    `<strong>${currentYear} summary:</strong> Total savings left <strong>${formatShortIDR(estimatedSavings)}</strong>.${spentDiff < 0 ? ` Spending dropped ${formatShortIDR(Math.abs(spentDiff))} vs ${prevYear}.` : spentDiff > 0 ? ` Spending rose ${formatShortIDR(spentDiff)} vs ${prevYear}.` : ` Spending is the same as ${prevYear}.`}`,
   );
   const ctaText = L("Buka Dashboard", "Open Dashboard");
 
@@ -966,21 +1028,21 @@ export async function buildYearlyRecap(): Promise<NotificationPayload> {
         color: "#1f2937",
       },
       {
-        label: L("Estimasi Tabungan", "Est. Savings"),
-        value: formatShortIDR(estimatedSavings),
-        color: savingsColor,
+        label: L("Jumlah Transaksi", "Transactions"),
+        value: String(transactionCountCurrent),
+        color: "#6b7280",
       },
     ],
     [
       {
-        label: L(`vs Tahun ${prevYear}`, `vs ${prevYear}`),
-        value: spentDiffLabel,
-        color: spentTrendColor,
+        label: L("Estimasi Tabungan", "Est. Savings"),
+        value: formatShortIDR(estimatedSavings),
+        color: savingsColor,
       },
       {
-        label: L("Jumlah Transaksi", "Transactions"),
-        value: String(transactionCountCurrent),
-        color: "#6b7280",
+        label: L("Bulan Pengeluaran Terbanyak", "Top Spending Month"),
+        value: busiestMonthValue,
+        color: "#f59e0b",
       },
     ],
   ];
@@ -994,8 +1056,8 @@ export async function buildYearlyRecap(): Promise<NotificationPayload> {
   }));
 
   const closing = L(
-    `🎊 Terima kasih sudah mencatat pengeluaran selama tahun ${currentYear}! ${topEnvelopes.length > 0 ? `Wadah terboros: ${topEnvelopes.map((e) => e.label).join(", ")}. ` : ""}Tahun depan lebih hemat lagi! 💪`,
-    `🎊 Thanks for tracking your spending throughout ${currentYear}! ${topEnvelopes.length > 0 ? `Top spending envelopes: ${topEnvelopes.map((e) => e.label).join(", ")}. ` : ""}Save even more next year! 💪`,
+    `🎊 Terima kasih sudah mencatat pengeluaran selama tahun ${currentYear}! Tahun depan lebih hemat lagi dan Selamat Tahun Baru! 💪`,
+    `🎊 Thanks for tracking your spending throughout ${currentYear}! Save even more next year and happy new year! 💪`,
   );
   const signature = L(
     `Salam hangat,<br/><strong style="color:#1f2937">${APP_NAME}</strong>`,
@@ -1019,8 +1081,8 @@ export async function buildYearlyRecap(): Promise<NotificationPayload> {
   });
 
   const body = L(
-    `🎊 Rekap akhir tahun ${currentYear}: ${formatShortIDR(totalSpentCurrent)} pengeluaran tahunan (${transactionCountCurrent} transaksi).${topEnvelopes.length > 0 ? ` Top wadah: ${topEnvelopes.map((e) => e.label).join(", ")}.` : ""} vs ${prevYear}: ${spentDiffLabel}.`,
-    `🎊 End of ${currentYear} recap: ${formatShortIDR(totalSpentCurrent)} annual spending (${transactionCountCurrent} transactions).${topEnvelopes.length > 0 ? ` Top envelopes: ${topEnvelopes.map((e) => e.label).join(", ")}.` : ""} vs ${prevYear}: ${spentDiffLabel}.`,
+    `🎊 Rekap akhir tahun ${currentYear}: Sisa tabungan ${formatShortIDR(estimatedSavings)} (${transactionCountCurrent} transaksi).${topEnvelopes.length > 0 ? ` Top wadah: ${topEnvelopes.map((e) => e.label).join(", ")}.` : ""}${busiestMonthIdx >= 0 ? ` Bulan terbanyak: ${busiestMonthLabel}.` : ""} Pengeluaran ${spentDiff < 0 ? "turun " : spentDiff > 0 ? "naik " : "sama "}${spentDiff !== 0 ? formatShortIDR(Math.abs(spentDiff)) + " " : ""}dibanding ${prevYear}.`,
+    `🎊 End of ${currentYear} recap: Savings left ${formatShortIDR(estimatedSavings)} (${transactionCountCurrent} transactions).${topEnvelopes.length > 0 ? ` Top envelopes: ${topEnvelopes.map((e) => e.label).join(", ")}.` : ""}${busiestMonthIdx >= 0 ? ` Top month: ${busiestMonthLabel}.` : ""} Spending ${spentDiff < 0 ? "dropped " : spentDiff > 0 ? "rose " : "unchanged "}${spentDiff !== 0 ? formatShortIDR(Math.abs(spentDiff)) + " " : ""}vs ${prevYear}.`,
   );
 
   return {
@@ -1052,6 +1114,11 @@ function buildRichEmailHtml(params: {
   metricsGrid?: { label: string; value: string; color?: string }[][];
   categoryHeader: string;
   categories: { name: string; detail: string; dotColor: string }[];
+  /** Tambahan section tabel (mis. top 3 tanggal pengeluaran). */
+  extraSections?: {
+    header: string;
+    rows: { name: string; detail: string; dotColor: string }[];
+  }[];
   ctaText: string;
   ctaUrl: string;
   closing: string;
@@ -1141,6 +1208,27 @@ function buildRichEmailHtml(params: {
     </table>`
       : "";
 
+  // Extra sections block (optional additional tables)
+  const extraSectionsBlock = (params.extraSections ?? [])
+    .filter((sec) => sec.header && sec.rows.length > 0)
+    .map(
+      (
+        sec,
+      ) => `<p style="font-family:${font};margin:0 0 8px;font-size:13px;font-weight:600;color:#6b7280;text-transform:uppercase;letter-spacing:0.5px">${escapeHtml(sec.header)}</p>
+    <table style="width:100%;border-collapse:collapse;margin:0 0 20px;font-size:14px">
+      ${sec.rows
+        .map(
+          (row, i) =>
+            `<tr><td style="padding:8px 0;${i < sec.rows.length - 1 ? "border-bottom:1px solid #e5e7eb;" : ""}">
+        <span style="display:inline-block;width:10px;height:10px;background:${row.dotColor};border-radius:50%;margin-right:8px"></span>
+        ${escapeHtml(row.name)}<br/><span style="font-family:${font};color:#6b7280;font-size:12px">${escapeHtml(row.detail)}</span>
+      </td></tr>`,
+        )
+        .join("")}
+    </table>`,
+    )
+    .join("");
+
   return `<!DOCTYPE html>
 <html lang="${NOTIFICATION_LOCALE}">
 <head>
@@ -1169,7 +1257,7 @@ ${preheader}
     <p style="font-family:${font};margin:0 0 16px;font-size:15px">${params.greeting}</p>
     <p style="font-family:${font};margin:0 0 20px;font-size:15px;line-height:1.6">${params.bluf}</p>
     ${metricsRow}${metricsGridBlock}
-    ${categoryBlock}
+    ${categoryBlock}${extraSectionsBlock}
     <div style="text-align:center;margin:24px 0 16px">
       <a href="${escapeHtml(params.ctaUrl)}" style="font-family:${font};display:inline-block;padding:12px 32px;background:${params.themeColor};color:#fff;border-radius:8px;text-decoration:none;font-weight:600;font-size:14px">${escapeHtml(params.ctaText)}</a>
     </div>
