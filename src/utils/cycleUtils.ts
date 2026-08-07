@@ -155,3 +155,42 @@ export function isDateInCycle(date: Date, cycle: CycleInfo): boolean {
   const d = new Date(date);
   return d >= cycle.startDate && d <= cycle.endDate;
 }
+
+/** Bandingkan dua tanggal pada level hari (abaikan jam). */
+export function isSameDay(a: Date, b: Date): boolean {
+  return (
+    a.getFullYear() === b.getFullYear() &&
+    a.getMonth() === b.getMonth() &&
+    a.getDate() === b.getDate()
+  );
+}
+
+/** Apakah `date` adalah hari pertama sebuah siklus (tanggal = startDay)? */
+export function isCycleStartDay(
+  date: Date = new Date(),
+  startDay: number = CYCLE_START_DAY,
+): boolean {
+  const cycle = getCycleForDate(date, startDay);
+  const yesterday = new Date(date);
+  yesterday.setDate(yesterday.getDate() - 1);
+  // Hari pertama siklus = kemarin masih berada di siklus sebelumnya.
+  return !isDateInCycle(yesterday, cycle);
+}
+
+/** Apakah `date` adalah hari terakhir sebuah siklus (tanggal = startDay - 1)? */
+export function isCycleLastDay(
+  date: Date = new Date(),
+  startDay: number = CYCLE_START_DAY,
+): boolean {
+  const cycle = getCycleForDate(date, startDay);
+  const tomorrow = new Date(date);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  // Hari terakhir siklus = besar sudah masuk siklus berikutnya.
+  return !isDateInCycle(tomorrow, cycle);
+}
+
+/** Format tanggal panjang sesuai locale, mis. "24 Agustus 2026" / "24 August 2026". */
+export function formatDateLabel(date: Date, locale: Locale = "id"): string {
+  const names = MONTH_NAMES[locale] ?? MONTH_NAMES.id;
+  return `${date.getDate()} ${names[date.getMonth()]} ${date.getFullYear()}`;
+}

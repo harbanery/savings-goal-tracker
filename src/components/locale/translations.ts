@@ -156,11 +156,24 @@ const id: TranslationDict = {
 
   // Dev / Development (hanya tampil saat NODE_ENV === "development")
   "dev.title": "Tes Notifikasi",
-  "dev.dailyBtn": "Daily Reminder",
-  "dev.dailyTooltip": "Kirim push notification harian manual",
-  "dev.weeklyBtn": "Weekly Summary",
-  "dev.weeklyTooltip": "Kirim ringkasan mingguan via email manual",
+  "dev.trackingNudgeBtn": "Tracking Nudge",
+  "dev.trackingNudgeTooltip": "Kirim push: pengingat belum mencatat",
+  "dev.categorySpotlightBtn": "Category Spotlight",
+  "dev.categorySpotlightTooltip": "Kirim push: sorotan wadah boros mingguan",
+  "dev.cycleResetBtn": "Cycle Reset",
+  "dev.cycleResetTooltip": "Kirim push: pengingat reset siklus H-1",
+  "dev.newCycleKickoffBtn": "New Cycle Kickoff",
+  "dev.newCycleKickoffTooltip":
+    "Kirim email: kickoff siklus baru + saran realokasi",
+  "dev.monthlySummaryBtn": "Monthly Summary",
+  "dev.monthlySummaryTooltip": "Kirim email: rekap akhir siklus",
+  "dev.csvExportBtn": "CSV Export Reminder",
+  "dev.csvExportTooltip": "Kirim email: pengingat backup data",
+  "dev.quarterlyTrendBtn": "Quarterly Trend",
+  "dev.quarterlyTrendTooltip": "Kirim email: laporan tren tabungan triwulanan",
   "dev.pushSuccess": "Notifikasi terkirim ({val} subscriber).",
+  "dev.emailSuccess": "Email berhasil dikirim.",
+  "dev.skipped": "Notifikasi dilewati — kondisi tidak terpenuhi.",
   "dev.pushFailed": "Gagal mengirim notifikasi.",
 };
 
@@ -266,8 +279,7 @@ const en: TranslationDict = {
   "notif.disabled": "Notifications disabled.",
   "notif.disableFailed": "Failed to disable notifications.",
   "notif.activeTooltip": "Notifications active. Click to disable.",
-  "notif.inactiveTooltip":
-    "Enable notifications for daily spending reminders.",
+  "notif.inactiveTooltip": "Enable notifications for daily spending reminders.",
 
   "clock.loading": "Loading...",
   "clock.ariaTime": "Current time {time}, {date}",
@@ -296,11 +308,26 @@ const en: TranslationDict = {
 
   // Dev / Development (only shown when NODE_ENV === "development")
   "dev.title": "Test Notifications",
-  "dev.dailyBtn": "Daily Reminder",
-  "dev.dailyTooltip": "Manually trigger the daily push notification",
-  "dev.weeklyBtn": "Weekly Summary",
-  "dev.weeklyTooltip": "Manually trigger the weekly summary email",
+  "dev.trackingNudgeBtn": "Tracking Nudge",
+  "dev.trackingNudgeTooltip":
+    "Send push: tracking nudge when no spending logged",
+  "dev.categorySpotlightBtn": "Category Spotlight",
+  "dev.categorySpotlightTooltip":
+    "Send push: weekly overspending envelope spotlight",
+  "dev.cycleResetBtn": "Cycle Reset",
+  "dev.cycleResetTooltip": "Send push: cycle reset reminder H-1",
+  "dev.newCycleKickoffBtn": "New Cycle Kickoff",
+  "dev.newCycleKickoffTooltip":
+    "Send email: new cycle kickoff + allocation suggestions",
+  "dev.monthlySummaryBtn": "Monthly Summary",
+  "dev.monthlySummaryTooltip": "Send email: end-of-cycle recap",
+  "dev.csvExportBtn": "CSV Export Reminder",
+  "dev.csvExportTooltip": "Send email: CSV backup reminder",
+  "dev.quarterlyTrendBtn": "Quarterly Trend",
+  "dev.quarterlyTrendTooltip": "Send email: quarterly savings trend report",
   "dev.pushSuccess": "Notification sent ({val} subscriber).",
+  "dev.emailSuccess": "Email sent successfully.",
+  "dev.skipped": "Notification skipped — condition not met.",
   "dev.pushFailed": "Failed to send notification.",
 };
 
