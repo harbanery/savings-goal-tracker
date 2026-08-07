@@ -22,11 +22,11 @@
     },
     {
       "path": "/api/cron/csv-export-reminder",
-      "schedule": "0 13 23 * *"
+      "schedule": "0 17 1 * *"
     },
     {
       "path": "/api/cron/quarterly-trend",
-      "schedule": "30 14 24 1,4,7,10 *"
+      "schedule": "59 16 24 3,6,9,12 *"
     }
   ]
 }

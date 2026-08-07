@@ -95,10 +95,7 @@ export async function buildTrackingNudge(): Promise<NotificationPayload | null> 
   );
 
   return {
-    title: L(
-      `📝 Belum Mencatat Hari Ini`,
-      `📝 Nothing Logged Today`,
-    ),
+    title: L(`📝 Belum Mencatat Hari Ini`, `📝 Nothing Logged Today`),
     body,
     tag: "tracking-nudge",
     url: "/",
@@ -146,7 +143,10 @@ export async function buildCategorySpotlight(): Promise<NotificationPayload> {
   // Hitung pengeluaran per kategori dalam 7 hari terakhir
   const weekByCategory = new Map<string, number>();
   for (const p of recentPurchases) {
-    weekByCategory.set(p.categoryId, (weekByCategory.get(p.categoryId) ?? 0) + p.amount);
+    weekByCategory.set(
+      p.categoryId,
+      (weekByCategory.get(p.categoryId) ?? 0) + p.amount,
+    );
   }
 
   // Cari kategori dengan pengeluaran tertinggi minggu ini (hanya yang dialokasikan)
@@ -176,12 +176,16 @@ export async function buildCategorySpotlight(): Promise<NotificationPayload> {
 
   const topCat = CATEGORY_MAP[topCatId]!;
   const catLabel = topCat.label[NOTIFICATION_LOCALE] ?? topCat.label.id;
-  const catRemaining = topCat.allocation > 0
-    ? Math.max(0, topCat.allocation - getSpentForCategory(purchases, topCatId))
-    : 0;
+  const catRemaining =
+    topCat.allocation > 0
+      ? Math.max(
+          0,
+          topCat.allocation - getSpentForCategory(purchases, topCatId),
+        )
+      : 0;
 
   return {
-    title: L("📊 Sorotan Wadah Minggu Ini", "📊 Weekly Envelope Spotlight"),
+    title: L("📊 Alokasi Mingguan", "📊 Weekly Allocation"),
     body: L(
       `Minggu ini pengeluaran ${catLabel} naik ${formatShortIDR(topAmount)}. Alokasi tersisa ${formatShortIDR(catRemaining)} untuk sisa siklus.`,
       `${catLabel} spending rose ${formatShortIDR(topAmount)} this week. ${formatShortIDR(catRemaining)} allocation left for the rest of the cycle.`,
@@ -194,7 +198,10 @@ export async function buildCategorySpotlight(): Promise<NotificationPayload> {
 }
 
 /** Helper: hitung total pengeluaran untuk satu kategori dari daftar pembelian. */
-function getSpentForCategory(purchases: Purchase[], categoryId: string): number {
+function getSpentForCategory(
+  purchases: Purchase[],
+  categoryId: string,
+): number {
   return purchases
     .filter((p) => p.categoryId === categoryId)
     .reduce((acc, p) => acc + p.amount, 0);
@@ -216,7 +223,10 @@ export async function buildCycleResetReminder(): Promise<NotificationPayload> {
   const cycleEndDate = new Date(cycle.endDate);
   // Tampilkan tanggal H-1 (hari ini, karena dijalankan malam sebelum siklus baru)
   const todayStr = formatDateLabel(new Date(), NOTIFICATION_LOCALE);
-  const nextStartDateStr = formatDateLabel(nextCycle.startDate, NOTIFICATION_LOCALE);
+  const nextStartDateStr = formatDateLabel(
+    nextCycle.startDate,
+    NOTIFICATION_LOCALE,
+  );
 
   const records = await getPurchasesInRange(cycle.startDate, cycle.endDate);
   const purchases = toPurchases(records);
@@ -284,10 +294,7 @@ export async function buildNewCycleKickoff(): Promise<NotificationPayload> {
   const stats3 = computeCycleStats(purchases3);
 
   // Saran realokasi: kategori yang konsisten melebihi/jauh di bawah alokasi
-  const suggestions = buildAllocationSuggestions(
-    [stats1, stats2, stats3],
-    [prev1, prev2, prev3],
-  );
+  const suggestions = buildAllocationSuggestions([stats1, stats2, stats3]);
 
   const themeColor = "#22c55e";
 
@@ -297,38 +304,81 @@ export async function buildNewCycleKickoff(): Promise<NotificationPayload> {
   );
   const subtitle = `${APP_NAME} · ${L(`Mulai ${startDateStr}`, `Starts ${startDateStr}`)}`;
   const previewText = L(
-    `Siklus baru ${cycle.label} dimulai! Saldo awal ${formatShortIDR(SAVINGS_INITIAL)}. Lihat saran alokasi wadah.`,
-    `New ${cycle.label} cycle starts! Initial balance ${formatShortIDR(SAVINGS_INITIAL)}. See envelope allocation suggestions.`,
+    `Siklus baru ${cycle.label} dimulai! Saldo awal ${formatShortIDR(SAVINGS_INITIAL)}.${suggestions.length > 0 ? ` ${suggestions.length} saran realokasi wadah.` : ""}`,
+    `New ${cycle.label} cycle starts! Initial balance ${formatShortIDR(SAVINGS_INITIAL)}.${suggestions.length > 0 ? ` ${suggestions.length} envelope allocation suggestions.` : ""}`,
   );
-  const greeting = L("Selamat memulai siklus baru! 🎉", "A fresh cycle begins! 🎉");
+  const greeting = L(
+    "Selamat memulai siklus baru! 🎉",
+    "A fresh cycle begins! 🎉",
+  );
   const bluf = L(
     `Siklus <strong>${cycle.label}</strong> resmi dimulai hari ini. Saldo awal <strong>${formatShortIDR(SAVINGS_INITIAL)}</strong> dengan wadah yang sudah direset. Semoga lebih hemat dari siklus lalu! 💪`,
     `The <strong>${cycle.label}</strong> cycle officially starts today. Initial balance: <strong>${formatShortIDR(SAVINGS_INITIAL)}</strong> with envelopes reset. Hope you save more than last cycle! 💪`,
   );
   const ctaText = L("Buka Dashboard", "Open Dashboard");
 
-  // Tabel alokasi wadah
-  const categoryHeader = L("Alokasi Wadah Siklus Ini", "This Cycle's Envelope Allocation");
-  const categories = CATEGORY_MAP
-    ? Object.values(CATEGORY_MAP)
-        .filter((c) => !c.excludeFromAllocation)
-        .map((c) => ({
-          name: c.label[NOTIFICATION_LOCALE] ?? c.label.id,
-          detail: formatShortIDR(c.allocation),
-          dotColor: c.color,
-        }))
-    : [];
+  // Tabel alokasi wadah dengan info pengeluaran rata-rata (D4)
+  const categoryHeader = L(
+    "Alokasi Wadah & Saran Realokasi",
+    "Envelope Allocation & Suggestions",
+  );
+  const categories = Object.values(CATEGORY_MAP)
+    .filter((c) => !c.excludeFromAllocation)
+    .map((cat) => {
+      // Hitung rata-rata pengeluaran kategori ini di 3 siklus terakhir
+      const spentPerCycle = [stats1, stats2, stats3].map((s) => {
+        const cs = s.categories.find((c) => c.categoryId === cat.id);
+        return cs ? cs.spent : 0;
+      });
+      const validSpent = spentPerCycle.filter((v) => v > 0);
+      const avgSpent =
+        validSpent.length > 0
+          ? Math.round(
+              validSpent.reduce((a, b) => a + b, 0) / validSpent.length,
+            )
+          : 0;
+
+      // Tentukan indikator saran
+      let indicator = "";
+      if (validSpent.length >= 2) {
+        const alwaysOver =
+          validSpent.filter((v) => v > cat.allocation).length >=
+          validSpent.length;
+        const alwaysUnder =
+          validSpent.filter((v) => v < cat.allocation * 0.7).length >=
+          validSpent.length;
+        if (alwaysOver) {
+          indicator = L("⚠️ Sering melebihi", "⚠️ Often exceeds");
+        } else if (alwaysUnder) {
+          indicator = L("✅ Sisa berlebih", "✅ Underutilized");
+        }
+      }
+
+      const detail =
+        validSpent.length > 0
+          ? `${formatShortIDR(cat.allocation)} · ${L("rata-rata", "avg")} ${formatShortIDR(avgSpent)}${indicator ? ` ${indicator}` : ""}`
+          : formatShortIDR(cat.allocation);
+
+      return {
+        name: cat.label[NOTIFICATION_LOCALE] ?? cat.label.id,
+        detail,
+        dotColor: cat.color,
+      };
+    });
 
   // Penutup + saran realokasi
-  const closing = suggestions.length > 0
-    ? L(
-        `💡 <strong>Saran Realokasi:</strong><br/>${suggestions.join("<br/>")}`,
-        `💡 <strong>Allocation Suggestions:</strong><br/>${suggestions.join("<br/>")}`,
-      )
-    : L(
+  let closing: string;
+  if (suggestions.length > 0) {
+    closing = L(
+      `💡 <strong>${suggestions.length} Saran Realokasi:</strong><br/>${suggestions.join("<br/>")}`,
+      `💡 <strong>${suggestions.length} Allocation Suggestions:</strong><br/>${suggestions.join("<br/>")}`,
+    );
+  } else {
+    closing = L(
       "Terima kasih sudah konsisten menabung. Tetap catat pengeluaranmu! 💪",
       "Thanks for staying consistent. Keep tracking your spending! 💪",
     );
+  }
 
   const signature = L(
     `Salam hangat,<br/><strong style="color:#1f2937">${APP_NAME}</strong>`,
@@ -378,14 +428,13 @@ export async function buildNewCycleKickoff(): Promise<NotificationPayload> {
  */
 function buildAllocationSuggestions(
   statsList: ReturnType<typeof computeCycleStats>[],
-  cycles: ReturnType<typeof shiftCycle>[],
 ): string[] {
   if (statsList.length === 0) return [];
 
   const suggestions: string[] = [];
-  const allocatedCats = CATEGORY_MAP
-    ? Object.values(CATEGORY_MAP).filter((c) => !c.excludeFromAllocation)
-    : [];
+  const allocatedCats = Object.values(CATEGORY_MAP).filter(
+    (c) => !c.excludeFromAllocation,
+  );
 
   for (const cat of allocatedCats) {
     const spentValues = statsList
@@ -395,28 +444,38 @@ function buildAllocationSuggestions(
       })
       .filter((v) => v > 0);
 
-    if (spentValues.length < 2) continue; // Perlu minimal 2 siklus dengan data
+    if (spentValues.length < 1) continue; // Perlu minimal 1 siklus dengan data
 
-    const avgSpent = spentValues.reduce((a, b) => a + b, 0) / spentValues.length;
-    const alwaysOver = spentValues.filter((v) => v > cat.allocation).length >= spentValues.length;
-    const alwaysUnder = spentValues.filter((v) => v < cat.allocation * 0.7).length >= spentValues.length;
+    const avgSpent = Math.round(
+      spentValues.reduce((a, b) => a + b, 0) / spentValues.length,
+    );
+    const alwaysOver =
+      spentValues.filter((v) => v > cat.allocation).length ===
+      spentValues.length;
+    const alwaysUnder =
+      spentValues.filter((v) => v < cat.allocation * 0.7).length ===
+      spentValues.length;
 
     if (alwaysOver && cat.allocation > 0) {
       const catLabel = cat.label[NOTIFICATION_LOCALE] ?? cat.label.id;
-      suggestions.push(L(
-        `${catLabel} rata-rata ${formatShortIDR(avgSpent)}/siklus (alokasi ${formatShortIDR(cat.allocation)}). Pertimbangkan menaikkan alokasi.`,
-        `${catLabel} averages ${formatShortIDR(avgSpent)}/cycle (allocation ${formatShortIDR(cat.allocation)}). Consider increasing.`,
-      ));
+      suggestions.push(
+        L(
+          `Naikkan ${catLabel}: rata-rata ${formatShortIDR(avgSpent)}/siklus, melebihi alokasi ${formatShortIDR(cat.allocation)}.`,
+          `Increase ${catLabel}: averages ${formatShortIDR(avgSpent)}/cycle, exceeds allocation of ${formatShortIDR(cat.allocation)}.`,
+        ),
+      );
     } else if (alwaysUnder && cat.allocation > 0) {
       const catLabel = cat.label[NOTIFICATION_LOCALE] ?? cat.label.id;
-      suggestions.push(L(
-        `${catLabel} rata-rata ${formatShortIDR(avgSpent)}/siklus (alokasi ${formatShortIDR(cat.allocation)}). Sisa alokasi bisa dialihkan ke wadah lain.`,
-        `${catLabel} averages ${formatShortIDR(avgSpent)}/cycle (allocation ${formatShortIDR(cat.allocation)}). Remaining allocation could go to other envelopes.`,
-      ));
+      suggestions.push(
+        L(
+          `Kurangi ${catLabel}: rata-rata ${formatShortIDR(avgSpent)}/siklus dari alokasi ${formatShortIDR(cat.allocation)}. Alihkan ke wadah lain.`,
+          `Reduce ${catLabel}: averages ${formatShortIDR(avgSpent)}/cycle from allocation ${formatShortIDR(cat.allocation)}. Reallocate to other envelopes.`,
+        ),
+      );
     }
   }
 
-  return suggestions.slice(0, 3); // Maks 3 saran
+  return suggestions.slice(0, 5); // Maks 5 saran
 }
 
 // ---------------------------------------------------------------------------
@@ -466,9 +525,7 @@ export async function buildMonthlySummary(): Promise<NotificationPayload> {
   // Sisa tabungan
   const savings = stats.remaining;
   const savingsPercent =
-    SAVINGS_INITIAL > 0
-      ? Math.round((savings / SAVINGS_INITIAL) * 100)
-      : 0;
+    SAVINGS_INITIAL > 0 ? Math.round((savings / SAVINGS_INITIAL) * 100) : 0;
 
   // --- Komponen email kaya ---
   const themeColor = "#4f46e5";
@@ -541,27 +598,31 @@ export async function buildMonthlySummary(): Promise<NotificationPayload> {
     greeting,
     bluf,
     previewText,
-    metrics: [
-      {
-        label: L("Penggunaan Limit", "Limit Usage"),
-        value: `${stats.limitPercent}%`,
-        color: limitColor,
-      },
-      {
-        label: L("Total Pengeluaran", "Total Spent"),
-        value: formatShortIDR(stats.totalSpent),
-        color: "#1f2937",
-      },
-      {
-        label: L("Sisa Tabungan", "Savings Left"),
-        value: formatShortIDR(savings),
-        color: savingsColor,
-      },
-      {
-        label: L(`vs ${prevCycle.label}`, `vs ${prevCycle.label}`),
-        value: diffLabel,
-        color: diff <= 0 ? "#22c55e" : "#ef4444",
-      },
+    metricsGrid: [
+      [
+        {
+          label: L("Penggunaan Limit", "Limit Usage"),
+          value: `${stats.limitPercent}%`,
+          color: limitColor,
+        },
+        {
+          label: L("Total Pengeluaran", "Total Spent"),
+          value: formatShortIDR(stats.totalSpent),
+          color: "#1f2937",
+        },
+      ],
+      [
+        {
+          label: L("Sisa Tabungan", "Savings Left"),
+          value: formatShortIDR(savings),
+          color: savingsColor,
+        },
+        {
+          label: L(`vs ${prevCycle.label}`, `vs ${prevCycle.label}`),
+          value: diffLabel,
+          color: diff <= 0 ? "#22c55e" : "#ef4444",
+        },
+      ],
     ],
     categoryHeader,
     categories: categoryInsights,
@@ -668,46 +729,53 @@ export async function buildCsvExportReminder(): Promise<NotificationPayload> {
 /**
  * Bangun payload notifikasi E1: Quarterly Trend Report.
  * Menampilkan tren tabungan 3 siklus terakhir.
- * Hanya mengirim jika ada data dari minimal 2 siklus.
+ * Menggunakan 3 siklus SEBELUM siklus saat ini (siklus yang baru saja berakhir).
+ * Siklus tanpa data menampilkan 0 untuk sisa tabungan dan pengeluaran.
+ * Selalu mengembalikan payload (tidak pernah null) karena dijadwalkan
+ * hanya pada bulan triwulanan (Des, Mar, Jun, Sep).
  */
-export async function buildQuarterlyTrend(): Promise<NotificationPayload | null> {
+export async function buildQuarterlyTrend(): Promise<NotificationPayload> {
   const cycle = getCurrentCycle();
-  // Ambil data 3 siklus terakhir
+  // Ambil 3 siklus sebelum siklus saat ini (siklus yang sudah selesai)
   const prev1 = shiftCycle(cycle, -1);
   const prev2 = shiftCycle(cycle, -2);
+  const prev3 = shiftCycle(cycle, -3);
 
-  const [rec0, rec1, rec2] = await Promise.all([
-    getPurchasesInRange(cycle.startDate, cycle.endDate),
+  const [rec1, rec2, rec3] = await Promise.all([
     getPurchasesInRange(prev1.startDate, prev1.endDate),
     getPurchasesInRange(prev2.startDate, prev2.endDate),
+    getPurchasesInRange(prev3.startDate, prev3.endDate),
   ]);
 
-  const purchases0 = toPurchases(rec0);
   const purchases1 = toPurchases(rec1);
   const purchases2 = toPurchases(rec2);
+  const purchases3 = toPurchases(rec3);
 
-  const stats0 = computeCycleStats(purchases0);
   const stats1 = computeCycleStats(purchases1);
   const stats2 = computeCycleStats(purchases2);
+  const stats3 = computeCycleStats(purchases3);
 
-  const allCycles = [stats2, stats1, stats0];
-  const cycleLabels = [prev2.label, prev1.label, cycle.label];
+  const allCycles = [stats3, stats2, stats1];
+  const cycleLabels = [prev3.label, prev2.label, prev1.label];
   const savingsValues = allCycles.map((s) => s.remaining);
 
-  // Butuh minimal 1 siklus dengan data transaksi
-  const hasData = allCycles.some((s) => s.purchaseCount > 0);
-  if (!hasData) return null;
-
   // Hitung tren
-  const avgSavings = savingsValues.reduce((a, b) => a + b, 0) / savingsValues.length;
+  const avgSavings =
+    savingsValues.reduce((a, b) => a + b, 0) / savingsValues.length;
   const oldestSavings = savingsValues[0];
   const newestSavings = savingsValues[savingsValues.length - 1];
   const trendDiff = newestSavings - oldestSavings;
   const trendLabel =
     trendDiff > 0
-      ? L(`naik ${formatShortIDR(trendDiff)}`, `up ${formatShortIDR(trendDiff)}`)
+      ? L(
+          `naik ${formatShortIDR(trendDiff)}`,
+          `up ${formatShortIDR(trendDiff)}`,
+        )
       : trendDiff < 0
-        ? L(`turun ${formatShortIDR(Math.abs(trendDiff))}`, `down ${formatShortIDR(Math.abs(trendDiff))}`)
+        ? L(
+            `turun ${formatShortIDR(Math.abs(trendDiff))}`,
+            `down ${formatShortIDR(Math.abs(trendDiff))}`,
+          )
         : L("stabil", "stable");
 
   const themeColor = "#8b5cf6";
@@ -807,7 +875,8 @@ function buildRichEmailHtml(params: {
   greeting: string;
   bluf: string;
   previewText?: string;
-  metrics: { label: string; value: string; color?: string }[];
+  metrics?: { label: string; value: string; color?: string }[];
+  metricsGrid?: { label: string; value: string; color?: string }[][];
   categoryHeader: string;
   categories: { name: string; detail: string; dotColor: string }[];
   ctaText: string;
@@ -817,31 +886,87 @@ function buildRichEmailHtml(params: {
 }): string {
   const font =
     "'Geist','Google Sans',Roboto,Helvetica,Arial,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif";
-  const m = params.metrics;
+  const m = params.metrics ?? [];
+  const mg = params.metricsGrid;
   const preheader = params.previewText
     ? `<div style="display:none;max-height:0;overflow:hidden;opacity:0;color:transparent;height:0;width:0;max-width:0">${escapeHtml(params.previewText)}</div>`
     : "";
-  const metricsBlock = m.length > 0
-    ? `<hr style="border:none;border-top:1px solid #e5e7eb;margin:0 0 20px" />
+
+  // Build a single metric cell HTML
+  const metricCell = (
+    metric: { label: string; value: string; color?: string },
+    isFirst: boolean,
+    isLast: boolean,
+  ) => `<td style="padding:8px 12px;background:#fff;border:1px solid #e5e7eb;${isFirst ? "border-radius:6px 0 0 6px;" : "border-left:none;"}${isLast ? "border-radius:0 6px 6px 0;" : ""}">
+          <span style="font-family:${font};color:#6b7280;font-size:12px">${escapeHtml(metric.label)}</span><br/>
+          <strong style="font-family:${font};font-size:18px;color:${metric.color || params.themeColor}">${escapeHtml(metric.value)}</strong>
+        </td>`;
+
+  // Inline row metrics (1xN)
+  const metricsRow =
+    m.length > 0
+      ? `<hr style="border:none;border-top:1px solid #e5e7eb;margin:0 0 20px" />
     <p style="font-family:${font};margin:0 0 8px;font-size:13px;font-weight:600;color:#6b7280;text-transform:uppercase;letter-spacing:0.5px">${escapeHtml(L("Metrik", "Metrics"))}</p>
     <table style="width:100%;border-collapse:collapse;margin:0 0 20px;font-size:14px">
       <tr>
-        ${m.map((metric, i) => `<td style="padding:8px 12px;background:#fff;border:1px solid #e5e7eb;${i === 0 ? "border-radius:6px 0 0 6px;" : "border-left:none;"}${i === m.length - 1 ? "border-radius:0 6px 6px 0;" : ""}">
-          <span style="font-family:${font};color:#6b7280;font-size:12px">${escapeHtml(metric.label)}</span><br/>
-          <strong style="font-family:${font};font-size:18px;color:${metric.color || params.themeColor}">${escapeHtml(metric.value)}</strong>
-        </td>`).join("")}
+        ${m
+          .map((metric, i) => metricCell(metric, i === 0, i === m.length - 1))
+          .join("")}
       </tr>
     </table>`
-    : "";
-  const categoryBlock = params.categoryHeader && params.categories.length > 0
-    ? `<p style="font-family:${font};margin:0 0 8px;font-size:13px;font-weight:600;color:#6b7280;text-transform:uppercase;letter-spacing:0.5px">${escapeHtml(params.categoryHeader)}</p>
+      : "";
+
+  // Grid metrics (2x2)
+  const metricsGridBlock =
+    mg && mg.length > 0
+      ? `<hr style="border:none;border-top:1px solid #e5e7eb;margin:0 0 20px" />
+    <p style="font-family:${font};margin:0 0 8px;font-size:13px;font-weight:600;color:#6b7280;text-transform:uppercase;letter-spacing:0.5px">${escapeHtml(L("Metrik", "Metrics"))}</p>
     <table style="width:100%;border-collapse:collapse;margin:0 0 20px;font-size:14px">
-      ${params.categories.map((cat, i) => `<tr><td style="padding:8px 0;${i < params.categories.length - 1 ? "border-bottom:1px solid #e5e7eb;" : ""}">
+      ${mg
+        .map((row, rowIdx) => {
+          const totalCols = mg[0].length;
+          return `<tr>${row
+            .map((metric, colIdx) => {
+              const isFirst = colIdx === 0;
+              const isLast = colIdx === totalCols - 1;
+              const isTopLeft = rowIdx === 0 && isFirst;
+              const isTopRight = rowIdx === 0 && isLast;
+              const isBottomLeft = rowIdx === mg.length - 1 && isFirst;
+              const isBottomRight = rowIdx === mg.length - 1 && isLast;
+              const radius = [
+                isTopLeft ? "border-radius:6px 0 0 0;" : "",
+                isTopRight ? "border-radius:0 6px 0 0;" : "",
+                isBottomLeft ? "border-radius:0 0 0 6px;" : "",
+                isBottomRight ? "border-radius:0 0 6px 0;" : "",
+              ].join("");
+              const border = isFirst ? "" : "border-left:none;";
+              return `<td style="padding:8px 12px;background:#fff;border:1px solid #e5e7eb;${border}${radius}">
+          <span style="font-family:${font};color:#6b7280;font-size:12px">${escapeHtml(metric.label)}</span><br/>
+          <strong style="font-family:${font};font-size:18px;color:${metric.color || params.themeColor}">${escapeHtml(metric.value)}</strong>
+        </td>`;
+            })
+            .join("")}</tr>`;
+        })
+        .join("")}
+    </table>`
+      : "";
+  const categoryBlock =
+    params.categoryHeader && params.categories.length > 0
+      ? `<p style="font-family:${font};margin:0 0 8px;font-size:13px;font-weight:600;color:#6b7280;text-transform:uppercase;letter-spacing:0.5px">${escapeHtml(params.categoryHeader)}</p>
+    <table style="width:100%;border-collapse:collapse;margin:0 0 20px;font-size:14px">
+      ${params.categories
+        .map(
+          (
+            cat,
+            i,
+          ) => `<tr><td style="padding:8px 0;${i < params.categories.length - 1 ? "border-bottom:1px solid #e5e7eb;" : ""}">
         <span style="display:inline-block;width:10px;height:10px;background:${cat.dotColor};border-radius:50%;margin-right:8px"></span>
         ${escapeHtml(cat.name)}<br/><span style="font-family:${font};color:#6b7280;font-size:12px">${escapeHtml(cat.detail)}</span>
-      </td></tr>`).join("")}
+      </td></tr>`,
+        )
+        .join("")}
     </table>`
-    : "";
+      : "";
 
   return `<!DOCTYPE html>
 <html lang="${NOTIFICATION_LOCALE}">
@@ -870,7 +995,7 @@ ${preheader}
   <div style="background:#f9fafb;padding:28px 24px;border:1px solid #e5e7eb;border-top:none;border-radius:0 0 12px 12px">
     <p style="font-family:${font};margin:0 0 16px;font-size:15px">${params.greeting}</p>
     <p style="font-family:${font};margin:0 0 20px;font-size:15px;line-height:1.6">${params.bluf}</p>
-    ${metricsBlock}
+    ${metricsRow}${metricsGridBlock}
     ${categoryBlock}
     <div style="text-align:center;margin:24px 0 16px">
       <a href="${escapeHtml(params.ctaUrl)}" style="font-family:${font};display:inline-block;padding:12px 32px;background:${params.themeColor};color:#fff;border-radius:8px;text-decoration:none;font-weight:600;font-size:14px">${escapeHtml(params.ctaText)}</a>
@@ -927,9 +1052,8 @@ export interface EmailSendResult {
 export async function broadcastPushNotification(
   payload: NotificationPayload,
 ): Promise<PushSendResult> {
-  const { getAllSubscriptions, removeStaleSubscription } = await import(
-    "@/services/pushService"
-  );
+  const { getAllSubscriptions, removeStaleSubscription } =
+    await import("@/services/pushService");
   const { sendPushNotification } = await import("@/server/webPush");
 
   const subs = await getAllSubscriptions();

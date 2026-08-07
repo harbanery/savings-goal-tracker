@@ -7,7 +7,7 @@ import {
 
 /**
  * GET /api/cron/csv-export-reminder
- * Vercel Cron tanggal 23 jam 20:00 WIB (13:00 UTC) — pertengahan siklus.
+ * Vercel Cron tanggal 1 jam 00:00 WIB (17:00 UTC) — awal bulan.
  * Email pengingat backup data (export CSV).
  * Channel: email.
  */

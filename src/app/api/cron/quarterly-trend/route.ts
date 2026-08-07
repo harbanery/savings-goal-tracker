@@ -7,13 +7,11 @@ import {
 
 /**
  * GET /api/cron/quarterly-trend
- * Vercel Cron tanggal 24 jam 21:30 WIB (14:30 UTC) — setiap 3 bulan (Jan, Apr, Jul, Okt).
- * Email laporan tren tabungan triwulanan.
+ * Vercel Cron tanggal 24 jam 23:59 WIB (16:59 UTC) — bulan Mar/Jun/Sep/Des.
+ * Email laporan tren tabungan triwulanan (3 siklus sebelumnya).
  * Channel: email.
  *
- * Vercel Cron hanya mendukung jadwal harian/mingguan, sehingga kita jalankan
- * harian di tanggal 24 dan biarkan builder memutuskan apakah triwulan sudah selesai.
- * Jadwal: 30 14 24 1,4,7,10 * → UTC, yaitu 21:30 WIB tanggal 24 (Jan/Apr/Jul/Okt).
+ * Jadwal: 59 16 24 3,6,9,12 * → UTC, yaitu 23:59 WIB tanggal 24 (Mar/Jun/Sep/Des).
  */
 export async function GET(request: Request) {
   const authHeader = request.headers.get("authorization");
@@ -27,7 +25,8 @@ export async function GET(request: Request) {
       return NextResponse.json({
         success: true,
         skipped: true,
-        message: "Quarterly trend skipped — not yet at a quarterly boundary or insufficient data.",
+        message:
+          "Quarterly trend skipped — not yet at a quarterly boundary or insufficient data.",
       });
     }
     const result = await broadcastEmailNotification(payload);
