@@ -10,12 +10,44 @@ import {
   Select,
 } from "antd";
 import dayjs from "dayjs";
-import { useState } from "react";
+import { useSyncExternalStore, useState } from "react";
 import { createPurchaseAction, updatePurchaseAction } from "@/server/actions";
 import { CATEGORIES } from "@/models/categories";
 import type { Purchase } from "@/models/types";
 import { useLocale } from "@/components/locale/LocaleProvider";
 import { pickText } from "@/components/locale/useTranslatedData";
+
+const TOUCH_QUERY = "(pointer: coarse)";
+
+/**
+ * Berlangganan ke media query pointer agar mengetahui apakah perangkat
+ * menggunakan input sentuh (mobile/tablet). Dipakai untuk menonaktifkan
+ * keyboard virtual pada DatePicker. Menggunakan useSyncExternalStore agar
+ * aman terhadap SSR dan tidak memicu setState di dalam effect.
+ */
+function subscribeTouch(callback: () => void): () => void {
+  if (typeof window === "undefined" || !window.matchMedia) return () => {};
+  const mql = window.matchMedia(TOUCH_QUERY);
+  mql.addEventListener("change", callback);
+  return () => mql.removeEventListener("change", callback);
+}
+
+function getTouchSnapshot(): boolean {
+  if (typeof window === "undefined" || !window.matchMedia) return false;
+  return window.matchMedia(TOUCH_QUERY).matches;
+}
+
+function getTouchServerSnapshot(): boolean {
+  return false;
+}
+
+function useTouchDevice(): boolean {
+  return useSyncExternalStore(
+    subscribeTouch,
+    getTouchSnapshot,
+    getTouchServerSnapshot,
+  );
+}
 
 interface Props {
   open: boolean;
@@ -81,6 +113,9 @@ function PurchaseForm({
   const [saving, setSaving] = useState(false);
   const isEdit = editingPurchase !== null;
   const { t, locale } = useLocale();
+  // Pada perangkat sentuh (mobile/tablet), buat input tanggal read-only agar
+  // keyboard virtual tidak muncul; pemilihan tanggal tetap via kalender popup.
+  const isTouchDevice = useTouchDevice();
 
   async function handleFinish(values: FormValues) {
     setSaving(true);
@@ -171,13 +206,16 @@ function PurchaseForm({
       >
         <InputNumber<number>
           className="w-full"
-          addonBefore="Rp"
+          style={{ width: "100%" }}
+          addonBefore={locale === "en" ? "IDR" : "Rp"}
           min={1}
           step={10000}
-          placeholder="50.000"
-          formatter={(value) =>
-            `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ".")
-          }
+          placeholder={locale === "en" ? "50,000" : "50.000"}
+          formatter={(value) => {
+            if (value === undefined || value === null) return "";
+            const sep = locale === "en" ? "," : ".";
+            return `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, sep);
+          }}
           type="number"
           parser={(value) => Number((value ?? "").replace(/\D/g, "") || 0)}
         />
@@ -194,6 +232,7 @@ function PurchaseForm({
       >
         <DatePicker
           className="w-full"
+          inputReadOnly={isTouchDevice}
           format="DD MMMM YYYY"
           placeholder={t("form.datePlaceholder")}
         />

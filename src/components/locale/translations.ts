@@ -172,7 +172,7 @@ const id: TranslationDict = {
   "dev.quarterlyTrendBtn": "Quarterly Trend",
   "dev.quarterlyTrendTooltip": "Kirim email: laporan tren tabungan triwulanan",
   "dev.yearlyRecapBtn": "Yearly Recap",
-  "dev.yearlyRecapTooltip": "Send email: rekap akhir tahunan + top 3 wadah terboros",
+  "dev.yearlyRecapTooltip": "Kirim email: rekap akhir tahunan + top 3 wadah terboros",
   "dev.pushSuccess": "Notifikasi terkirim ({val} subscriber).",
   "dev.emailSuccess": "Email berhasil dikirim.",
   "dev.skipped": "Notifikasi dilewati — kondisi tidak terpenuhi.",
