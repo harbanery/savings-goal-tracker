@@ -11,7 +11,6 @@
     Monthly Budget Tracker with Envelope System
     <br />
     <br />
-    <a href="https://savings-goal-tracker.vercel.app/" target="_blank">View Demo</a>
   </p>
 </div>
 
@@ -40,6 +39,18 @@
 ## About The Project
 
 My web-based application, **Savings Goal Tracker**, is a personal finance dashboard that helps you monitor monthly expenses using the **envelope budgeting system** (sistem wadah). With a cycle-based approach that resets on the 25th of each month, you can track spending across multiple envelopes (Kos, ShopeePay, GoPay, E-Money, Cash, Subscriptions), visualize savings progress with interactive charts, receive real-time push notifications for daily reminders and weekly summaries, and switch instantly between Indonesian and English. Whether you want to stay within budget or grow your savings, **Savings Goal Tracker** keeps your finances on track.
+
+**The live deployment is currently in demo mockup mode.** Since the production `DATABASE_URL` is left empty, the app you see online runs as a database-free mockup: it uses generic demo categories, and every purchase you add lives only in browser memory and disappears on reload. A dismissible banner explains this to visitors.
+
+How it works:
+
+- When `DATABASE_URL` is **empty** (the current setup), the app automatically runs in **demo mockup mode**:
+  - No database is ever queried — all purchases live only in browser memory and disappear on reload.
+  - Generic demo categories (Cash, Bank Transfer, E-Wallet, Subscriptions, Transport Card) are used instead of the owner's personal ones. See [`src/models/demoCategories.ts`](src/models/demoCategories.ts).
+  - Push notification subscriptions are hidden (they require a database).
+- When `DATABASE_URL` is **set**, everything runs the normal database flow with the owner's personal categories — no code changes needed.
+
+The mode is detected at build time from the environment, so switching between the demo mockup and the real database is only a matter of setting the variable.
 
 ### Built With
 
@@ -122,20 +133,6 @@ To get a local copy up and running follow these simple steps.
    # Vercel Cron secret (generate: node -e "console.log(require('crypto').randomBytes(32).toString('hex'))")
    CRON_SECRET="your-cron-secret"
    ```
-
-### Demo Mockup Mode (Current State)
-
-**The live deployment is currently in demo mockup mode.** Since the production `DATABASE_URL` is left empty, the app you see online runs as a database-free mockup: it uses generic demo categories, and every purchase you add lives only in browser memory and disappears on reload. A dismissible banner explains this to visitors.
-
-How it works:
-
-- When `DATABASE_URL` is **empty** (the current setup), the app automatically runs in **demo mockup mode**:
-  - No database is ever queried — all purchases live only in browser memory and disappear on reload.
-  - Generic demo categories (Cash, Bank Transfer, E-Wallet, Subscriptions, Transport Card) are used instead of the owner's personal ones. See [`src/models/demoCategories.ts`](src/models/demoCategories.ts).
-  - Push notification subscriptions are hidden (they require a database).
-- When `DATABASE_URL` is **set**, everything runs the normal database flow with the owner's personal categories — no code changes needed.
-
-The mode is detected at build time from the environment, so switching between the demo mockup and the real database is only a matter of setting the variable.
 
 ### Database Setup
 
