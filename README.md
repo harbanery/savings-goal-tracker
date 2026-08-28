@@ -24,7 +24,6 @@
   - [Prerequisites](#prerequisites)
   - [Installation](#installation)
   - [Setup Environment Variables](#setup-environment-variables)
-  - [Demo Mockup Mode (Current State)](#demo-mockup-mode-current-state)
   - [Database Setup](#database-setup)
   - [Running the Application](#running-the-application)
 - [Usage](#usage)
