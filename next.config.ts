@@ -38,9 +38,7 @@ const nextConfig: NextConfig = {
       {
         // File statis PWA boleh di-cache lama (immutable, nama berubah saat update).
         source: "/manifest.webmanifest",
-        headers: [
-          { key: "Content-Type", value: "application/manifest+json" },
-        ],
+        headers: [{ key: "Content-Type", value: "application/manifest+json" }],
       },
     ];
   },

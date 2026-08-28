@@ -10,6 +10,15 @@ export const BASE_URL: string =
 
 export const DATABASE_URL: string = process.env.DATABASE_URL ?? "";
 
+/**
+ * Mode mockup publik (demo). Nilai disuntikkan oleh next.config.ts
+ * berdasarkan keberadaan DATABASE_URL saat build, sehingga aman
+ * dikonsumsi komponen client maupun server.
+ * - true  : DATABASE_URL kosong -> data hanya di memori (hilang saat reload).
+ * - false : DATABASE_URL terisi -> flow database normal.
+ */
+export const IS_DEMO: boolean = process.env.NEXT_PUBLIC_DEMO_MODE === "true";
+
 export const NODE_ENV: string = process.env.NODE_ENV || "development";
 
 /** Saldo awal setiap siklus bulanan (top-up tanggal 25). */

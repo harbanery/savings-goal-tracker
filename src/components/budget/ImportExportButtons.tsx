@@ -14,18 +14,23 @@ import {
   generateTemplateCsv,
   parseCsvToPurchases,
 } from "@/utils/csv";
-import type { Purchase } from "@/models/types";
+import type { Purchase, PurchaseInput } from "@/models/types";
 import { useLocale } from "@/components/locale/LocaleProvider";
 
 interface Props {
   purchases: Purchase[];
   onImported: () => void;
+  /** Import in-memory untuk mode mockup publik (tanpa server action). */
+  demoImport?: (
+    inputs: PurchaseInput[],
+  ) => { imported: number; errors: string[] };
 }
 
 /** Tombol Download Template, Export CSV, dan Import CSV (kompatibel Google Sheets). */
 export default function ImportExportButtons({
   purchases,
   onImported,
+  demoImport,
 }: Props) {
   const [importing, setImporting] = useState(false);
   const { t } = useLocale();
@@ -79,7 +84,13 @@ export default function ImportExportButtons({
         }
         setImporting(true);
         try {
-          const result = await importPurchasesAction(valid);
+          let result: { imported: number; errors: string[] };
+          if (demoImport) {
+            // Mode mockup publik: import ke memori client.
+            result = demoImport(valid);
+          } else {
+            result = await importPurchasesAction(valid);
+          }
           if (result.imported > 0) {
             message.success(
               result.errors.length > 0

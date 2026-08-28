@@ -115,6 +115,19 @@ To get a local copy up and running follow these simple steps.
    CRON_SECRET="your-cron-secret"
    ```
 
+### Public Mockup Mode (Optional)
+
+Want to share a public demo of this app without exposing your personal database and categories? Just **leave `DATABASE_URL` empty** (or remove it entirely).
+
+- When `DATABASE_URL` is **empty**, the app automatically runs in **mockup mode**:
+  - No database is ever queried — all purchases live only in browser memory and disappear on reload.
+  - A dismissible banner informs visitors that data is temporary.
+  - Generic demo categories (Cash, Bank Transfer, E-Wallet, Subscriptions, Transport Card) are used instead of the owner's personal ones. See [`src/models/demoCategories.ts`](src/models/demoCategories.ts).
+  - Push notification subscriptions are hidden (they require a database).
+- When `DATABASE_URL` is **set**, everything runs the normal database flow with your own categories.
+
+The mode is detected at build time from the environment, so the same codebase serves both the personal deployment and the public mockup.
+
 ### Database Setup
 
 1. Generate the Prisma client (runs automatically on `npm install`):
@@ -156,13 +169,14 @@ This application is a personal monthly budget tracker inspired by the envelope b
 ### Features
 
 - **Next.js App Router** with React Server Components and Server Actions for data mutations.
-- **Envelope budgeting system** (sistem wadah) with 6 allocated envelopes: Kos, ShopeePay, GoPay, E-Money, Cash, and Subscriptions, plus a Shopping category excluded from the allocation.
+- **Envelope budgeting system** (sistem wadah) with 7 allocated wallets (Cash, Livin, Jenius - Langganan, GoPay, ShopeePay, E-Money, Link Aja - Paket Kuota). Spending is logged per **subcategory** (e.g. Ojol, KRL, Bayar Kos); each wallet's total is the accumulation of its subcategories. Legacy category IDs in the database are mapped automatically via `LEGACY_ALIASES`.
+- **Public mockup mode**: with an empty `DATABASE_URL`, the app runs as a database-free demo with generic categories and in-memory data (cleared on reload) — perfect for sharing a public showcase.
 - **Cycle-based tracking** that resets on the 25th of each month (billing cycle).
 - **Spending limit monitoring** with real-time alerts when exceeding the allocated budget.
 - **Interactive charts** powered by Chart.js: balance donut, category pie, allocation bar, savings comparison, and cumulative savings line.
 - **CRUD purchase management** with a responsive table for tablet/desktop and card list for mobile.
 - **CSV import/export** for bulk purchase data (compatible with Google Sheets).
-- **Web Push Notifications** for daily spending reminders and weekly savings summaries via [Vercel Cron Jobs](https://vercel.com/docs/cron-jobs).
+- **Automated Notifications** via [Vercel Cron Jobs](https://vercel.com/docs/cron-jobs) with 7 notification types: tracking nudge (daily), category spotlight (weekly), cycle reset reminder, new cycle kickoff with allocation suggestions, end-of-cycle recap, CSV export reminder, and quarterly trend report.
 - **Multi-language support** (Indonesian & English) with instant switching, integrated with Ant Design and dayjs locales.
 - **Responsive design** for mobile, tablet, and desktop.
 - **Dark/Light mode** with localStorage persistence and system preference detection.
@@ -172,9 +186,9 @@ This application is a personal monthly budget tracker inspired by the envelope b
 - **Chart visualizations** using [Chart.js](https://www.chartjs.org/) and [react-chartjs-2](https://react-chartjs-2.js.org/).
 - **Linting** with **ESLint** for maintaining code quality.
 
-### Customizing Categories
+### Customizing Categories & Subcategories
 
-All spending envelopes (categories) are defined in a **single file**: [`src/models/categories.ts`](src/models/categories.ts). This is the single source of truth - you only need to edit this one file to add, remove, or modify categories. No other files need to be changed.
+All spending wallets (categories) and their subcategories are defined in a **single file**: [`src/models/categories.ts`](src/models/categories.ts). This is the single source of truth - you only need to edit this one file to add, remove, or modify categories/subcategories. Purchases store the **subcategory ID** (or the category ID itself for wallets without subcategories) in `Purchase.categoryId`.
 
 Each category supports **multiple languages** via the `LocaleText` type (`{ id: "...", en: "..." }`):
 
@@ -182,31 +196,35 @@ Each category supports **multiple languages** via the `LocaleText` type (`{ id: 
 // src/models/categories.ts
 export const CATEGORIES: BudgetCategory[] = [
   {
-    id: "kos", // unique identifier (used in database)
-    label: { id: "Bayar Kos", en: "Boarding Rent" }, // label per language
+    id: "livin", // unique wallet identifier
+    label: { id: "Livin", en: "Livin" }, // label per language
     description: {
       // description per language
-      id: "Khusus bayar Kos",
-      en: "Boarding rent only",
+      id: "Transfer utama: kos, belanja, laundry, makanan",
+      en: "Main transfers: rent, shopping, laundry, food",
     },
     color: "#6366f1", // hex color
-    allocation: 1_000_000, // monthly allocation in rupiah
-    // excludeFromAllocation: true,                // uncomment to exclude from spending limit
+    allocation: 1_700_000, // monthly allocation in rupiah
+    subcategories: [
+      // spending is logged per subcategory; omit this field for wallets
+      // without subcategories (the category ID is then used directly)
+      { id: "kos", label: { id: "Bayar Kos", en: "Boarding Rent" } },
+      { id: "livin-belanja", label: { id: "Belanja", en: "Shopping" } },
+      // ... add or remove subcategories here
+    ],
   },
   // ... add or remove categories here
 ];
 ```
 
-**To add a new category:**
+**To add a new category or subcategory:**
 
 1. Open `src/models/categories.ts`
-2. Add a new object to the `CATEGORIES` array with a unique `id`, `label`, `description`, `color`, and `allocation`
+2. Add a new object to the `CATEGORIES` array (or to a category's `subcategories`) with a unique `id`, `label`, `description`, `color`, and `allocation`
 
-**To exclude a category from the spending limit:**
+**To keep old database IDs working:**
 
-1. Open `src/models/categories.ts`
-2. Find the category you want to exclude (e.g. Shopping)
-3. Set `excludeFromAllocation: true` - it will not count toward the envelope allocation or the spending limit
+Old category IDs are never deleted. Map them to a new subcategory in `LEGACY_ALIASES` (also in `src/models/categories.ts`) so historical purchases resolve automatically at runtime.
 
 **To add a new language:**
 
@@ -217,12 +235,23 @@ export const CATEGORIES: BudgetCategory[] = [
 
 ### Push Notifications
 
-This app supports real-time push notifications via the **Web Push API** and **Vercel Cron Jobs**:
+This app supports automated notifications via the **Web Push API** (for push) and **Email** (for rich summaries) through **Vercel Cron Jobs**:
 
-- **Daily Reminder** (every day at 21:00 WIB): Notifies about today's spending, remaining limit, and cycle progress.
-- **Weekly Summary** (every Sunday at 20:00 WIB): Provides a cycle overview with top spending categories, savings progress, and comparison with the previous cycle.
+| Notification             | Schedule                           | Channel | Description                                              |
+| ------------------------ | ---------------------------------- | ------- | -------------------------------------------------------- |
+| **Tracking Nudge**       | Daily, 20:00 WIB                   | Push    | Reminds to log spending only if no transactions today    |
+| **Category Spotlight**   | Every Friday, 20:00 WIB            | Push    | Highlights the most overspent envelope this week         |
+| **Cycle Reset Reminder** | 24th of month, 20:00 WIB           | Push    | Warns that the cycle ends tomorrow                       |
+| **New Cycle Kickoff**    | 25th of month, 08:00 WIB           | Email   | Welcomes new cycle with balance & allocation suggestions |
+| **Monthly Summary**      | 24th of month, 21:00 WIB           | Email   | End-of-cycle recap with spending breakdown & comparison  |
+| **CSV Export Reminder**  | 1st of month, 00:00 WIB            | Email   | Reminds to backup data via CSV export                    |
+| **Quarterly Trend**      | 24th of Mar/Jun/Sep/Dec, 23:59 WIB | Email   | Quarterly savings trend report across 3 cycles           |
 
-To enable notifications, click the bell icon in the dashboard header and grant browser permission. On the server side, set up VAPID keys and CRON_SECRET as environment variables, and deploy `vercel.json` cron configuration.
+To enable notifications:
+
+1. **Push:** Click the bell icon in the dashboard header and grant browser permission. Set up VAPID keys in environment variables.
+2. **Email:** Configure SMTP settings (`SMTP_HOST`, `SMTP_USER`, `SMTP_PASS`, `NOTIFICATION_EMAIL_TO`).
+3. **Cron Jobs:** Set `CRON_SECRET` and deploy `vercel.json` cron configuration to Vercel.
 
 ## Contributing
 

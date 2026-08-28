@@ -1,4 +1,6 @@
 import type { BudgetCategory, BudgetUnit, Locale } from "./types";
+import { IS_DEMO } from "@/config/variables";
+import { DEMO_CATEGORIES } from "./demoCategories";
 
 /**
  * Definisi kategori/wadah + subkategori berdasarkan rencana alokasi terbaru.
@@ -6,13 +8,13 @@ import type { BudgetCategory, BudgetUnit, Locale } from "./types";
  * Setiap kategori (wadah e-wallet/cash) memiliki alokasi saldo per siklus.
  * Pengeluaran dicatat per SUBKATEGORI (unit); total kategori adalah
  * akumulasi dari seluruh subkategori di dalamnya. Kategori tanpa
- * subkategori (Jenius - Langganan, Link Aja - Paket Kuota) memakai
- * ID kategori itu sendiri sebagai unit pencatatan.
+ * subkategori (Jenius, Link Aja) memakai ID kategori itu sendiri
+ * sebagai unit pencatatan.
  *
  * ID lama tidak dihapus: pembelian lama tetap tersimpan di DB dengan
  * ID lamanya dan dipetakan otomatis via LEGACY_ALIASES di bawah.
  */
-export const CATEGORIES: BudgetCategory[] = [
+const PERSONAL_CATEGORIES: BudgetCategory[] = [
   {
     id: "cash",
     label: { id: "Cash", en: "Cash" },
@@ -163,6 +165,18 @@ export const CATEGORIES: BudgetCategory[] = [
   },
 ];
 
+/**
+ * Set kategori aktif yang dipakai seluruh aplikasi.
+ *
+ * Mode mockup publik (DATABASE_URL kosong saat build) memakai kategori
+ * generik dari demoCategories.ts agar mockup tidak bergantung pada
+ * kategori pribadi pemilik aplikasi. Jika DATABASE_URL terisi, set
+ * pribadi di atas dipakai seperti biasa.
+ */
+export const CATEGORIES: BudgetCategory[] = IS_DEMO
+  ? DEMO_CATEGORIES
+  : PERSONAL_CATEGORIES;
+
 export const CATEGORY_MAP: Record<string, BudgetCategory> = Object.fromEntries(
   CATEGORIES.map((c) => [c.id, c]),
 );
@@ -236,11 +250,13 @@ export const TOTAL_ALLOCATION: number = CATEGORIES.reduce(
 /**
  * Selesaikan ID mentah dari DB/form menjadi ID unit yang valid.
  * ID unit baru dikembalikan apa adanya; ID lama dipetakan via
- * LEGACY_ALIASES; ID tak dikenal dikembalikan apa adanya.
+ * LEGACY_ALIASES (hanya bila targetnya ada di set aktif, agar aman
+ * di mode mockup); ID tak dikenal dikembalikan apa adanya.
  */
 export function resolveUnitId(id: string): string {
   if (UNIT_MAP[id]) return id;
-  return LEGACY_ALIASES[id] ?? id;
+  const alias = LEGACY_ALIASES[id];
+  return alias && UNIT_MAP[alias] ? alias : id;
 }
 
 /** Cari unit pencatatan dari ID mentah (legacy-aware). */

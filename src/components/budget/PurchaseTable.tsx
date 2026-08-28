@@ -29,7 +29,7 @@ import {
   resolveUnitId,
   UNITS,
 } from "@/models/categories";
-import type { Purchase } from "@/models/types";
+import type { Purchase, PurchaseInput } from "@/models/types";
 import { formatIDR } from "@/utils/currency";
 import { useLocale } from "@/components/locale/LocaleProvider";
 import { pickText } from "@/components/locale/useTranslatedData";
@@ -45,6 +45,10 @@ interface Props {
   onDelete: (id: string) => void;
   onDeleteBulk: (ids: string[]) => void;
   onImported: () => void;
+  /** Import in-memory untuk mode mockup publik (tanpa server action). */
+  demoImport?: (
+    inputs: PurchaseInput[],
+  ) => { imported: number; errors: string[] };
 }
 
 interface RowData {
@@ -60,6 +64,7 @@ export default function PurchaseTable({
   onDelete,
   onDeleteBulk,
   onImported,
+  demoImport,
 }: Props) {
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
   const [searchText, setSearchText] = useState("");
@@ -273,7 +278,11 @@ export default function PurchaseTable({
               </Button>
             </Popconfirm>
           )}
-          <ImportExportButtons purchases={purchases} onImported={onImported} />
+          <ImportExportButtons
+            purchases={purchases}
+            onImported={onImported}
+            demoImport={demoImport}
+          />
           <Button
             type="primary"
             size="small"

@@ -2,6 +2,7 @@ import { getParentCategoryId, TOTAL_ALLOCATION } from "@/models/categories";
 import type { Locale, Purchase } from "@/models/types";
 import {
   formatCycleLabel,
+  getCycleForDate,
   getCycleInfo,
   type CycleInfo,
 } from "@/utils/cycleUtils";
@@ -93,6 +94,25 @@ export function buildCycleChartData(
       categorySpent,
     };
   });
+}
+
+/**
+ * Kelompokkan daftar pembelian menjadi map kunci siklus -> pembelian.
+ * Dipakai mode mockup (data in-memory client) untuk membentuk data
+ * historis tanpa server.
+ */
+export function groupPurchasesByCycle(
+  purchases: Purchase[],
+  startDay?: number,
+): Record<string, Purchase[]> {
+  const result: Record<string, Purchase[]> = {};
+  for (const p of purchases) {
+    const d = new Date(p.date);
+    if (Number.isNaN(d.getTime())) continue;
+    const key = getCycleForDate(d, startDay).key;
+    (result[key] ??= []).push(p);
+  }
+  return result;
 }
 
 /**

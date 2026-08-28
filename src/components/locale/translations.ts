@@ -31,6 +31,11 @@ const id: TranslationDict = {
   "app.overLimitDesc":
     "Pengeluaran sudah {spent}, melebihi limit {limit}. Selisih: {diff}.",
 
+  // Mode mockup publik (demo)
+  "demo.bannerTitle": "Mode Mockup Publik",
+  "demo.bannerDesc":
+    "Anda sedang mencoba versi demo tanpa database. Semua data hanya tersimpan sementara di memori browser dan akan hilang saat halaman dimuat ulang. Nikmati mencoba seluruh fitur!",
+
   // Stats
   "stats.initialBalance": "Saldo",
   "stats.totalSpent": "Total Pengeluaran",
@@ -195,6 +200,11 @@ const en: TranslationDict = {
   "app.overLimitTitle": "Spending Limit Exceeded!",
   "app.overLimitDesc":
     "Spending is {spent}, exceeding the limit of {limit}. Difference: {diff}.",
+
+  // Public mockup mode (demo)
+  "demo.bannerTitle": "Public Mockup Mode",
+  "demo.bannerDesc":
+    "You are trying the demo version without a database. All data is stored temporarily in browser memory and will be lost when the page is reloaded. Enjoy exploring every feature!",
 
   "stats.initialBalance": "Balance",
   "stats.totalSpent": "Total Spending",

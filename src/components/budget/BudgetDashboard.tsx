@@ -32,12 +32,14 @@ import {
   getHistoricalPurchasesAction,
 } from "@/server/actions";
 import { computeCycleStats } from "@/helpers/stats";
-import { buildCycleChartData } from "@/helpers/chartData";
-import type { Purchase } from "@/models/types";
+import { buildCycleChartData, groupPurchasesByCycle } from "@/helpers/chartData";
+import type { Purchase, PurchaseInput } from "@/models/types";
+import { IS_DEMO } from "@/config/variables";
 import {
   formatCycleLabel,
   getCycleInfo,
   getCurrentCycle,
+  isDateInCycle,
   type CycleInfo,
 } from "@/utils/cycleUtils";
 import { formatIDR } from "@/utils/currency";
@@ -136,6 +138,8 @@ export default function BudgetDashboard({
   const [formOpen, setFormOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState("charts");
+  /** Mode mockup publik: tanpa DB, data hanya di memori (hilang saat reload). */
+  const isDemo = IS_DEMO;
 
   const { t, locale } = useLocale();
   const { startDay } = useCycleConfig();
@@ -149,10 +153,30 @@ export default function BudgetDashboard({
 
   const cycleLabel = formatCycleLabel(cycle.year, cycle.monthIndex, locale);
 
-  const stats = useMemo(() => computeCycleStats(purchases), [purchases]);
+  /**
+   * Pembelian yang tampil untuk siklus aktif.
+   * Mode normal: state `purchases` sudah per-siklus (di-fetch dari server).
+   * Mode demo: satu array in-memory difilter per siklus di client.
+   */
+  const visiblePurchases = useMemo(
+    () =>
+      isDemo
+        ? purchases.filter((p) => isDateInCycle(new Date(p.date), cycle))
+        : purchases,
+    [isDemo, purchases, cycle],
+  );
+
+  const stats = useMemo(
+    () => computeCycleStats(visiblePurchases),
+    [visiblePurchases],
+  );
   const chartData = useMemo(
-    () => buildCycleChartData(historical, locale),
-    [historical, locale],
+    () =>
+      buildCycleChartData(
+        isDemo ? groupPurchasesByCycle(purchases, startDay) : historical,
+        locale,
+      ),
+    [isDemo, purchases, historical, locale, startDay],
   );
 
   const editingPurchase = useMemo(
@@ -161,20 +185,24 @@ export default function BudgetDashboard({
     [purchases, editingId],
   );
 
-  /** Refetch pembelian untuk siklus tertentu dari server. */
-  const refreshCycle = useCallback(async (targetCycle: CycleInfo) => {
-    try {
-      const [fresh, freshHistorical] = await Promise.all([
-        getCyclePurchasesAction(targetCycle),
-        getHistoricalPurchasesAction(targetCycle, 6),
-      ]);
-      setPurchases(fresh);
-      setHistorical(freshHistorical);
-    } catch (err) {
-      console.error("[BudgetDashboard] gagal memuat pembelian:", err);
-      setPurchases([]);
-    }
-  }, []);
+  /** Refetch pembelian untuk siklus tertentu dari server (mode normal). */
+  const refreshCycle = useCallback(
+    async (targetCycle: CycleInfo) => {
+      if (isDemo) return; // mode mockup: data in-memory, tidak ada server fetch
+      try {
+        const [fresh, freshHistorical] = await Promise.all([
+          getCyclePurchasesAction(targetCycle),
+          getHistoricalPurchasesAction(targetCycle, 6),
+        ]);
+        setPurchases(fresh);
+        setHistorical(freshHistorical);
+      } catch (err) {
+        console.error("[BudgetDashboard] gagal memuat pembelian:", err);
+        setPurchases([]);
+      }
+    },
+    [isDemo],
+  );
 
   // Muat ulang data dari server saat range siklus berubah (baik karena
   // navigasi bulan atau perubahan startDay). Fetch async; setState terjadi
@@ -207,6 +235,7 @@ export default function BudgetDashboard({
     async (id: string) => {
       // Optimistic: hapus dari state lokal dulu
       setPurchases((prev) => prev.filter((p) => p.id !== id));
+      if (isDemo) return; // mode mockup: state lokal adalah satu-satunya sumber
       try {
         await deletePurchaseAction(id);
       } catch (err) {
@@ -214,13 +243,14 @@ export default function BudgetDashboard({
         await refreshCycle(cycle);
       }
     },
-    [cycle, refreshCycle],
+    [isDemo, cycle, refreshCycle],
   );
 
   const handleDeleteBulk = useCallback(
     async (ids: string[]) => {
       // Optimistic: hapus dari state lokal dulu
       setPurchases((prev) => prev.filter((p) => !ids.includes(p.id)));
+      if (isDemo) return; // mode mockup: state lokal adalah satu-satunya sumber
       try {
         await deletePurchasesAction(ids);
       } catch (err) {
@@ -228,7 +258,75 @@ export default function BudgetDashboard({
         await refreshCycle(cycle);
       }
     },
-    [cycle, refreshCycle],
+    [isDemo, cycle, refreshCycle],
+  );
+
+  /** Simpan pembelian baru (demo: in-memory dengan id UUID client). */
+  const handleDemoCreate = useCallback((input: PurchaseInput) => {
+    const now = new Date();
+    setPurchases((prev) => [
+      {
+        id:
+          typeof crypto !== "undefined" && "randomUUID" in crypto
+            ? crypto.randomUUID()
+            : `demo-${now.getTime()}-${Math.random().toString(36).slice(2)}`,
+        name: input.name,
+        categoryId: input.categoryId,
+        amount: input.amount,
+        note: input.note,
+        date: input.date,
+      },
+      ...prev,
+    ]);
+  }, []);
+
+  /** Perbarui pembelian (demo: in-memory). */
+  const handleDemoUpdate = useCallback(
+    (id: string, input: PurchaseInput) => {
+      setPurchases((prev) =>
+        prev.map((p) =>
+          p.id === id
+            ? {
+                ...p,
+                name: input.name,
+                categoryId: input.categoryId,
+                amount: input.amount,
+                note: input.note,
+                date: input.date,
+              }
+            : p,
+        ),
+      );
+    },
+    [],
+  );
+
+  /** Import massal (demo: in-memory, tanpa server action). */
+  const handleDemoImport = useCallback(
+    (inputs: PurchaseInput[]): { imported: number; errors: string[] } => {
+      let imported = 0;
+      const errors: string[] = [];
+      const now = Date.now();
+      const created: Purchase[] = [];
+      inputs.forEach((input, i) => {
+        if (!input.name || !input.categoryId || !(input.amount > 0)) {
+          errors.push(`Baris ${i + 1}: data tidak valid`);
+          return;
+        }
+        imported++;
+        created.push({
+          id: `demo-${now}-${i}-${Math.random().toString(36).slice(2)}`,
+          name: input.name,
+          categoryId: input.categoryId,
+          amount: input.amount,
+          note: input.note,
+          date: input.date,
+        });
+      });
+      if (created.length > 0) setPurchases((prev) => [...created, ...prev]);
+      return { imported, errors };
+    },
+    [],
   );
 
   const handleOpenCreate = useCallback(() => {
@@ -310,6 +408,17 @@ export default function BudgetDashboard({
 
         <StatsCards stats={stats} />
 
+        {isDemo && (
+          <Alert
+            type="info"
+            showIcon
+            closable
+            title={t("demo.bannerTitle")}
+            description={t("demo.bannerDesc")}
+            style={{ marginBottom: 24 }}
+          />
+        )}
+
         {stats.overLimit && (
           <Alert
             type="error"
@@ -352,7 +461,7 @@ export default function BudgetDashboard({
                   <div className="mb-4 grid grid-cols-1 gap-4 md:mb-6 lg:grid-cols-2">
                     <AllocationBarChart cycles={chartData} />
                     <DailySpendingLineChart
-                      purchases={purchases}
+                      purchases={visiblePurchases}
                       cycle={cycle}
                     />
                   </div>
@@ -376,7 +485,7 @@ export default function BudgetDashboard({
               children: (
                 <div className="pb-2">
                   <div className="mb-4 md:mb-6">
-                    <TopKeywordsInsights purchases={purchases} />
+                    <TopKeywordsInsights purchases={visiblePurchases} />
                   </div>
                 </div>
               ),
@@ -393,12 +502,15 @@ export default function BudgetDashboard({
                 <div className="pb-2">
                   {/* Purchase Table */}
                   <PurchaseTable
-                    purchases={purchases}
+                    purchases={visiblePurchases}
                     onCreate={handleOpenCreate}
                     onEdit={handleOpenEdit}
                     onDelete={handleDelete}
                     onDeleteBulk={handleDeleteBulk}
-                    onImported={() => refreshCycle(cycle)}
+                    onImported={() => {
+                      if (!isDemo) refreshCycle(cycle);
+                    }}
+                    demoImport={isDemo ? handleDemoImport : undefined}
                   />
 
                   {/* Category Breakdown */}
@@ -417,7 +529,14 @@ export default function BudgetDashboard({
           editingPurchase={editingPurchase}
           cycleLabel={cycleLabel}
           onClose={closeForm}
-          onSaved={() => refreshCycle(cycle)}
+          onSaved={() => {
+            if (!isDemo) refreshCycle(cycle);
+          }}
+          demoHandlers={
+            isDemo
+              ? { create: handleDemoCreate, update: handleDemoUpdate }
+              : undefined
+          }
         />
       </div>
     </div>

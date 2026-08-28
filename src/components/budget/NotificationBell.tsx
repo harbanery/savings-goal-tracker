@@ -3,7 +3,7 @@
 import { BellOutlined, BellFilled } from "@ant-design/icons";
 import { App, Badge, Button, Tooltip } from "antd";
 import { useCallback, useEffect, useSyncExternalStore, useState } from "react";
-import { VAPID_PUBLIC_KEY } from "@/config/variables";
+import { VAPID_PUBLIC_KEY, IS_DEMO } from "@/config/variables";
 import { useLocale } from "@/components/locale/LocaleProvider";
 
 /** URL base untuk API calls. */
@@ -137,7 +137,8 @@ export default function NotificationBell() {
     }
   }, [t, message]);
 
-  if (!supported) return null;
+  // Mode mockup publik: push subscription butuh DB, jadi tombol disembunyikan.
+  if (!supported || IS_DEMO) return null;
 
   return (
     <Tooltip

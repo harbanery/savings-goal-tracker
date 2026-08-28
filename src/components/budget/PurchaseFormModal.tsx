@@ -19,7 +19,7 @@ import {
   getUnitsOfCategory,
   UNITS,
 } from "@/models/categories";
-import type { Purchase } from "@/models/types";
+import type { Purchase, PurchaseInput } from "@/models/types";
 import { useLocale } from "@/components/locale/LocaleProvider";
 import { pickText } from "@/components/locale/useTranslatedData";
 
@@ -61,6 +61,14 @@ interface Props {
   cycleLabel: string;
   onClose: () => void;
   onSaved: () => void;
+  /**
+   * Handler CRUD in-memory untuk mode mockup publik (tanpa DB).
+   * Jika diberikan, server action tidak dipanggil.
+   */
+  demoHandlers?: {
+    create: (input: PurchaseInput) => void;
+    update: (id: string, input: PurchaseInput) => void;
+  };
 }
 
 interface FormValues {
@@ -78,6 +86,7 @@ export default function PurchaseFormModal({
   cycleLabel,
   onClose,
   onSaved,
+  demoHandlers,
 }: Props) {
   const isEdit = editingPurchase !== null;
   const { t } = useLocale();
@@ -97,6 +106,7 @@ export default function PurchaseFormModal({
         cycleLabel={cycleLabel}
         onClosed={onClose}
         onSaved={onSaved}
+        demoHandlers={demoHandlers}
       />
     </Modal>
   );
@@ -107,6 +117,10 @@ interface FormProps {
   cycleLabel: string;
   onClosed: () => void;
   onSaved: () => void;
+  demoHandlers?: {
+    create: (input: PurchaseInput) => void;
+    update: (id: string, input: PurchaseInput) => void;
+  };
 }
 
 function PurchaseForm({
@@ -114,6 +128,7 @@ function PurchaseForm({
   cycleLabel,
   onClosed,
   onSaved,
+  demoHandlers,
 }: FormProps) {
   const [form] = Form.useForm<FormValues>();
   const [saving, setSaving] = useState(false);
@@ -133,7 +148,14 @@ function PurchaseForm({
         note: (values.note ?? "").trim(),
         date: (values.date ?? dayjs()).toISOString(),
       };
-      if (isEdit && editingPurchase) {
+      if (demoHandlers) {
+        // Mode mockup publik: simpan ke memori client tanpa server action.
+        if (isEdit && editingPurchase) {
+          demoHandlers.update(editingPurchase.id, input);
+        } else {
+          demoHandlers.create(input);
+        }
+      } else if (isEdit && editingPurchase) {
         await updatePurchaseAction(editingPurchase.id, input);
       } else {
         await createPurchaseAction(input);

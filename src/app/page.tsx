@@ -5,6 +5,7 @@ import {
 } from "@/server/actions";
 import type { Purchase } from "@/models/types";
 import { getCurrentCycle } from "@/utils/cycleUtils";
+import { IS_DEMO } from "@/config/variables";
 
 // Selalu render dinamis agar data terbaru dari DB selalu ditampilkan.
 export const dynamic = "force-dynamic";
@@ -13,12 +14,15 @@ export default async function Home() {
   const cycle = getCurrentCycle();
   let initialPurchases: Purchase[] = [];
   let initialHistorical: Record<string, Purchase[]> = {};
-  try {
-    initialPurchases = await getCyclePurchasesAction(cycle);
-    initialHistorical = await getHistoricalPurchasesAction(cycle, 6);
-  } catch (err) {
-    // DB mungkin belum dikonfigurasi; render state kosong agar UI tetap muncul.
-    console.error("[page] gagal memuat data awal:", err);
+
+  if (!IS_DEMO) {
+    try {
+      initialPurchases = await getCyclePurchasesAction(cycle);
+      initialHistorical = await getHistoricalPurchasesAction(cycle, 6);
+    } catch (err) {
+      // DB mungkin belum dikonfigurasi; render state kosong agar UI tetap muncul.
+      console.error("[page] gagal memuat data awal:", err);
+    }
   }
 
   return (
