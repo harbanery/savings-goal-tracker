@@ -79,7 +79,7 @@ export async function createPurchaseAction(
 ): Promise<void> {
   const name = sanitizeText(input.name, 100);
   if (!name) throw new Error("Nama pembelian wajib diisi.");
-  if (!input.categoryId) throw new Error("Kategori wajib dipilih.");
+  if (!input.categoryId) throw new Error("Subkategori wajib dipilih.");
   validateAmount(input.amount);
 
   const date = new Date(input.date);
@@ -104,7 +104,7 @@ export async function updatePurchaseAction(
   if (!isCuid(id)) throw new Error(`Invalid purchase id: ${id}`);
   const name = sanitizeText(input.name, 100);
   if (!name) throw new Error("Nama pembelian wajib diisi.");
-  if (!input.categoryId) throw new Error("Kategori wajib dipilih.");
+  if (!input.categoryId) throw new Error("Subkategori wajib dipilih.");
   validateAmount(input.amount);
 
   const date = new Date(input.date);
@@ -153,7 +153,7 @@ export async function importPurchasesAction(
       const input = inputs[i];
       const name = sanitizeText(input.name, 100);
       if (!name) throw new Error("Nama pembelian wajib diisi.");
-      if (!input.categoryId) throw new Error("Kategori wajib dipilih.");
+      if (!input.categoryId) throw new Error("Subkategori wajib dipilih.");
       validateAmount(input.amount);
 
       const date = new Date(input.date);

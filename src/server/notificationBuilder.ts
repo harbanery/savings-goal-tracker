@@ -1,4 +1,8 @@
-import { CATEGORY_MAP, TOTAL_ALLOCATION } from "@/models/categories";
+import {
+  CATEGORY_MAP,
+  getParentCategoryId,
+  TOTAL_ALLOCATION,
+} from "@/models/categories";
 import type { Purchase } from "@/models/types";
 import {
   SAVINGS_INITIAL,
@@ -142,13 +146,12 @@ export async function buildCategorySpotlight(): Promise<NotificationPayload> {
     };
   }
 
-  // Hitung pengeluaran per kategori dalam 7 hari terakhir
+  // Hitung pengeluaran per kategori (wadah induk, legacy-aware) dalam
+  // 7 hari terakhir — subkategori diakumulasi ke kategorinya.
   const weekByCategory = new Map<string, number>();
   for (const p of recentPurchases) {
-    weekByCategory.set(
-      p.categoryId,
-      (weekByCategory.get(p.categoryId) ?? 0) + p.amount,
-    );
+    const catId = getParentCategoryId(p.categoryId);
+    weekByCategory.set(catId, (weekByCategory.get(catId) ?? 0) + p.amount);
   }
 
   // Cari kategori dengan pengeluaran tertinggi minggu ini (hanya yang dialokasikan)
@@ -205,7 +208,7 @@ function getSpentForCategory(
   categoryId: string,
 ): number {
   return purchases
-    .filter((p) => p.categoryId === categoryId)
+    .filter((p) => getParentCategoryId(p.categoryId) === categoryId)
     .reduce((acc, p) => acc + p.amount, 0);
 }
 
@@ -543,7 +546,8 @@ export async function buildMonthlySummary(): Promise<NotificationPayload> {
     .sort((a, b) => b.amount - a.amount)
     .slice(0, 3)
     .map((p) => {
-      const cat = CATEGORY_MAP[p.categoryId];
+      // Label wadah induk (legacy-aware) untuk email rekap.
+      const cat = CATEGORY_MAP[getParentCategoryId(p.categoryId)];
       const catLabel = cat
         ? (cat.label[NOTIFICATION_LOCALE] ?? cat.label.id)
         : p.categoryId;
@@ -942,18 +946,16 @@ export async function buildYearlyRecap(): Promise<NotificationPayload> {
   const totalSpentPrev = purchasesPrev.reduce((sum, p) => sum + p.amount, 0);
   const transactionCountCurrent = purchasesCurrent.length;
 
-  // Hitung pengeluaran per wadah (hanya dialokasikan)
+  // Hitung pengeluaran per wadah (hanya dialokasikan; subkategori
+  // diakumulasi ke kategori induk, legacy-aware)
   const spentByEnvelope = new Map<string, number>();
   const allocatedCats = Object.values(CATEGORY_MAP).filter(
     (c) => !c.excludeFromAllocation,
   );
   for (const p of purchasesCurrent) {
-    if (!spentByEnvelope.has(p.categoryId))
-      spentByEnvelope.set(p.categoryId, 0);
-    spentByEnvelope.set(
-      p.categoryId,
-      spentByEnvelope.get(p.categoryId)! + p.amount,
-    );
+    const catId = getParentCategoryId(p.categoryId);
+    if (!spentByEnvelope.has(catId)) spentByEnvelope.set(catId, 0);
+    spentByEnvelope.set(catId, spentByEnvelope.get(catId)! + p.amount);
   }
 
   // Pengeluaran per Wadah (semua wadah dialokasikan, urut terbesar)

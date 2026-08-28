@@ -16,7 +16,10 @@ model Purchase {
   id        String   @id @default(cuid())
   /// Nama pembelian, mis. "Makan siang", "Bensin", "Spotify"
   name      String
-  /// ID kategori/wadah (mis. "rekening-utama", "shopeepay")
+  /// ID subkategori/unit pencatatan (mis. "kos", "gopay-ojol",
+  /// "jenius-langganan"). Total kategori/wadah = akumulasi subkategorinya.
+  /// ID kategori lama (mis. "cash-dompet", "langganan") tetap tersimpan
+  /// dan dipetakan otomatis di application layer (LEGACY_ALIASES).
   categoryId String
   /// Jumlah biaya (Decimal untuk presisi mata uang)
   amount    Decimal  @db.Decimal(14, 2)

@@ -1,12 +1,24 @@
-import { CATEGORIES, CATEGORY_MAP } from "@/models/categories";
-import type { Purchase, PurchaseInput } from "@/models/types";
+import {
+  CATEGORIES,
+  CATEGORY_MAP,
+  LEGACY_ALIASES,
+  UNIT_MAP,
+  UNITS,
+  getUnit,
+  resolveUnitId,
+} from "@/models/categories";
+import type { Locale, Purchase, PurchaseInput } from "@/models/types";
 
 /**
  * Utilitas CSV untuk template download & import (kompatibel Google Sheets).
- * Format kolom: Nama, Kategori, Jumlah, Tanggal, Catatan
+ * Format kolom: Nama, Subkategori, Jumlah, Tanggal, Catatan
+ *
+ * Kolom Subkategori menerima (urutan prioritas): ID unit, label penuh
+ * "Subkategori · Kategori", label/ID kategori lama (dipetakan otomatis),
+ * label singkat subkategori, lalu label/ID kategori baru.
  */
 
-const CSV_HEADERS = ["Nama", "Kategori", "Jumlah", "Tanggal", "Catatan"];
+const CSV_HEADERS = ["Nama", "Subkategori", "Jumlah", "Tanggal", "Catatan"];
 
 /** Escape nilai CSV (quote bila ada koma, quote, atau newline). */
 function escapeCsv(value: string): string {
@@ -16,14 +28,23 @@ function escapeCsv(value: string): string {
   return value;
 }
 
+/** Label penuh unik "Subkategori · Kategori", mis. "Belanja · Livin". */
+function fullLabel(unitId: string, locale: Locale = "id"): string {
+  const unit = getUnit(unitId);
+  if (!unit) return unitId;
+  const cat = CATEGORY_MAP[unit.categoryId];
+  if (!cat || unit.id === cat.id) return unit.label[locale] ?? unit.label.id;
+  return `${unit.label[locale] ?? unit.label.id} · ${cat.label[locale] ?? cat.label.id}`;
+}
+
 /**
  * Generate CSV template dengan header + satu baris contoh.
- * Kategori diisi dengan nama label (bukan ID) agar user-friendly.
+ * Subkategori diisi dengan label penuh (bukan ID) agar user-friendly.
  */
 export function generateTemplateCsv(): string {
   const sampleRow = [
     escapeCsv("Contoh: Makan Siang"),
-    escapeCsv(CATEGORIES[0].label.id),
+    escapeCsv(fullLabel(UNITS[0].id)),
     "50000",
     "2026-07-25",
     escapeCsv("Makan di warteg"),
@@ -34,12 +55,13 @@ export function generateTemplateCsv(): string {
 /** Generate CSV dari daftar pembelian untuk export. */
 export function generatePurchasesCsv(purchases: Purchase[]): string {
   const rows = purchases.map((p) => {
-    const cat = CATEGORY_MAP[p.categoryId];
-    const catLabel = cat?.label.id ?? "";
+    const unit = getUnit(p.categoryId);
+    // Label penuh agar unik antar subkategori bernama sama (mis. "Belanja").
+    const unitLabel = unit ? fullLabel(unit.id) : p.categoryId;
     const date = p.date.split("T")[0]; // YYYY-MM-DD
     return [
       escapeCsv(p.name),
-      escapeCsv(catLabel),
+      escapeCsv(unitLabel),
       String(p.amount),
       date,
       escapeCsv(p.note),
@@ -49,8 +71,51 @@ export function generatePurchasesCsv(purchases: Purchase[]): string {
 }
 
 /**
+ * Cocokkan referensi teks (case-insensitive) menjadi ID unit.
+ * Prioritas: ID unit -> label penuh "Unit · Kategori" -> alias kategori lama
+ * (ID & label) -> label singkat unit -> label/ID kategori baru.
+ */
+function matchUnit(ref: string): string | undefined {
+  const t = ref.trim().toLowerCase();
+  if (!t) return undefined;
+  // 1. ID unit baru, atau label penuh "Subkategori · Kategori" (unik).
+  const byId = UNITS.find((u) => u.id.toLowerCase() === t);
+  if (byId) return byId.id;
+  const byFull = UNITS.find((u) => fullLabel(u.id).toLowerCase() === t);
+  if (byFull) return byFull.id;
+  // 2. Alias lama: ID kategori lama + label lama (mis. "Belanja" standalone
+  //    -> ShopeePay/Lainnya). Naik di atas label singkat agar data ekspor
+  //    lama terpetakan ke unit penggantinya.
+  if (LEGACY_ALIASES[t] && UNIT_MAP[LEGACY_ALIASES[t]]) {
+    return LEGACY_ALIASES[t];
+  }
+  // 3. Label singkat unit (id/en). Label ganda antar wadah (mis. "Belanja"
+  //    di Livin & ShopeePay) menang ke kemunculan pertama.
+  const byLabel = UNITS.find(
+    (u) =>
+      u.label.id.toLowerCase() === t ||
+      u.label.en.toLowerCase() === t,
+  );
+  if (byLabel) return byLabel.id;
+  // 4. Label/ID kategori baru: valid hanya bila kategori tanpa subkategori
+  //    atau punya alias legacy (mis. "gopay" -> "gopay-ojol").
+  const cat = CATEGORIES.find(
+    (c) =>
+      c.id.toLowerCase() === t ||
+      c.label.id.toLowerCase() === t ||
+      c.label.en.toLowerCase() === t,
+  );
+  if (cat) {
+    const resolved = resolveUnitId(cat.id);
+    if (UNIT_MAP[resolved]) return resolved;
+  }
+  return undefined;
+}
+
+/**
  * Parse CSV teks menjadi daftar PurchaseInput.
- * Kategori dicocokkan berdasarkan label (case-insensitive) atau ID.
+ * Subkategori dicocokkan berdasarkan label (case-insensitive) atau ID;
+ * kategori lama tetap diterima dan dipetakan otomatis.
  * Baris dengan error dilewati dan dilaporkan.
  */
 export function parseCsvToPurchases(
@@ -85,16 +150,13 @@ export function parseCsvToPurchases(
       continue;
     }
 
-    // Cocokkan kategori berdasarkan label (kedua bahasa) atau ID (case-insensitive)
-    const trimmedCat = catLabel.trim().toLowerCase();
-    const cat = CATEGORIES.find(
-      (c) =>
-        c.label.id.toLowerCase() === trimmedCat ||
-        c.label.en.toLowerCase() === trimmedCat ||
-        c.id.toLowerCase() === trimmedCat,
-    );
-    if (!cat) {
-      errors.push(`Baris ${rowNum}: kategori "${catLabel}" tidak ditemukan`);
+    // Cocokkan subkategori berdasarkan label (kedua bahasa) atau ID,
+    // termasuk kategori lama (legacy-aware).
+    const unitId = matchUnit(catLabel);
+    if (!unitId) {
+      errors.push(
+        `Baris ${rowNum}: subkategori "${catLabel}" tidak ditemukan`,
+      );
       continue;
     }
 
@@ -113,7 +175,7 @@ export function parseCsvToPurchases(
 
     valid.push({
       name: trimmedName,
-      categoryId: cat.id,
+      categoryId: unitId,
       amount: Math.round(amount),
       note: (note ?? "").trim(),
       date: parsedDate.toISOString(),

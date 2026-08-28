@@ -104,6 +104,37 @@ export default function CategoryBreakdown({ stats }: Props) {
                         {cat.purchaseCount > 0 &&
                           ` (${cat.purchaseCount}x)`}
                       </Text>
+                      {/* Rincian per subkategori (wadah tanpa subkategori
+                          menampilkan total kategori saja). */}
+                      {cat.subcategories.length > 0 && cat.spent > 0 && (
+                        <div className="mt-1.5 space-y-0.5 border-t border-zinc-100 pt-1.5 dark:border-zinc-700/60">
+                          {cat.subcategories
+                            .filter((s) => s.purchaseCount > 0)
+                            .sort((a, b) => b.spent - a.spent)
+                            .map((s) => (
+                              <div
+                                key={s.subcategoryId}
+                                className="flex items-center justify-between gap-2"
+                              >
+                                <Text
+                                  type="secondary"
+                                  style={{ fontSize: 11 }}
+                                  className="truncate"
+                                >
+                                  {pickText(s.label, locale)}
+                                  <span className="ml-1 opacity-70">
+                                    ({s.purchaseCount}x · {s.share}%)
+                                  </span>
+                                </Text>
+                                <Text
+                                  style={{ fontSize: 11, flexShrink: 0 }}
+                                >
+                                  {formatIDR(s.spent, locale)}
+                                </Text>
+                              </div>
+                            ))}
+                        </div>
+                      )}
                     </>
                   )}
                 </div>

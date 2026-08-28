@@ -22,7 +22,13 @@ import {
 import type { ColumnsType, TableProps } from "antd/es/table";
 import dayjs from "dayjs";
 import { useMemo, useState } from "react";
-import { CATEGORIES, CATEGORY_MAP } from "@/models/categories";
+import {
+  CATEGORIES,
+  CATEGORY_MAP,
+  getUnit,
+  resolveUnitId,
+  UNITS,
+} from "@/models/categories";
 import type { Purchase } from "@/models/types";
 import { formatIDR } from "@/utils/currency";
 import { useLocale } from "@/components/locale/LocaleProvider";
@@ -57,10 +63,25 @@ export default function PurchaseTable({
 }: Props) {
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
   const [searchText, setSearchText] = useState("");
-  const [filterCategory, setFilterCategory] = useState<string | null>(null);
+  const [filterSubcategory, setFilterSubcategory] = useState<string | null>(
+    null,
+  );
   const { t, locale } = useLocale();
 
-  /** Filter purchases berdasarkan search text & kategori. */
+  /** Opsi filter subkategori, tergrup per kategori/wadah. */
+  const subcategoryFilterOptions = useMemo(
+    () =>
+      CATEGORIES.map((c) => ({
+        label: pickText(c.label, locale),
+        options: UNITS.filter((u) => u.categoryId === c.id).map((u) => ({
+          value: u.id,
+          label: u.label[locale] ?? u.label.id,
+        })),
+      })),
+    [locale],
+  );
+
+  /** Filter purchases berdasarkan search text & subkategori (legacy-aware). */
   const filteredPurchases = useMemo(() => {
     let result = purchases;
     if (searchText.trim()) {
@@ -70,11 +91,13 @@ export default function PurchaseTable({
           p.name.toLowerCase().includes(q) || p.note.toLowerCase().includes(q),
       );
     }
-    if (filterCategory) {
-      result = result.filter((p) => p.categoryId === filterCategory);
+    if (filterSubcategory) {
+      result = result.filter(
+        (p) => resolveUnitId(p.categoryId) === filterSubcategory,
+      );
     }
     return result;
-  }, [purchases, searchText, filterCategory]);
+  }, [purchases, searchText, filterSubcategory]);
 
   const dataSource: RowData[] = useMemo(
     () => filteredPurchases.map((p) => ({ key: p.id, purchase: p })),
@@ -115,20 +138,25 @@ export default function PurchaseTable({
       ),
     },
     {
-      title: t("table.colCategory"),
+      title: t("table.colSubcategory"),
       key: "category",
-      width: 140,
+      width: 180,
       render: (_: unknown, record: RowData) => {
-        const cat = CATEGORY_MAP[record.purchase.categoryId];
-        if (!cat) return <Text type="secondary">-</Text>;
+        const unit = getUnit(record.purchase.categoryId);
+        if (!unit) return <Text type="secondary">-</Text>;
+        const cat = CATEGORY_MAP[unit.categoryId];
         return (
-          <Tag
-            color={cat.color}
-            style={{ margin: 0, fontSize: 11 }}
-            variant="solid"
+          <Tooltip
+            title={cat ? pickText(cat.label, locale) : unit.categoryId}
           >
-            {pickText(cat.label, locale)}
-          </Tag>
+            <Tag
+              color={unit.color}
+              style={{ margin: 0, fontSize: 11 }}
+              variant="solid"
+            >
+              {pickText(unit.label, locale)}
+            </Tag>
+          </Tooltip>
         );
       },
     },
@@ -211,24 +239,13 @@ export default function PurchaseTable({
                 style={{ maxWidth: 280 }}
               />
               <Select
-                placeholder={t("table.filterCategoryPlaceholder")}
+                placeholder={t("table.filterSubcategoryPlaceholder")}
                 allowClear
                 size="small"
-                value={filterCategory}
-                onChange={(val) => setFilterCategory(val ?? null)}
-                style={{ minWidth: 160 }}
-                options={CATEGORIES.map((c) => ({
-                  value: c.id,
-                  label: (
-                    <span className="flex items-center gap-1.5">
-                      <span
-                        className="inline-block h-2.5 w-2.5 rounded-full"
-                        style={{ backgroundColor: c.color }}
-                      />
-                      {pickText(c.label, locale)}
-                    </span>
-                  ),
-                }))}
+                value={filterSubcategory}
+                onChange={(val) => setFilterSubcategory(val ?? null)}
+                style={{ minWidth: 200 }}
+                options={subcategoryFilterOptions}
               />
             </div>
           )}
@@ -283,24 +300,13 @@ export default function PurchaseTable({
             style={{ maxWidth: "60%" }}
           />
           <Select
-            placeholder={t("table.filterCategoryPlaceholder")}
+            placeholder={t("table.filterSubcategoryPlaceholder")}
             allowClear
             size="small"
-            value={filterCategory}
-            onChange={(val) => setFilterCategory(val ?? null)}
+            value={filterSubcategory}
+            onChange={(val) => setFilterSubcategory(val ?? null)}
             style={{ minWidth: "40%" }}
-            options={CATEGORIES.map((c) => ({
-              value: c.id,
-              label: (
-                <span className="flex items-center gap-1.5">
-                  <span
-                    className="inline-block h-2.5 w-2.5 rounded-full"
-                    style={{ backgroundColor: c.color }}
-                  />
-                  {pickText(c.label, locale)}
-                </span>
-              ),
-            }))}
+            options={subcategoryFilterOptions}
           />
         </div>
       )}

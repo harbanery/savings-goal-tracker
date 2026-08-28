@@ -12,7 +12,13 @@ import {
 import dayjs from "dayjs";
 import { useSyncExternalStore, useState } from "react";
 import { createPurchaseAction, updatePurchaseAction } from "@/server/actions";
-import { CATEGORIES } from "@/models/categories";
+import {
+  CATEGORIES,
+  getUnit,
+  getUnitFullLabel,
+  getUnitsOfCategory,
+  UNITS,
+} from "@/models/categories";
 import type { Purchase } from "@/models/types";
 import { useLocale } from "@/components/locale/LocaleProvider";
 import { pickText } from "@/components/locale/useTranslatedData";
@@ -150,7 +156,9 @@ function PurchaseForm({
       className="mt-2"
       initialValues={{
         name: editingPurchase?.name ?? "",
-        categoryId: editingPurchase?.categoryId ?? CATEGORIES[0]?.id,
+        // Resolve ID lama ke subkategori/unit yang valid (legacy-aware).
+        categoryId: getUnit(editingPurchase?.categoryId ?? "")?.id
+          ?? UNITS[0]?.id,
         amount: editingPurchase?.amount,
         note: editingPurchase?.note ?? "",
         date: editingPurchase ? dayjs(editingPurchase.date) : dayjs(),
@@ -169,25 +177,42 @@ function PurchaseForm({
 
       <Form.Item
         name="categoryId"
-        label={t("form.category")}
-        rules={[{ required: true, message: t("form.categoryRequired") }]}
+        label={t("form.subcategory")}
+        rules={[{ required: true, message: t("form.subcategoryRequired") }]}
       >
-        <Select placeholder={t("form.categoryPlaceholder")}>
-          {CATEGORIES.map((c) => (
-            <Select.Option key={c.id} value={c.id}>
-              <span
-                style={{
-                  display: "inline-block",
-                  width: 8,
-                  height: 8,
-                  borderRadius: "50%",
-                  background: c.color,
-                  marginRight: 8,
-                }}
-              />
-              {pickText(c.label, locale)} ({pickText(c.description, locale)})
-            </Select.Option>
-          ))}
+        <Select
+          placeholder={t("form.subcategoryPlaceholder")}
+          showSearch
+          optionFilterProp="children"
+        >
+          {CATEGORIES.map((c) => {
+            const units = getUnitsOfCategory(c.id);
+            return (
+              <Select.OptGroup
+                key={c.id}
+                label={
+                  <span className="flex items-center gap-1.5">
+                    <span
+                      style={{
+                        display: "inline-block",
+                        width: 8,
+                        height: 8,
+                        borderRadius: "50%",
+                        background: c.color,
+                      }}
+                    />
+                    {pickText(c.label, locale)}
+                  </span>
+                }
+              >
+                {units.map((u) => (
+                  <Select.Option key={u.id} value={u.id}>
+                    {getUnitFullLabel(u.id, locale)}
+                  </Select.Option>
+                ))}
+              </Select.OptGroup>
+            );
+          })}
         </Select>
       </Form.Item>
 

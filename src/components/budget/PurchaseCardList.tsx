@@ -1,9 +1,9 @@
 "use client";
 
 import { DeleteOutlined, EditOutlined } from "@ant-design/icons";
-import { Button, Card, Empty, Popconfirm, Tag, Typography } from "antd";
+import { Button, Card, Empty, Popconfirm, Tag, Tooltip, Typography } from "antd";
 import dayjs from "dayjs";
-import { CATEGORY_MAP } from "@/models/categories";
+import { CATEGORY_MAP, getUnit } from "@/models/categories";
 import type { Purchase } from "@/models/types";
 import { formatIDR } from "@/utils/currency";
 import { useLocale } from "@/components/locale/LocaleProvider";
@@ -35,7 +35,9 @@ export default function PurchaseCardList({
   return (
     <div className="dynamic-scrollbar flex max-h-[60vh] min-h-0 flex-col gap-2 overflow-y-auto pr-1">
       {purchases.map((p) => {
-        const cat = CATEGORY_MAP[p.categoryId];
+        // Resolve unit/subkategori (legacy-aware) untuk tag + tooltip wadah.
+        const unit = getUnit(p.categoryId);
+        const parent = unit ? CATEGORY_MAP[unit.categoryId] : undefined;
         return (
           <Card
             key={p.id}
@@ -52,14 +54,20 @@ export default function PurchaseCardList({
                   <Text strong style={{ fontSize: 13 }} className="truncate">
                     {p.name}
                   </Text>
-                  {cat && (
-                    <Tag
-                      color={cat.color}
-                      style={{ margin: 0, fontSize: 10 }}
-                      variant="solid"
+                  {unit && (
+                    <Tooltip
+                      title={
+                        parent ? pickText(parent.label, locale) : undefined
+                      }
                     >
-                      {pickText(cat.label, locale)}
-                    </Tag>
+                      <Tag
+                        color={unit.color}
+                        style={{ margin: 0, fontSize: 10 }}
+                        variant="solid"
+                      >
+                        {pickText(unit.label, locale)}
+                      </Tag>
+                    </Tooltip>
                   )}
                 </div>
                 {p.note && (

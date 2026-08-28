@@ -1,7 +1,12 @@
 "use client";
 
 import { useMemo } from "react";
-import type { BudgetCategory, Locale, LocaleText } from "@/models/types";
+import type {
+  BudgetCategory,
+  BudgetSubcategory,
+  Locale,
+  LocaleText,
+} from "@/models/types";
 import { useLocale } from "./LocaleProvider";
 
 /** Versi plain-string dari BudgetCategory untuk konsumsi UI. */
@@ -12,6 +17,7 @@ export interface ResolvedBudgetCategory {
   color: string;
   allocation: number;
   excludeFromAllocation?: boolean;
+  subcategories?: BudgetSubcategory[];
 }
 
 /** Pilih teks sesuai locale (fallback ke id). */
@@ -38,6 +44,7 @@ export function useResolvedCategories(
       color: c.color,
       allocation: c.allocation,
       excludeFromAllocation: c.excludeFromAllocation,
+      subcategories: c.subcategories,
     }));
   }, [categories, locale]);
 }

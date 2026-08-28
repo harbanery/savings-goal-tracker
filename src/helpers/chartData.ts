@@ -1,4 +1,4 @@
-import { TOTAL_ALLOCATION } from "@/models/categories";
+import { getParentCategoryId, TOTAL_ALLOCATION } from "@/models/categories";
 import type { Locale, Purchase } from "@/models/types";
 import {
   formatCycleLabel,
@@ -73,8 +73,9 @@ export function buildCycleChartData(
     const categorySpent: Record<string, number> = {};
     for (const p of purchases) {
       totalSpent += p.amount;
-      categorySpent[p.categoryId] =
-        (categorySpent[p.categoryId] ?? 0) + p.amount;
+      // Akumulasi per kategori/wadah induk (legacy-aware).
+      const catId = getParentCategoryId(p.categoryId);
+      categorySpent[catId] = (categorySpent[catId] ?? 0) + p.amount;
     }
     const parts = keyToParts(key);
     const label = parts

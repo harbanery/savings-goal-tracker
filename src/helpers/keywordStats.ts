@@ -1,4 +1,4 @@
-import { CATEGORY_MAP } from "@/models/categories";
+import { CATEGORY_MAP, getParentCategoryId } from "@/models/categories";
 import type { LocaleText, Purchase } from "@/models/types";
 
 /**
@@ -69,10 +69,10 @@ export function getTopKeywords(
     }
     g.count += 1;
     g.totalSpent += p.amount;
-    g.categoryCounts.set(
-      p.categoryId,
-      (g.categoryCounts.get(p.categoryId) ?? 0) + 1,
-    );
+    // Grouping per kategori/wadah induk (legacy-aware), bukan per subkategori,
+    // agar tag insight tetap menunjukkan wadah alokasi.
+    const catId = getParentCategoryId(p.categoryId);
+    g.categoryCounts.set(catId, (g.categoryCounts.get(catId) ?? 0) + 1);
   }
 
   const results: KeywordStat[] = [];
