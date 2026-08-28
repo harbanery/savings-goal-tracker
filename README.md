@@ -20,10 +20,12 @@
 - [Table of Contents](#table-of-contents)
 - [About The Project](#about-the-project)
   - [Built With](#built-with)
+- [The Story](#the-story)
 - [Getting Started](#getting-started)
   - [Prerequisites](#prerequisites)
   - [Installation](#installation)
   - [Setup Environment Variables](#setup-environment-variables)
+  - [Demo Mockup Mode (Current State)](#demo-mockup-mode-current-state)
   - [Database Setup](#database-setup)
   - [Running the Application](#running-the-application)
 - [Usage](#usage)
@@ -42,13 +44,19 @@ My web-based application, **Savings Goal Tracker**, is a personal finance dashbo
 ### Built With
 
 [![Next][Next.js]][Next-url]
-[![React][React.js]][React-url]
-[![Ant Design][Ant Design]][Ant Design-url]
+[![TypeScript][TypeScript]][TypeScript-url]
 [![Tailwind][Tailwind]][Tailwind-url]
+[![Ant Design][Ant Design]][Ant Design-url]
 [![Prisma][Prisma]][Prisma-url]
 [![PostgreSQL][PostgreSQL]][PostgreSQL-url]
-[![TypeScript][TypeScript]][TypeScript-url]
-[![Node][Node.js]][Node-url]
+
+## The Story
+
+I'll be honest: managing money was never my strong suit. Too often I reached the end of the month wondering where my salary went — impulse purchases here, unnecessary treats there, and a wallet that always felt emptier than it should. I knew I was overspending, but without a clear picture of where the money went, every resolution to "spend less next month" quietly faded away.
+
+So instead of another promise to myself, I decided to build something that would hold me accountable. **Savings Goal Tracker** is that answer — an application born from my own habit of overspending. It borrows the envelope budgeting method: every rupiah gets an assignment at the start of the cycle, each wallet has a purpose and a limit, and every purchase is recorded against a subcategory so I can finally see, in numbers, the habits I used to ignore.
+
+This project is as much a personal discipline tool as it is a web app. Turning my weakness into something I can measure, visualize, and improve — that is the whole point.
 
 ## Getting Started
 
@@ -101,7 +109,7 @@ To get a local copy up and running follow these simple steps.
    NEXT_PUBLIC_API_BASE_URL="http://localhost:3000/api"
 
    # Budget config - initial balance per cycle (top-up on the 25th)
-   NEXT_PUBLIC_SAVINGS_INITIAL=6000000
+   NEXT_PUBLIC_SAVINGS_INITIAL=0
 
    # PostgreSQL database connection URL
    DATABASE_URL="postgresql://user:password@host:port/dbname"
@@ -115,18 +123,19 @@ To get a local copy up and running follow these simple steps.
    CRON_SECRET="your-cron-secret"
    ```
 
-### Public Mockup Mode (Optional)
+### Demo Mockup Mode (Current State)
 
-Want to share a public demo of this app without exposing your personal database and categories? Just **leave `DATABASE_URL` empty** (or remove it entirely).
+**The live deployment is currently in demo mockup mode.** Since the production `DATABASE_URL` is left empty, the app you see online runs as a database-free mockup: it uses generic demo categories, and every purchase you add lives only in browser memory and disappears on reload. A dismissible banner explains this to visitors.
 
-- When `DATABASE_URL` is **empty**, the app automatically runs in **mockup mode**:
+How it works:
+
+- When `DATABASE_URL` is **empty** (the current setup), the app automatically runs in **demo mockup mode**:
   - No database is ever queried — all purchases live only in browser memory and disappear on reload.
-  - A dismissible banner informs visitors that data is temporary.
   - Generic demo categories (Cash, Bank Transfer, E-Wallet, Subscriptions, Transport Card) are used instead of the owner's personal ones. See [`src/models/demoCategories.ts`](src/models/demoCategories.ts).
   - Push notification subscriptions are hidden (they require a database).
-- When `DATABASE_URL` is **set**, everything runs the normal database flow with your own categories.
+- When `DATABASE_URL` is **set**, everything runs the normal database flow with the owner's personal categories — no code changes needed.
 
-The mode is detected at build time from the environment, so the same codebase serves both the personal deployment and the public mockup.
+The mode is detected at build time from the environment, so switching between the demo mockup and the real database is only a matter of setting the variable.
 
 ### Database Setup
 
@@ -170,7 +179,7 @@ This application is a personal monthly budget tracker inspired by the envelope b
 
 - **Next.js App Router** with React Server Components and Server Actions for data mutations.
 - **Envelope budgeting system** (sistem wadah) with 7 allocated wallets (Cash, Livin, Jenius - Langganan, GoPay, ShopeePay, E-Money, Link Aja - Paket Kuota). Spending is logged per **subcategory** (e.g. Ojol, KRL, Bayar Kos); each wallet's total is the accumulation of its subcategories. Legacy category IDs in the database are mapped automatically via `LEGACY_ALIASES`.
-- **Public mockup mode**: with an empty `DATABASE_URL`, the app runs as a database-free demo with generic categories and in-memory data (cleared on reload) — perfect for sharing a public showcase.
+- **Demo mockup mode**: with an empty `DATABASE_URL`, the app currently runs as a database-free mockup with generic categories and in-memory data (cleared on reload) — set the variable to switch to the real database flow.
 - **Cycle-based tracking** that resets on the 25th of each month (billing cycle).
 - **Spending limit monitoring** with real-time alerts when exceeding the allocated budget.
 - **Interactive charts** powered by Chart.js: balance donut, category pie, allocation bar, savings comparison, and cumulative savings line.
@@ -287,12 +296,8 @@ Feel free to check it out:
 
 <!-- MARKDOWN LINKS & IMAGES -->
 
-[Node.js]: https://img.shields.io/badge/node.js-339933?style=for-the-badge&logo=nodedotjs&logoColor=white
-[Node-url]: https://nodejs.org/en
 [Next.js]: https://img.shields.io/badge/next.js-000000?style=for-the-badge&logo=nextdotjs&logoColor=white
 [Next-url]: https://nextjs.org/
-[React.js]: https://img.shields.io/badge/React-20232A?style=for-the-badge&logo=react&logoColor=white
-[React-url]: https://reactjs.org/
 [Ant Design]: https://img.shields.io/badge/Ant_Design-1677FF?style=for-the-badge&logo=antdesign&logoColor=white
 [Ant Design-url]: https://ant.design/
 [Tailwind]: https://img.shields.io/badge/tailwindcss-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white

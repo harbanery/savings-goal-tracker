@@ -40,31 +40,17 @@ export const metadata: Metadata = {
     siteName: META_APP,
     countryName: "Indonesia",
     locale: "id-ID",
-    alternateLocale: "en-US",
     url: `/`,
     images: [
       {
         url: `images/opengraph-image.png`,
-        alt: META_APP,
+        alt: META_TITLE,
         type: "image/png",
+        width: 1200,
+        height: 630,
       },
     ],
   },
-  // twitter: {
-  //   card: "summary_large_image",
-  //   site: "@CommuterLine",
-  //   creator: "@CommuterLine",
-  //   creatorId: "341987176",
-  //   title: META_TITLE,
-  //   ...(META_DESCRIPTION && { description: META_DESCRIPTION }),
-  //   images: [
-  //     {
-  //       url: `images/twitter-image.png`,
-  //       alt: META_APP,
-  //       type: "image/png",
-  //     },
-  //   ],
-  // },
   creator: "Raihan Yusuf",
   authors: [
     { name: "Raihan Yusuf", url: "https://www.linkedin.com/in/raihan-yusuf" },

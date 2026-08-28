@@ -23,7 +23,7 @@ export const NODE_ENV: string = process.env.NODE_ENV || "development";
 
 /** Saldo awal setiap siklus bulanan (top-up tanggal 25). */
 export const SAVINGS_INITIAL: number = Number(
-  process.env.NEXT_PUBLIC_SAVINGS_INITIAL ?? "6000000",
+  process.env.NEXT_PUBLIC_SAVINGS_INITIAL ?? "0",
 );
 
 /** Tanggal mulai siklus (tanggal 25 tiap bulan). */

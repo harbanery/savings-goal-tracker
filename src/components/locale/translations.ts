@@ -31,10 +31,10 @@ const id: TranslationDict = {
   "app.overLimitDesc":
     "Pengeluaran sudah {spent}, melebihi limit {limit}. Selisih: {diff}.",
 
-  // Mode mockup publik (demo)
-  "demo.bannerTitle": "Mode Mockup Publik",
+  // Mode mockup demo (sedang aktif)
+  "demo.bannerTitle": "Saat Ini dalam Demo Mockup Mode",
   "demo.bannerDesc":
-    "Anda sedang mencoba versi demo tanpa database. Semua data hanya tersimpan sementara di memori browser dan akan hilang saat halaman dimuat ulang. Nikmati mencoba seluruh fitur!",
+    "Aplikasi ini saat ini berjalan dalam demo mockup mode tanpa database. Semua data hanya tersimpan sementara di memori browser dan akan hilang saat halaman dimuat ulang. Nikmati mencoba seluruh fitur!",
 
   // Stats
   "stats.initialBalance": "Saldo",
@@ -201,10 +201,10 @@ const en: TranslationDict = {
   "app.overLimitDesc":
     "Spending is {spent}, exceeding the limit of {limit}. Difference: {diff}.",
 
-  // Public mockup mode (demo)
-  "demo.bannerTitle": "Public Mockup Mode",
+  // Demo mockup mode (currently active)
+  "demo.bannerTitle": "Currently in Demo Mockup Mode",
   "demo.bannerDesc":
-    "You are trying the demo version without a database. All data is stored temporarily in browser memory and will be lost when the page is reloaded. Enjoy exploring every feature!",
+    "This app is currently running in demo mockup mode without a database. All data is stored temporarily in browser memory and will be lost when the page is reloaded. Enjoy exploring every feature!",
 
   "stats.initialBalance": "Balance",
   "stats.totalSpent": "Total Spending",
