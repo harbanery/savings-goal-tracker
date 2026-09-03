@@ -37,6 +37,14 @@ const PERSONAL_CATEGORIES: BudgetCategory[] = [
         id: "cash-laundry",
         label: { id: "Laundry", en: "Laundry" },
       },
+      {
+        id: "cash-parkir",
+        label: { id: "Parkir", en: "Parking" },
+      },
+      {
+        id: "cash-lainnya",
+        label: { id: "Lainnya", en: "Others" },
+      },
     ],
   },
   {
@@ -68,6 +76,10 @@ const PERSONAL_CATEGORIES: BudgetCategory[] = [
       {
         id: "livin-makanan",
         label: { id: "Makanan", en: "Food" },
+      },
+      {
+        id: "livin-lainnya",
+        label: { id: "Lainnya", en: "Others" },
       },
     ],
   },
