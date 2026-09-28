@@ -1,5 +1,7 @@
-// Prisma schema for Savings Goal Tracker (Monthly Budget Tracker)
+// Prisma schema for Savings Goal Tracker (multi-user finance tracker)
 // Datasource URL dibaca dari DATABASE_URL di .env
+// Semua ID menggunakan UUID. Autentikasi: Google OAuth (custom, ala tourism-village)
+// dengan sesi opaque token (disimpan sha256-hash di tabel UserSession).
 
 generator client {
   provider = "prisma-client-js"
@@ -10,38 +12,140 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-/// Satu catatan pembelian/pengeluaran dalam satu siklus bulanan.
-model Purchase {
-  /// CUID identifier
-  id        String   @id @default(cuid())
-  /// Nama pembelian, mis. "Makan siang", "Bensin", "Spotify"
-  name      String
-  /// ID subkategori/unit pencatatan (mis. "kos", "gopay-ojol",
-  /// "jenius-langganan"). Total kategori/wadah = akumulasi subkategorinya.
-  /// ID kategori lama (mis. "cash-dompet", "langganan") tetap tersimpan
-  /// dan dipetakan otomatis di application layer (LEGACY_ALIASES).
-  categoryId String
-  /// Jumlah biaya (Decimal untuk presisi mata uang)
-  amount    Decimal  @db.Decimal(14, 2)
-  /// Catatan opsional
-  note      String   @default("")
-  /// Tanggal pembelian (menentukan siklus bulan mana pembelian ini masuk)
-  date      DateTime @default(now())
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+/// Pengguna aplikasi (dibuat otomatis saat login Google pertama kali).
+model User {
+  id            String    @id @default(uuid()) @db.Uuid
+  email         String    @unique
+  name          String
+  avatar        String?
+  /// Google `sub` (subject) — ID akun Google.
+  googleId      String?   @unique @map("google_id")
+  emailVerified Boolean   @default(false) @map("email_verified")
+  lastLoginAt   DateTime? @map("last_login_at")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
 
-  @@index([categoryId])
-  @@map("Purchase")
+  settings     UserSettings?
+  categories   Category[]
+  transactions Transaction[]
+  sessions     UserSession[]
+  subscriptions PushSubscription[]
+
+  @@map("users")
 }
 
-/// Langganan push notification dari browser.
-model PushSubscriptions {
-  id        String   @id @default(cuid())
+/// Sesi login: id = sha256(token opaque); token asli hanya di cookie httpOnly.
+model UserSession {
+  id        String   @id @db.Char(64)
+  userId    String   @map("user_id") @db.Uuid
+  expiresAt DateTime @map("expires_at")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("user_sessions")
+}
+
+/// Pengaturan keuangan per user (dinamis, di DB — bukan lagi env/hardcode).
+model UserSettings {
+  userId String @id @map("user_id") @db.Uuid
+  /// Tanggal mulai siklus bulanan (1-28), berbeda per user.
+  cycleStartDay Int @default(25) @map("cycle_start_day")
+  /// Saldo/modal awal per siklus (dipakai sebagai baseline tabungan).
+  savingsInitial Decimal @default(0) @map("savings_initial") @db.Decimal(14, 2)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_settings")
+}
+
+/// Kategori/wadah alokasi milik user (dinamis, di DB).
+model Category {
+  id     String  @id @default(uuid()) @db.Uuid
+  userId String  @map("user_id") @db.Uuid
+  name   String
+  color  String  @default("#6366f1")
+  /// Alokasi saldo per siklus (rupiah).
+  allocation Decimal @default(0) @db.Decimal(14, 2)
+  /// Urutan tampilan.
+  order Int      @default(0)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  subcategories Subcategory[]
+  transactions  Transaction[] @relation("TransactionFromCategory")
+  transfersTo   Transaction[] @relation("TransactionToCategory")
+
+  @@index([userId])
+  @@map("categories")
+}
+
+/// Subkategori/unit pencatatan di dalam sebuah wadah.
+model Subcategory {
+  id         String   @id @default(uuid()) @db.Uuid
+  categoryId String   @map("category_id") @db.Uuid
+  name       String
+  order      Int      @default(0)
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  category     Category      @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  transactions Transaction[]
+
+  @@index([categoryId])
+  @@map("subcategories")
+}
+
+/// Transaksi keuangan: pengeluaran (EXPENSE), pemasukan (INCOME),
+/// atau transfer antar wadah (TRANSFER).
+model Transaction {
+  id     String   @id @default(uuid()) @db.Uuid
+  userId String   @map("user_id") @db.Uuid
+  /// Jenis transaksi: EXPENSE | INCOME | TRANSFER.
+  type   String
+  name   String
+  /// Nominal selalu positif.
+  amount Decimal  @db.Decimal(14, 2)
+  note   String   @default("")
+  date   DateTime @default(now())
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  /// Wadah utama: sumber (EXPENSE/TRANSFER) atau tujuan (INCOME).
+  categoryId    String  @map("category_id") @db.Uuid
+  /// Unit pencatatan (opsional; null = langsung di level wadah).
+  subcategoryId String? @map("subcategory_id") @db.Uuid
+  /// Wadah tujuan khusus TRANSFER.
+  toCategoryId  String? @map("to_category_id") @db.Uuid
+
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category    Category    @relation("TransactionFromCategory", fields: [categoryId], references: [id], onDelete: Restrict)
+  subcategory Subcategory? @relation(fields: [subcategoryId], references: [id], onDelete: Restrict)
+  toCategory  Category?   @relation("TransactionToCategory", fields: [toCategoryId], references: [id], onDelete: Restrict)
+
+  @@index([userId, date])
+  @@index([userId, type])
+  @@index([categoryId])
+  @@index([toCategoryId])
+  @@map("transactions")
+}
+
+/// Langganan push notification browser (per user).
+model PushSubscription {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
   endpoint  String   @unique
   /// Keys untuk enkripsi push: { p256dh, auth }
   keys      Json
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
-  @@map("PushSubscriptions")
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("push_subscriptions")
 }

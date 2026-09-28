@@ -1,8 +1,6 @@
 "use client";
 
-import { EyeInvisibleOutlined, EyeOutlined } from "@ant-design/icons";
-import { Button, Card, Col, Progress, Row, Statistic } from "antd";
-import { useState } from "react";
+import { Card, Col, Row, Statistic } from "antd";
 import type { CycleStats } from "@/features/web/utils/stats";
 import { formatIDR } from "@/utils/helpers";
 import { useLocale } from "@/components/i18n/LocaleProvider";
@@ -11,39 +9,48 @@ interface Props {
   stats: CycleStats;
 }
 
-/** Kartu statistik ringkasan siklus (3 kartu). */
+/**
+ * Kartu ringkasan dashboard sesuai generate_web.md:
+ * Saldo, Pemasukan, Pengeluaran, dan Cash Flow.
+ */
 export default function StatsCards({ stats }: Readonly<Props>) {
-  const [saldoHidden, setSaldoHidden] = useState(true);
   const { t, locale } = useLocale();
+
+  const cashFlow = stats.totalIncome - stats.totalSpent;
+  const contentStyle = {
+    fontSize: "clamp(24px, 3vw, 24px)",
+  } as const;
 
   return (
     <Row gutter={[8, 8]} className="mb-4 md:mb-6">
-      <Col xs={24} sm={8}>
+      <Col xs={24} sm={12} lg={6}>
         <Card variant="borderless" className="shadow-sm">
-          <div className="flex justify-between items-center">
-            <Statistic
-              title={t("stats.initialBalance")}
-              value={saldoHidden ? "••••••" : stats.savingsInitial}
-              formatter={(value) =>
-                saldoHidden ? value : formatIDR(Number(value), locale)
-              }
-              styles={{
-                content: {
-                  color: "#4f46e5",
-                  fontSize: "clamp(24px, 3vw, 24px)",
-                },
-              }}
-            />
-            <Button
-              type="text"
-              size="small"
-              icon={saldoHidden ? <EyeInvisibleOutlined /> : <EyeOutlined />}
-              onClick={() => setSaldoHidden((v) => !v)}
-            />
-          </div>
+          <Statistic
+            title={t("stats.netSavings")}
+            value={stats.netSavings}
+            formatter={(value) => formatIDR(Number(value), locale)}
+            styles={{
+              content: {
+                color: stats.netSavings >= stats.savingsInitial ? "#16a34a" : "#ef4444",
+                ...contentStyle,
+              },
+            }}
+          />
         </Card>
       </Col>
-      <Col xs={24} sm={8}>
+      <Col xs={24} sm={12} lg={6}>
+        <Card variant="borderless" className="shadow-sm">
+          <Statistic
+            title={t("stats.totalIncome")}
+            value={stats.totalIncome}
+            formatter={(value) => formatIDR(Number(value), locale)}
+            styles={{
+              content: { color: "#16a34a", ...contentStyle },
+            }}
+          />
+        </Card>
+      </Col>
+      <Col xs={24} sm={12} lg={6}>
         <Card variant="borderless" className="shadow-sm">
           <Statistic
             title={t("stats.totalSpent")}
@@ -52,31 +59,24 @@ export default function StatsCards({ stats }: Readonly<Props>) {
             styles={{
               content: {
                 color: stats.overLimit ? "#ef4444" : "#d97706",
-                fontSize: "clamp(24px, 3vw, 24px)",
+                ...contentStyle,
               },
             }}
           />
         </Card>
       </Col>
-      <Col xs={24} sm={8}>
+      <Col xs={24} sm={12} lg={6}>
         <Card variant="borderless" className="shadow-sm">
           <Statistic
-            title={t("stats.limitRemaining")}
-            value={stats.limitRemaining}
+            title={t("stats.cashFlow")}
+            value={cashFlow}
             formatter={(value) => formatIDR(Number(value), locale)}
             styles={{
               content: {
-                color: stats.overLimit ? "#ef4444" : "#16a34a",
-                fontSize: "clamp(24px, 3vw, 24px)",
+                color: cashFlow >= 0 ? "#16a34a" : "#ef4444",
+                ...contentStyle,
               },
             }}
-          />
-          <Progress
-            percent={stats.limitPercent}
-            showInfo={false}
-            size="small"
-            aria-label={t("stats.limitRemaining")}
-            strokeColor={stats.overLimit ? "#ef4444" : "#d97706"}
           />
         </Card>
       </Col>

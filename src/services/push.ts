@@ -1,17 +1,16 @@
-import { prisma } from "@/lib/prisma";
-import { withRetry } from "@/lib/prisma";
-import type { PushSubscriptions } from "@prisma/client";
+import { prisma, withRetry } from "@/lib/prisma";
 
-/** Simpan (atau update) subscription push notification. */
+/** Simpan (atau update) subscription push notification milik user. */
 export async function upsertSubscription(
+  userId: string,
   endpoint: string,
   keys: { p256dh: string; auth: string },
 ): Promise<void> {
   await withRetry(() =>
-    prisma.pushSubscriptions.upsert({
+    prisma.pushSubscription.upsert({
       where: { endpoint },
-      update: { keys },
-      create: { endpoint, keys },
+      update: { keys, userId },
+      create: { endpoint, keys, userId },
     }),
   );
 }
@@ -19,18 +18,25 @@ export async function upsertSubscription(
 /** Hapus subscription berdasarkan endpoint. */
 export async function removeSubscription(endpoint: string): Promise<void> {
   await withRetry(() =>
-    prisma.pushSubscriptions.deleteMany({ where: { endpoint } }),
+    prisma.pushSubscription.deleteMany({ where: { endpoint } }),
   );
 }
 
-/** Ambil semua subscription aktif. */
-export async function getAllSubscriptions(): Promise<PushSubscriptions[]> {
-  return withRetry(() => prisma.pushSubscriptions.findMany());
+/** Ambil semua subscription aktif milik satu user. */
+export async function getSubscriptionsOfUser(
+  userId: string,
+): Promise<{ endpoint: string; keys: unknown }[]> {
+  return withRetry(() =>
+    prisma.pushSubscription.findMany({
+      where: { userId },
+      select: { endpoint: true, keys: true },
+    }),
+  );
 }
 
 /** Hapus subscription yang sudah tidak valid (endpoint expired). */
 export async function removeStaleSubscription(endpoint: string): Promise<void> {
   await withRetry(() =>
-    prisma.pushSubscriptions.deleteMany({ where: { endpoint } }),
+    prisma.pushSubscription.deleteMany({ where: { endpoint } }),
   );
 }

@@ -6,23 +6,21 @@ import {
   SMTP_PORT,
   SMTP_SECURE,
   SMTP_USER,
-  NOTIFICATION_EMAIL_TO,
 } from "@/utils/config/variables";
 
 /**
  * Service pengiriman email via Nodemailer (SMTP).
  *
- * Dipakai sebagai channel tambahan selain web push. Karena ini aplikasi
- * single-user, penerima diambil dari env `NOTIFICATION_EMAIL_TO`.
- * Bila SMTP belum dikonfigurasi (SMTP_HOST kosong), channel ini otomatis
- * diabaikan agar tetap berjalan di environment tanpa email (mis. dev lokal).
+ * Channel tambahan selain web push. Penerima diambil PER-USER
+ * (users.email). Bila SMTP belum dikonfigurasi (SMTP_HOST kosong),
+ * channel ini otomatis diabaikan.
  */
 
 let transporter: Transporter | null = null;
 
-/** Apakah channel email aktif (SMTP + penerima sudah dikonfigurasi)? */
+/** Apakah channel email aktif (SMTP sudah dikonfigurasi)? */
 export function isEmailConfigured(): boolean {
-  return Boolean(SMTP_HOST && SMTP_USER && NOTIFICATION_EMAIL_TO);
+  return Boolean(SMTP_HOST && SMTP_USER);
 }
 
 /** Inisialisasi transporter SMTP sekali (lazy). */
@@ -32,14 +30,13 @@ function getTransporter(): Transporter {
     host: SMTP_HOST,
     port: SMTP_PORT,
     secure: SMTP_SECURE,
-    auth: SMTP_PASS
-      ? { user: SMTP_USER, pass: SMTP_PASS }
-      : undefined,
+    auth: SMTP_PASS ? { user: SMTP_USER, pass: SMTP_PASS } : undefined,
   });
   return transporter;
 }
 
 interface EmailPayload {
+  to: string;
   subject: string;
   /** Versi teks polos (fallback + untuk notifikasi singkat). */
   text: string;
@@ -48,16 +45,16 @@ interface EmailPayload {
 }
 
 /**
- * Kirim email notifikasi ke penerima yang dikonfigurasi.
+ * Kirim email ke penerima (per-user).
  * Mengembalikan true jika berhasil, false jika gagal atau belum dikonfigurasi.
  */
 export async function sendEmail(payload: EmailPayload): Promise<boolean> {
-  if (!isEmailConfigured()) return false;
+  if (!isEmailConfigured() || !payload.to) return false;
   try {
     const transport = getTransporter();
     await transport.sendMail({
       from: SMTP_FROM || SMTP_USER,
-      to: NOTIFICATION_EMAIL_TO,
+      to: payload.to,
       subject: payload.subject,
       text: payload.text,
       html: payload.html ?? payload.text.replace(/\n/g, "<br>"),

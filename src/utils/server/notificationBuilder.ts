@@ -1,33 +1,32 @@
-import {
-  CATEGORY_MAP,
-  getParentCategoryId,
-  TOTAL_ALLOCATION,
-} from "@/features/web/utils/categories";
-import type { Purchase } from "@/features/web/types";
-import {
-  SAVINGS_INITIAL,
-  BASE_URL,
-  NOTIFICATION_LOCALE,
-  META_APP,
-} from "@/utils/config/variables";
-import { computeCycleStats } from "@/features/web/utils/stats";
-import { toPurchases } from "@/features/web/utils/purchaseTransformer";
-import { formatShortIDR } from "@/utils/helpers";
+import { prisma } from "@/lib/prisma";
+import { sendPushNotification } from "@/lib/web-push";
+import { sendEmail, isEmailConfigured } from "@/lib/email";
+import { getTransactionsInRange, getUserCategories, getUserSettings } from "@/services/transaction";
+import { getSubscriptionsOfUser, removeStaleSubscription } from "@/services/push";
+import type { BudgetCategory, Transaction, UserSettings } from "@/features/web/types";
+import { computeCycleStats, type CycleStats } from "@/features/web/utils/stats";
 import {
   getCurrentCycle,
   shiftCycle,
   formatDateLabel,
   formatCycleLabel,
 } from "@/features/web/utils/cycle";
-import { getPurchasesInRange } from "@/services/budget";
+import { formatShortIDR } from "@/utils/helpers";
+import {
+  BASE_URL,
+  NOTIFICATION_LOCALE,
+  META_APP,
+} from "@/utils/config/variables";
 
 /** Nama aplikasi untuk header/tanda tangan email (fallback bila env kosong). */
 const APP_NAME = META_APP ?? "Savings Goal Tracker";
 
 /**
- * Builder payload notifikasi (web push + email).
+ * Builder payload notifikasi (web push + email) — PER USER.
  *
- * Konten dilokalkan sesuai env `NOTIFICATION_LOCALE` (id | en).
+ * Setiap user punya settings (cycleStartDay, savingsInitial) dan kategori
+ * sendiri; semua statistik dihitung dalam konteks user tsb.
+ *
  * Channel per notifikasi:
  * - tracking-nudge (B1)      → web push
  * - category-spotlight (C1)   → web push
@@ -42,6 +41,52 @@ const APP_NAME = META_APP ?? "Savings Goal Tracker";
 /** Pilih teks sesuai locale notifikasi. */
 function L(id: string, en: string): string {
   return NOTIFICATION_LOCALE === "en" ? en : id;
+}
+
+/** Konteks keuangan satu user untuk membangun notifikasi. */
+export interface UserFinance {
+  userId: string;
+  email: string;
+  name: string;
+  settings: UserSettings;
+  categories: BudgetCategory[];
+  catMap: Map<string, BudgetCategory>;
+}
+
+async function loadUserFinance(user: {
+  id: string;
+  email: string;
+  name: string;
+}): Promise<UserFinance> {
+  const [settings, categories] = await Promise.all([
+    getUserSettings(user.id),
+    getUserCategories(user.id),
+  ]);
+  return {
+    userId: user.id,
+    email: user.email,
+    name: user.name,
+    settings,
+    categories,
+    catMap: new Map(categories.map((c) => [c.id, c])),
+  };
+}
+
+/** Ambil transaksi satu siklus milik user. */
+async function getCycleTransactions(
+  ctx: UserFinance,
+  start: Date,
+  end: Date,
+): Promise<Transaction[]> {
+  return getTransactionsInRange(ctx.userId, start, end);
+}
+
+function statsOf(ctx: UserFinance, transactions: Transaction[]): CycleStats {
+  return computeCycleStats(
+    transactions,
+    ctx.categories,
+    ctx.settings.savingsInitial,
+  );
 }
 
 export interface NotificationPayload {
@@ -64,12 +109,10 @@ const PUSH_ICON = "/android/launchericon-192x192.png";
 const PUSH_BADGE = "/android/launchericon-96x96.png";
 
 // ---------------------------------------------------------------------------
-// B1 – Tracking Nudge (Pengingat Belum Mencatat)
-// Harian, jam 20:00–21:00 WIB, hanya jika belum ada transaksi hari ini.
-// Channel: web push.
+// B1 – Tracking Nudge (Pengingat Belum Mencatat) — web push
 // ---------------------------------------------------------------------------
 
-/** Cek apakah sebuah pembelian terjadi hari ini (lokal). */
+/** Cek apakah sebuah transaksi terjadi hari ini (lokal). */
 function isToday(dateStr: string): boolean {
   const d = new Date(dateStr);
   const now = new Date();
@@ -80,24 +123,28 @@ function isToday(dateStr: string): boolean {
   );
 }
 
-/**
- * Bangun payload notifikasi B1: Tracking Nudge.
- * Hanya muncul jika belum ada transaksi tercatat hari ini.
- * Jika sudah ada transaksi, kembalikan null (skip).
- */
-export async function buildTrackingNudge(): Promise<NotificationPayload | null> {
-  const cycle = getCurrentCycle();
-  const records = await getPurchasesInRange(cycle.startDate, cycle.endDate);
-  const purchases = toPurchases(records);
-  const stats = computeCycleStats(purchases);
+export async function buildTrackingNudge(
+  ctx: UserFinance,
+): Promise<NotificationPayload | null> {
+  const cycle = getCurrentCycle(ctx.settings.cycleStartDay);
+  const transactions = await getCycleTransactions(
+    ctx,
+    cycle.startDate,
+    cycle.endDate,
+  );
+  const stats = statsOf(ctx, transactions);
 
-  const todayPurchases = purchases.filter((p) => isToday(p.date));
-  // Jika sudah ada pengeluaran hari ini, skip notifikasi.
-  if (todayPurchases.length > 0) return null;
+  const todayTransactions = transactions.filter((t) => isToday(t.date));
+  if (todayTransactions.length > 0) return null;
 
+  const cycleLabel = formatCycleLabel(
+    cycle.year,
+    cycle.monthIndex,
+    NOTIFICATION_LOCALE,
+  );
   const body = L(
-    `Belum ada pengeluaran dicatat hari ini. Catat sekarang biar tidak lupa besok. Total siklus ${cycle.label}: ${formatShortIDR(stats.totalSpent)}.`,
-    `No spending logged today. Log it now so you don't forget tomorrow. ${cycle.label} cycle total: ${formatShortIDR(stats.totalSpent)}.`,
+    `Belum ada pengeluaran dicatat hari ini. Catat sekarang biar tidak lupa besok. Total siklus ${cycleLabel}: ${formatShortIDR(stats.totalSpent)}.`,
+    `No spending logged today. Log it now so you don't forget tomorrow. ${cycleLabel} cycle total: ${formatShortIDR(stats.totalSpent)}.`,
   );
 
   return {
@@ -111,28 +158,26 @@ export async function buildTrackingNudge(): Promise<NotificationPayload | null> 
 }
 
 // ---------------------------------------------------------------------------
-// C1 – Category Spotlight (Sorotan Wadah Boros Minggu Ini)
-// Mingguan, hari Jumat jam 20:00 WIB.
-// Channel: web push.
+// C1 – Category Spotlight — web push
 // ---------------------------------------------------------------------------
 
-/**
- * Bangun payload notifikasi C1: Category Spotlight.
- * Menampilkan kategori dengan pertumbuhan pengeluaran tertinggi dalam 7 hari terakhir.
- */
-export async function buildCategorySpotlight(): Promise<NotificationPayload> {
-  const cycle = getCurrentCycle();
-  const records = await getPurchasesInRange(cycle.startDate, cycle.endDate);
-  const purchases = toPurchases(records);
-
-  // Ambil pembelian 7 hari terakhir
-  const sevenDaysAgo = new Date();
-  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-  const recentPurchases = purchases.filter(
-    (p) => new Date(p.date) >= sevenDaysAgo,
+export async function buildCategorySpotlight(
+  ctx: UserFinance,
+): Promise<NotificationPayload> {
+  const cycle = getCurrentCycle(ctx.settings.cycleStartDay);
+  const transactions = await getCycleTransactions(
+    ctx,
+    cycle.startDate,
+    cycle.endDate,
   );
 
-  if (recentPurchases.length === 0) {
+  const sevenDaysAgo = new Date();
+  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+  const recent = transactions.filter(
+    (t) => new Date(t.date) >= sevenDaysAgo,
+  );
+
+  if (recent.length === 0) {
     return {
       title: L("📊 Sorotan Mingguan", "📊 Weekly Spotlight"),
       body: L(
@@ -146,20 +191,19 @@ export async function buildCategorySpotlight(): Promise<NotificationPayload> {
     };
   }
 
-  // Hitung pengeluaran per kategori (wadah induk, legacy-aware) dalam
-  // 7 hari terakhir — subkategori diakumulasi ke kategorinya.
   const weekByCategory = new Map<string, number>();
-  for (const p of recentPurchases) {
-    const catId = getParentCategoryId(p.categoryId);
-    weekByCategory.set(catId, (weekByCategory.get(catId) ?? 0) + p.amount);
+  for (const t of recent) {
+    if (t.type !== "EXPENSE") continue;
+    weekByCategory.set(
+      t.categoryId,
+      (weekByCategory.get(t.categoryId) ?? 0) + t.amount,
+    );
   }
 
-  // Cari kategori dengan pengeluaran tertinggi minggu ini (hanya yang dialokasikan)
   let topCatId: string | null = null;
   let topAmount = 0;
   for (const [id, amount] of weekByCategory) {
-    const cat = CATEGORY_MAP[id];
-    if (cat && !cat.excludeFromAllocation && amount > topAmount) {
+    if (amount > topAmount) {
       topCatId = id;
       topAmount = amount;
     }
@@ -169,8 +213,8 @@ export async function buildCategorySpotlight(): Promise<NotificationPayload> {
     return {
       title: L("📊 Sorotan Mingguan", "📊 Weekly Spotlight"),
       body: L(
-        `${recentPurchases.length} transaksi minggu ini. Semua berjalan lancar!`,
-        `${recentPurchases.length} transactions this week. Everything looks good!`,
+        `${recent.length} transaksi minggu ini. Semua berjalan lancar!`,
+        `${recent.length} transactions this week. Everything looks good!`,
       ),
       tag: "category-spotlight",
       url: "/",
@@ -179,21 +223,17 @@ export async function buildCategorySpotlight(): Promise<NotificationPayload> {
     };
   }
 
-  const topCat = CATEGORY_MAP[topCatId]!;
-  const catLabel = topCat.label[NOTIFICATION_LOCALE] ?? topCat.label.id;
-  const catRemaining =
-    topCat.allocation > 0
-      ? Math.max(
-          0,
-          topCat.allocation - getSpentForCategory(purchases, topCatId),
-        )
-      : 0;
+  const topCat = ctx.catMap.get(topCatId)!;
+  const spentThisCycle = transactions
+    .filter((t) => t.type === "EXPENSE" && t.categoryId === topCatId)
+    .reduce((acc, t) => acc + t.amount, 0);
+  const catRemaining = Math.max(0, topCat.allocation - spentThisCycle);
 
   return {
     title: L("📊 Alokasi Mingguan", "📊 Weekly Allocation"),
     body: L(
-      `Minggu ini pengeluaran ${catLabel} naik ${formatShortIDR(topAmount)}. Alokasi tersisa ${formatShortIDR(catRemaining)} untuk sisa siklus.`,
-      `${catLabel} spending rose ${formatShortIDR(topAmount)} this week. ${formatShortIDR(catRemaining)} allocation left for the rest of the cycle.`,
+      `Minggu ini pengeluaran ${topCat.name} naik ${formatShortIDR(topAmount)}. Alokasi tersisa ${formatShortIDR(catRemaining)} untuk sisa siklus.`,
+      `${topCat.name} spending rose ${formatShortIDR(topAmount)} this week. ${formatShortIDR(catRemaining)} allocation left for the rest of the cycle.`,
     ),
     tag: "category-spotlight",
     url: "/",
@@ -202,57 +242,50 @@ export async function buildCategorySpotlight(): Promise<NotificationPayload> {
   };
 }
 
-/** Helper: hitung total pengeluaran untuk satu kategori dari daftar pembelian. */
-function getSpentForCategory(
-  purchases: Purchase[],
-  categoryId: string,
-): number {
-  return purchases
-    .filter((p) => getParentCategoryId(p.categoryId) === categoryId)
-    .reduce((acc, p) => acc + p.amount, 0);
-}
-
 // ---------------------------------------------------------------------------
-// D1 – Cycle Reset Reminder (Pengingat Reset Siklus, H-1)
-// Bulanan, H-1 sebelum siklus baru ( tanggal startDay - 1 malam).
-// Channel: web push.
+// D1 – Cycle Reset Reminder — web push
 // ---------------------------------------------------------------------------
 
-/**
- * Bangun payload notifikasi D1: Cycle Reset Reminder.
- * Mengingatkan pengguna bahwa siklus akan berakhir besok.
- */
-export async function buildCycleResetReminder(): Promise<NotificationPayload> {
-  const cycle = getCurrentCycle();
-  const nextCycle = shiftCycle(cycle, 1);
-  // Tampilkan tanggal H-1 (hari ini, karena dijalankan malam sebelum siklus baru)
+export async function buildCycleResetReminder(
+  ctx: UserFinance,
+): Promise<NotificationPayload> {
+  const cycle = getCurrentCycle(ctx.settings.cycleStartDay);
+  const nextCycle = shiftCycle(cycle, 1, ctx.settings.cycleStartDay);
   const todayStr = formatDateLabel(new Date(), NOTIFICATION_LOCALE);
   const nextStartDateStr = formatDateLabel(
     nextCycle.startDate,
     NOTIFICATION_LOCALE,
   );
 
-  const records = await getPurchasesInRange(cycle.startDate, cycle.endDate);
-  const purchases = toPurchases(records);
-  const stats = computeCycleStats(purchases);
+  const transactions = await getCycleTransactions(
+    ctx,
+    cycle.startDate,
+    cycle.endDate,
+  );
+  const stats = statsOf(ctx, transactions);
+  const cycleLabel = formatCycleLabel(
+    cycle.year,
+    cycle.monthIndex,
+    NOTIFICATION_LOCALE,
+  );
 
   let body: string;
   if (stats.overLimit) {
     body = L(
-      `Siklus ${cycle.label} berakhir besok! ⚠️ Pengeluaran sudah melebihi limit (${formatShortIDR(stats.allocatedSpent)} dari ${formatShortIDR(stats.spendingLimit)}). Pastikan semua pengeluaran sudah tercatat sebelum ${nextStartDateStr}.`,
-      `The ${cycle.label} cycle ends tomorrow! ⚠️ Spending has exceeded the limit (${formatShortIDR(stats.allocatedSpent)} of ${formatShortIDR(stats.spendingLimit)}). Make sure everything is recorded before ${nextStartDateStr}.`,
+      `Siklus ${cycleLabel} berakhir besok! ⚠️ Pengeluaran sudah melebihi limit (${formatShortIDR(stats.totalSpent)} dari ${formatShortIDR(stats.spendingLimit)}). Pastikan semua pengeluaran sudah tercatat sebelum ${nextStartDateStr}.`,
+      `The ${cycleLabel} cycle ends tomorrow! ⚠️ Spending has exceeded the limit (${formatShortIDR(stats.totalSpent)} of ${formatShortIDR(stats.spendingLimit)}). Make sure everything is recorded before ${nextStartDateStr}.`,
     );
   } else {
     body = L(
-      `Siklus ${cycle.label} berakhir besok (${todayStr}). Sisa limit ${formatShortIDR(stats.limitRemaining)}. Pastikan semua pengeluaran sudah tercatat sebelum ${nextStartDateStr}.`,
-      `The ${cycle.label} cycle ends tomorrow (${todayStr}). ${formatShortIDR(stats.limitRemaining)} limit remaining. Make sure all spending is recorded before ${nextStartDateStr}.`,
+      `Siklus ${cycleLabel} berakhir besok (${todayStr}). Sisa limit ${formatShortIDR(stats.limitRemaining)}. Pastikan semua pengeluaran sudah tercatat sebelum ${nextStartDateStr}.`,
+      `The ${cycleLabel} cycle ends tomorrow (${todayStr}). ${formatShortIDR(stats.limitRemaining)} limit remaining. Make sure all spending is recorded before ${nextStartDateStr}.`,
     );
   }
 
   return {
     title: L(
-      `⏰ Siklus ${cycle.label} Berakhir Besok!`,
-      `⏰ ${cycle.label} Cycle Ends Tomorrow!`,
+      `⏰ Siklus ${cycleLabel} Berakhir Besok!`,
+      `⏰ ${cycleLabel} Cycle Ends Tomorrow!`,
     ),
     body,
     tag: "cycle-reset",
@@ -263,114 +296,91 @@ export async function buildCycleResetReminder(): Promise<NotificationPayload> {
 }
 
 // ---------------------------------------------------------------------------
-// D2 + D4 – New Cycle Kickoff + Allocation Suggestion
-// Bulanan, hari pertama siklus baru (tanggal startDay).
-// Channel: email (rich HTML).
+// D2 + D4 – New Cycle Kickoff + Allocation Suggestion — email
 // ---------------------------------------------------------------------------
 
-/**
- * Bangun payload notifikasi D2+D4: New Cycle Kickoff + Allocation Suggestion.
- * Menampilkan saldo baru, alokasi wadah yang direset, dan saran realokasi
- * berdasarkan pola 3 siklus terakhir.
- */
-export async function buildNewCycleKickoff(): Promise<NotificationPayload> {
-  const cycle = getCurrentCycle();
+export async function buildNewCycleKickoff(
+  ctx: UserFinance,
+): Promise<NotificationPayload> {
+  const cycle = getCurrentCycle(ctx.settings.cycleStartDay);
   const startDateStr = formatDateLabel(cycle.startDate, NOTIFICATION_LOCALE);
   const link = `${BASE_URL}/`;
+  const startDay = ctx.settings.cycleStartDay;
+  const initial = ctx.settings.savingsInitial;
 
-  // Data 3 siklus terakhir untuk analisis realokasi (D4)
-  const prev1 = shiftCycle(cycle, -1);
-  const prev2 = shiftCycle(cycle, -2);
-  const prev3 = shiftCycle(cycle, -3);
+  const prev1 = shiftCycle(cycle, -1, startDay);
+  const prev2 = shiftCycle(cycle, -2, startDay);
+  const prev3 = shiftCycle(cycle, -3, startDay);
 
-  const [rec1, rec2, rec3] = await Promise.all([
-    getPurchasesInRange(prev1.startDate, prev1.endDate),
-    getPurchasesInRange(prev2.startDate, prev2.endDate),
-    getPurchasesInRange(prev3.startDate, prev3.endDate),
+  const [t1, t2, t3] = await Promise.all([
+    getCycleTransactions(ctx, prev1.startDate, prev1.endDate),
+    getCycleTransactions(ctx, prev2.startDate, prev2.endDate),
+    getCycleTransactions(ctx, prev3.startDate, prev3.endDate),
   ]);
 
-  const purchases1 = toPurchases(rec1);
-  const purchases2 = toPurchases(rec2);
-  const purchases3 = toPurchases(rec3);
-
-  const stats1 = computeCycleStats(purchases1);
-  const stats2 = computeCycleStats(purchases2);
-  const stats3 = computeCycleStats(purchases3);
-
-  // Saran realokasi: kategori yang konsisten melebihi/jauh di bawah alokasi
-  const suggestions = buildAllocationSuggestions([stats1, stats2, stats3]);
+  const statsList = [t1, t2, t3].map((t) => statsOf(ctx, t));
+  const suggestions = buildAllocationSuggestions(ctx, statsList);
 
   const themeColor = "#22c55e";
+  const cycleLabel = formatCycleLabel(
+    cycle.year,
+    cycle.monthIndex,
+    NOTIFICATION_LOCALE,
+  );
 
   const emailTitle = L(
-    `🚀 Siklus Baru ${cycle.label} Dimulai!`,
-    `🚀 New ${cycle.label} Cycle Begins!`,
+    `🚀 Siklus Baru ${cycleLabel} Dimulai!`,
+    `🚀 New ${cycleLabel} Cycle Begins!`,
   );
   const subtitle = `${APP_NAME} · ${L(`Mulai ${startDateStr}`, `Starts ${startDateStr}`)}`;
   const previewText = L(
-    `Siklus baru ${cycle.label} dimulai! Saldo awal ${formatShortIDR(SAVINGS_INITIAL)}.${suggestions.length > 0 ? ` ${suggestions.length} saran realokasi wadah.` : ""}`,
-    `New ${cycle.label} cycle starts! Initial balance ${formatShortIDR(SAVINGS_INITIAL)}.${suggestions.length > 0 ? ` ${suggestions.length} envelope allocation suggestions.` : ""}`,
+    `Siklus baru ${cycleLabel} dimulai! Saldo awal ${formatShortIDR(initial)}.${suggestions.length > 0 ? ` ${suggestions.length} saran realokasi wadah.` : ""}`,
+    `New ${cycleLabel} cycle starts! Initial balance ${formatShortIDR(initial)}.${suggestions.length > 0 ? ` ${suggestions.length} envelope allocation suggestions.` : ""}`,
   );
   const greeting = L(
     "Selamat memulai siklus baru! 🎉",
     "A fresh cycle begins! 🎉",
   );
   const bluf = L(
-    `Siklus <strong>${cycle.label}</strong> resmi dimulai hari ini dengan wadah yang sudah direset. Semoga lebih hemat dari siklus lalu! 💪`,
-    `The <strong>${cycle.label}</strong> cycle officially starts today with envelopes reset. Hope you save more than last cycle! 💪`,
+    `Siklus <strong>${cycleLabel}</strong> resmi dimulai hari ini dengan wadah yang sudah direset. Semoga lebih hemat dari siklus lalu! 💪`,
+    `The <strong>${cycleLabel}</strong> cycle officially starts today with envelopes reset. Hope you save more than last cycle! 💪`,
   );
   const ctaText = L("Buka Dashboard", "Open Dashboard");
 
-  // Tabel alokasi wadah dengan info pengeluaran rata-rata (D4)
   const categoryHeader = L(
     "Alokasi Wadah & Saran Realokasi",
     "Envelope Allocation & Suggestions",
   );
-  const categories = Object.values(CATEGORY_MAP)
-    .filter((c) => !c.excludeFromAllocation)
-    .map((cat) => {
-      // Hitung rata-rata pengeluaran kategori ini di 3 siklus terakhir
-      const spentPerCycle = [stats1, stats2, stats3].map((s) => {
-        const cs = s.categories.find((c) => c.categoryId === cat.id);
-        return cs ? cs.spent : 0;
-      });
-      const validSpent = spentPerCycle.filter((v) => v > 0);
-      const avgSpent =
-        validSpent.length > 0
-          ? Math.round(
-              validSpent.reduce((a, b) => a + b, 0) / validSpent.length,
-            )
-          : 0;
+  const categories = ctx.categories.map((cat, i) => {
+    const s = statsList.map((st) => st.categories[i]?.spent ?? 0);
+    const validSpent = s.filter((v) => v > 0);
+    const avgSpent =
+      validSpent.length > 0
+        ? Math.round(validSpent.reduce((a, b) => a + b, 0) / validSpent.length)
+        : 0;
 
-      // Tentukan indikator saran
-      let indicator = "";
-      if (validSpent.length >= 2) {
-        const alwaysOver =
-          validSpent.filter((v) => v > cat.allocation).length >=
-          validSpent.length;
-        const alwaysUnder =
-          validSpent.filter((v) => v < cat.allocation * 0.7).length >=
-          validSpent.length;
-        if (alwaysOver) {
-          indicator = L("⚠️ Sering melebihi", "⚠️ Often exceeds");
-        } else if (alwaysUnder) {
-          indicator = L("✅ Sisa berlebih", "✅ Underutilized");
-        }
+    let indicator = "";
+    if (validSpent.length >= 2) {
+      const alwaysOver =
+        validSpent.filter((v) => v > cat.allocation).length >= validSpent.length;
+      const alwaysUnder =
+        validSpent.filter((v) => v < cat.allocation * 0.7).length >=
+        validSpent.length;
+      if (alwaysOver) {
+        indicator = L("⚠️ Sering melebihi", "⚠️ Often exceeds");
+      } else if (alwaysUnder) {
+        indicator = L("✅ Sisa berlebih", "✅ Underutilized");
       }
+    }
 
-      const detail =
-        validSpent.length > 0
-          ? `${formatShortIDR(cat.allocation)} · ${L("rata-rata", "avg")} ${formatShortIDR(avgSpent)}${indicator ? ` ${indicator}` : ""}`
-          : formatShortIDR(cat.allocation);
+    const detail =
+      validSpent.length > 0
+        ? `${formatShortIDR(cat.allocation)} · ${L("rata-rata", "avg")} ${formatShortIDR(avgSpent)}${indicator ? ` ${indicator}` : ""}`
+        : formatShortIDR(cat.allocation);
 
-      return {
-        name: cat.label[NOTIFICATION_LOCALE] ?? cat.label.id,
-        detail,
-        dotColor: cat.color,
-      };
-    });
+    return { name: cat.name, detail, dotColor: cat.color };
+  });
 
-  // Penutup + saran realokasi
   let closing: string;
   if (suggestions.length > 0) {
     closing = L(
@@ -399,12 +409,12 @@ export async function buildNewCycleKickoff(): Promise<NotificationPayload> {
     metrics: [
       {
         label: L("Saldo Awal", "Initial Balance"),
-        value: formatShortIDR(SAVINGS_INITIAL),
+        value: formatShortIDR(initial),
         color: "#22c55e",
       },
       {
         label: L("Sisa Limit", "Limit Remaining"),
-        value: formatShortIDR(stats1.spendingLimit - stats1.allocatedSpent),
+        value: formatShortIDR(statsList[0].spendingLimit - statsList[0].totalSpent),
         color: "#4f46e5",
       },
     ],
@@ -417,8 +427,8 @@ export async function buildNewCycleKickoff(): Promise<NotificationPayload> {
   });
 
   const body = L(
-    `Siklus baru ${cycle.label} dimulai! Saldo awal ${formatShortIDR(SAVINGS_INITIAL)} dengan wadah siap diisi. Semangat menabung!${suggestions.length > 0 ? ` 💡 ${suggestions[0]}` : ""}`,
-    `New ${cycle.label} cycle begins! Starting balance ${formatShortIDR(SAVINGS_INITIAL)} across fresh envelopes. Let's save!${suggestions.length > 0 ? ` 💡 ${suggestions[0]}` : ""}`,
+    `Siklus baru ${cycleLabel} dimulai! Saldo awal ${formatShortIDR(initial)} dengan wadah siap diisi. Semangat menabung!${suggestions.length > 0 ? ` 💡 ${suggestions[0]}` : ""}`,
+    `New ${cycleLabel} cycle begins! Starting balance ${formatShortIDR(initial)} across fresh envelopes. Let's save!${suggestions.length > 0 ? ` 💡 ${suggestions[0]}` : ""}`,
   );
 
   return {
@@ -431,95 +441,72 @@ export async function buildNewCycleKickoff(): Promise<NotificationPayload> {
   };
 }
 
-/**
- * Bangun saran realokasi dari data 3 siklus terakhir.
- * Mengembalikan array string HTML (saran per kategori).
- */
 function buildAllocationSuggestions(
-  statsList: ReturnType<typeof computeCycleStats>[],
+  ctx: UserFinance,
+  statsList: CycleStats[],
 ): string[] {
   if (statsList.length === 0) return [];
 
   const suggestions: string[] = [];
-  const allocatedCats = Object.values(CATEGORY_MAP).filter(
-    (c) => !c.excludeFromAllocation,
-  );
-
-  for (const cat of allocatedCats) {
+  for (const cat of ctx.categories) {
     const spentValues = statsList
-      .map((s) => {
-        const cs = s.categories.find((c) => c.categoryId === cat.id);
-        return cs ? cs.spent : 0;
-      })
+      .map((s) => s.categories.find((c) => c.categoryId === cat.id)?.spent ?? 0)
       .filter((v) => v > 0);
-
-    if (spentValues.length < 1) continue; // Perlu minimal 1 siklus dengan data
+    if (spentValues.length < 1) continue;
 
     const avgSpent = Math.round(
       spentValues.reduce((a, b) => a + b, 0) / spentValues.length,
     );
     const alwaysOver =
-      spentValues.filter((v) => v > cat.allocation).length ===
-      spentValues.length;
+      spentValues.filter((v) => v > cat.allocation).length === spentValues.length;
     const alwaysUnder =
       spentValues.filter((v) => v < cat.allocation * 0.7).length ===
       spentValues.length;
 
     if (alwaysOver && cat.allocation > 0) {
-      const catLabel = cat.label[NOTIFICATION_LOCALE] ?? cat.label.id;
       suggestions.push(
         L(
-          `Naikkan ${catLabel}: rata-rata ${formatShortIDR(avgSpent)}/siklus, melebihi alokasi ${formatShortIDR(cat.allocation)}.`,
-          `Increase ${catLabel}: averages ${formatShortIDR(avgSpent)}/cycle, exceeds allocation of ${formatShortIDR(cat.allocation)}.`,
+          `Naikkan ${cat.name}: rata-rata ${formatShortIDR(avgSpent)}/siklus, melebihi alokasi ${formatShortIDR(cat.allocation)}.`,
+          `Increase ${cat.name}: averages ${formatShortIDR(avgSpent)}/cycle, exceeds allocation of ${formatShortIDR(cat.allocation)}.`,
         ),
       );
     } else if (alwaysUnder && cat.allocation > 0) {
-      const catLabel = cat.label[NOTIFICATION_LOCALE] ?? cat.label.id;
       suggestions.push(
         L(
-          `Kurangi ${catLabel}: rata-rata ${formatShortIDR(avgSpent)}/siklus dari alokasi ${formatShortIDR(cat.allocation)}. Alihkan ke wadah lain.`,
-          `Reduce ${catLabel}: averages ${formatShortIDR(avgSpent)}/cycle from allocation ${formatShortIDR(cat.allocation)}. Reallocate to other envelopes.`,
+          `Kurangi ${cat.name}: rata-rata ${formatShortIDR(avgSpent)}/siklus dari alokasi ${formatShortIDR(cat.allocation)}. Alihkan ke wadah lain.`,
+          `Reduce ${cat.name}: averages ${formatShortIDR(avgSpent)}/cycle from allocation ${formatShortIDR(cat.allocation)}. Reallocate to other envelopes.`,
         ),
       );
     }
   }
 
-  return suggestions.slice(0, 5); // Maks 5 saran
+  return suggestions.slice(0, 5);
 }
 
 // ---------------------------------------------------------------------------
-// D3 – Monthly Summary (Rekap Akhir Siklus)
-// Bulanan, di akhir siklus (tanggal startDay - 1 malam).
-// Channel: email (rich HTML).
+// D3 – Monthly Summary — email
 // ---------------------------------------------------------------------------
 
-/**
- * Bangun payload notifikasi D3: End-of-Cycle Recap (Monthly Summary).
- * Ringkasan lengkap per siklus: total tabungan akhir, wadah paling boros,
- * dan perbandingan dengan siklus sebelumnya.
- */
-export async function buildMonthlySummary(): Promise<NotificationPayload> {
-  const cycle = getCurrentCycle();
-  const prevCycle = shiftCycle(cycle, -1);
+export async function buildMonthlySummary(
+  ctx: UserFinance,
+): Promise<NotificationPayload> {
+  const startDay = ctx.settings.cycleStartDay;
+  const cycle = getCurrentCycle(startDay);
+  const prevCycle = shiftCycle(cycle, -1, startDay);
 
-  const [currentRecords, prevRecords] = await Promise.all([
-    getPurchasesInRange(cycle.startDate, cycle.endDate),
-    getPurchasesInRange(prevCycle.startDate, prevCycle.endDate),
+  const [currentTx, prevTx] = await Promise.all([
+    getCycleTransactions(ctx, cycle.startDate, cycle.endDate),
+    getCycleTransactions(ctx, prevCycle.startDate, prevCycle.endDate),
   ]);
 
-  const currentPurchases = toPurchases(currentRecords);
-  const prevPurchases = toPurchases(prevRecords);
+  const stats = statsOf(ctx, currentTx);
+  const prevStats = statsOf(ctx, prevTx);
 
-  const stats = computeCycleStats(currentPurchases);
-  const prevStats = computeCycleStats(prevPurchases);
-
-  // Top 3 kategori pengeluaran terbesar di siklus ini (dialokasikan saja)
   const topCategories = stats.categories
-    .filter((c) => !c.excludeFromAllocation && c.spent > 0)
+    .filter((c) => c.spent > 0)
     .sort((a, b) => b.spent - a.spent)
     .slice(0, 3);
 
-  // Selisih pengeluaran vs siklus sebelumnya
   const diff = stats.totalSpent - prevStats.totalSpent;
   const diffLabel =
     diff > 0
@@ -531,42 +518,41 @@ export async function buildMonthlySummary(): Promise<NotificationPayload> {
           )
         : L("sama", "same");
 
-  // Persentase sisa limit
   const remainingLimitPercent =
     stats.spendingLimit > 0
-      ? Math.max(
-          0,
-          Math.round((stats.limitRemaining / stats.spendingLimit) * 100),
-        )
+      ? Math.max(0, Math.round((stats.limitRemaining / stats.spendingLimit) * 100))
       : 0;
 
-  // Top 3 tanggal pengeluaran terbesar
-  const topDates = [...currentPurchases]
+  const topDates = [...currentTx]
     .sort((a, b) => b.amount - a.amount)
     .slice(0, 3)
-    .map((p) => {
-      // Label wadah induk (legacy-aware) untuk email rekap.
-      const cat = CATEGORY_MAP[getParentCategoryId(p.categoryId)];
-      const catLabel = cat
-        ? (cat.label[NOTIFICATION_LOCALE] ?? cat.label.id)
-        : p.categoryId;
-      const dateLabel = formatDateLabel(new Date(p.date), NOTIFICATION_LOCALE);
+    .map((t) => {
+      const cat = ctx.catMap.get(t.categoryId);
+      const dateLabel = formatDateLabel(new Date(t.date), NOTIFICATION_LOCALE);
       return {
-        name: `${p.name} (${dateLabel})`,
-        detail: `${formatShortIDR(p.amount)} · ${catLabel}`,
+        name: `${t.name} (${dateLabel})`,
+        detail: `${formatShortIDR(t.amount)} · ${cat?.name ?? t.categoryId}`,
         dotColor: cat?.color ?? "#6b7280",
       };
     });
 
-  // --- Komponen email kaya ---
   const themeColor = "#4f46e5";
-
-  const previewText = L(
-    `Siklus ${cycle.label} selesai. Total pengeluaran ${formatShortIDR(stats.totalSpent)}, sisa limit ${remainingLimitPercent}%.${diff < 0 ? ` Hemat ${formatShortIDR(Math.abs(diff))} dari ${prevCycle.label}.` : ""} Lihat rekap lengkap.`,
-    `${cycle.label} cycle complete. Total spent ${formatShortIDR(stats.totalSpent)}, ${remainingLimitPercent}% limit remaining.${diff < 0 ? ` Saved ${formatShortIDR(Math.abs(diff))} vs ${prevCycle.label}.` : ""} See the full recap.`,
+  const cycleLabel = formatCycleLabel(
+    cycle.year,
+    cycle.monthIndex,
+    NOTIFICATION_LOCALE,
+  );
+  const prevLabel = formatCycleLabel(
+    prevCycle.year,
+    prevCycle.monthIndex,
+    NOTIFICATION_LOCALE,
   );
 
-  // Warna metrik sesuai kondisi.
+  const previewText = L(
+    `Siklus ${cycleLabel} selesai. Total pengeluaran ${formatShortIDR(stats.totalSpent)}, sisa limit ${remainingLimitPercent}%.${diff < 0 ? ` Hemat ${formatShortIDR(Math.abs(diff))} dari ${prevLabel}.` : ""} Lihat rekap lengkap.`,
+    `${cycleLabel} cycle complete. Total spent ${formatShortIDR(stats.totalSpent)}, ${remainingLimitPercent}% limit remaining.${diff < 0 ? ` Saved ${formatShortIDR(Math.abs(diff))} vs ${prevLabel}.` : ""} See the full recap.`,
+  );
+
   const limitColor = stats.overLimit
     ? "#ef4444"
     : remainingLimitPercent <= 20
@@ -574,49 +560,46 @@ export async function buildMonthlySummary(): Promise<NotificationPayload> {
       : "#22c55e";
 
   const emailTitle = L(
-    `📊 Rekap Akhir Siklus ${cycle.label}`,
-    `📊 End-of-Cycle Recap: ${cycle.label}`,
+    `📊 Rekap Akhir Siklus ${cycleLabel}`,
+    `📊 End-of-Cycle Recap: ${cycleLabel}`,
   );
-  const subtitle = `${APP_NAME} · ${L(`Siklus ${cycle.label}`, `Cycle ${cycle.label}`)}`;
+  const subtitle = `${APP_NAME} · ${L(`Siklus ${cycleLabel}`, `Cycle ${cycleLabel}`)}`;
   const greeting = L("Halo! 👋", "Hello! 👋");
 
-  // Bandingan dengan siklus sebelumnya
   const comparisonNote =
     diff > 0
       ? L(
-          `Pengeluaran naik <strong>${formatShortIDR(diff)}</strong> dibanding ${prevCycle.label}.`,
-          `Spending rose by <strong>${formatShortIDR(diff)}</strong> compared to ${prevCycle.label}.`,
+          `Pengeluaran naik <strong>${formatShortIDR(diff)}</strong> dibanding ${prevLabel}.`,
+          `Spending rose by <strong>${formatShortIDR(diff)}</strong> compared to ${prevLabel}.`,
         )
       : diff < 0
         ? L(
-            `Pengeluaran turun <strong>${formatShortIDR(Math.abs(diff))}</strong> dibanding ${prevCycle.label}.`,
-            `Spending dropped by <strong>${formatShortIDR(Math.abs(diff))}</strong> compared to ${prevCycle.label}.`,
+            `Pengeluaran turun <strong>${formatShortIDR(Math.abs(diff))}</strong> dibanding ${prevLabel}.`,
+            `Spending dropped by <strong>${formatShortIDR(Math.abs(diff))}</strong> compared to ${prevLabel}.`,
           )
         : L(
-            `Pengeluaran sama dengan ${prevCycle.label}.`,
-            `Spending is the same as ${prevCycle.label}.`,
+            `Pengeluaran sama dengan ${prevLabel}.`,
+            `Spending is the same as ${prevLabel}.`,
           );
 
   const bluf = L(
-    `<strong>Ringkasan siklus ${cycle.label}:</strong> ${comparisonNote}`,
-    `<strong>${cycle.label} cycle summary:</strong> ${comparisonNote}`,
+    `<strong>Ringkasan siklus ${cycleLabel}:</strong> ${comparisonNote}`,
+    `<strong>${cycleLabel} cycle summary:</strong> ${comparisonNote}`,
   );
   const categoryHeader = L("Pengeluaran per Wadah", "Spending by Envelope");
   const ctaText = L("Buka Dashboard Lengkap", "Open Full Dashboard");
   const link = `${BASE_URL}/`;
 
-  // Insight per wadah
   const categoryInsights = stats.categories
-    .filter((c) => !c.excludeFromAllocation && c.spent > 0)
+    .filter((c) => c.spent > 0)
     .sort((a, b) => b.spent - a.spent)
     .slice(0, 5)
     .map((c) => ({
-      name: c.label[NOTIFICATION_LOCALE] ?? c.label.id,
+      name: c.name,
       detail: `${formatShortIDR(c.spent)} · ${c.percent}%`,
       dotColor: c.color,
     }));
 
-  // Penutup sesuai kondisi
   let closing: string;
   if (stats.overLimit) {
     closing = L(
@@ -625,13 +608,13 @@ export async function buildMonthlySummary(): Promise<NotificationPayload> {
     );
   } else if (diff < 0) {
     closing = L(
-      `Mantap! Anda hemat ${formatShortIDR(Math.abs(diff))} dibanding siklus ${prevCycle.label}. Terus pertahankan! 💪`,
-      `Great job! You saved ${formatShortIDR(Math.abs(diff))} compared to the ${prevCycle.label} cycle. Keep it up! 💪`,
+      `Mantap! Anda hemat ${formatShortIDR(Math.abs(diff))} dibanding siklus ${prevLabel}. Terus pertahankan! 💪`,
+      `Great job! You saved ${formatShortIDR(Math.abs(diff))} compared to the ${prevLabel} cycle. Keep it up! 💪`,
     );
   } else {
     closing = L(
-      `Siklus ${cycle.label} selesai. Terima kasih sudah mencatat pengeluaran. Tetap konsisten menabung! 💪`,
-      `${cycle.label} cycle complete. Thanks for tracking your spending. Stay consistent! 💪`,
+      `Siklus ${cycleLabel} selesai. Terima kasih sudah mencatat pengeluaran. Tetap konsisten menabung! 💪`,
+      `${cycleLabel} cycle complete. Thanks for tracking your spending. Stay consistent! 💪`,
     );
   }
   const signature = L(
@@ -678,13 +661,10 @@ export async function buildMonthlySummary(): Promise<NotificationPayload> {
     signature,
   });
 
-  // Body ringkas untuk push/email fallback
-  const topCatNames = topCategories
-    .map((c) => c.label[NOTIFICATION_LOCALE] ?? c.label.id)
-    .join(", ");
+  const topCatNames = topCategories.map((c) => c.name).join(", ");
   const body = L(
-    `Siklus ${cycle.label} selesai. Total pengeluaran ${formatShortIDR(stats.totalSpent)}, sisa limit ${remainingLimitPercent}%.${topCatNames ? ` Wadah terboros: ${topCatNames}.` : ""} vs ${prevCycle.label}: ${diffLabel}.`,
-    `${cycle.label} cycle complete. Total spent ${formatShortIDR(stats.totalSpent)}, ${remainingLimitPercent}% limit remaining.${topCatNames ? ` Top spending: ${topCatNames}.` : ""} vs ${prevCycle.label}: ${diffLabel}.`,
+    `Siklus ${cycleLabel} selesai. Total pengeluaran ${formatShortIDR(stats.totalSpent)}, sisa limit ${remainingLimitPercent}%.${topCatNames ? ` Wadah terboros: ${topCatNames}.` : ""} vs ${prevLabel}: ${diffLabel}.`,
+    `${cycleLabel} cycle complete. Total spent ${formatShortIDR(stats.totalSpent)}, ${remainingLimitPercent}% limit remaining.${topCatNames ? ` Top spending: ${topCatNames}.` : ""} vs ${prevLabel}: ${diffLabel}.`,
   );
 
   return {
@@ -698,32 +678,33 @@ export async function buildMonthlySummary(): Promise<NotificationPayload> {
 }
 
 // ---------------------------------------------------------------------------
-// E2 – CSV Export Reminder (Pengingat Backup Data)
-// Bulanan, bersamaan dengan akhir siklus / pertengahan siklus.
-// Channel: email.
+// E2 – CSV Export Reminder — email
 // ---------------------------------------------------------------------------
 
-/**
- * Bangun payload notifikasi E2: CSV Export Reminder.
- * Mengingatkan pengguna untuk backup data transaksi.
- */
-export async function buildCsvExportReminder(): Promise<NotificationPayload> {
-  const cycle = getCurrentCycle();
+export async function buildCsvExportReminder(
+  ctx: UserFinance,
+): Promise<NotificationPayload> {
+  const cycle = getCurrentCycle(ctx.settings.cycleStartDay);
   const link = `${BASE_URL}/`;
+  const cycleLabel = formatCycleLabel(
+    cycle.year,
+    cycle.monthIndex,
+    NOTIFICATION_LOCALE,
+  );
 
   const emailTitle = L(
-    `💾 Backup Data Siklus ${cycle.label}`,
-    `💾 Backup Your ${cycle.label} Cycle Data`,
+    `💾 Backup Data Siklus ${cycleLabel}`,
+    `💾 Backup Your ${cycleLabel} Cycle Data`,
   );
-  const subtitle = `${APP_NAME} · ${L(`Siklus ${cycle.label}`, `Cycle ${cycle.label}`)}`;
+  const subtitle = `${APP_NAME} · ${L(`Siklus ${cycleLabel}`, `Cycle ${cycleLabel}`)}`;
   const previewText = L(
-    `Sudah backup data siklus ${cycle.label}? Export CSV untuk arsip di Google Sheets.`,
-    `Backed up your ${cycle.label} cycle data? Export CSV to archive in Google Sheets.`,
+    `Sudah backup data siklus ${cycleLabel}? Export CSV untuk arsip di Google Sheets.`,
+    `Backed up your ${cycleLabel} cycle data? Export CSV to archive in Google Sheets.`,
   );
   const greeting = L("Halo! 👋", "Hello! 👋");
   const bluf = L(
-    `Sudah bulan ini backup data? Export CSV pengeluaran siklus <strong>${cycle.label}</strong> untuk arsip di Google Sheets. Data adalah aset berharga — jangan sampai hilang!`,
-    `Backed up this month? Export the <strong>${cycle.label}</strong> cycle CSV to archive in Google Sheets. Data is a valuable asset — don't lose it!`,
+    `Sudah bulan ini backup data? Export CSV pengeluaran siklus <strong>${cycleLabel}</strong> untuk arsip di Google Sheets. Data adalah aset berharga — jangan sampai hilang!`,
+    `Backed up this month? Export the <strong>${cycleLabel}</strong> cycle CSV to archive in Google Sheets. Data is a valuable asset — don't lose it!`,
   );
   const ctaText = L("Export CSV Sekarang", "Export CSV Now");
   const closing = L(
@@ -752,8 +733,8 @@ export async function buildCsvExportReminder(): Promise<NotificationPayload> {
   });
 
   const body = L(
-    `Sudah backup data siklus ${cycle.label}? Export CSV pengeluaran untuk arsip di Google Sheets.`,
-    `Backed up your ${cycle.label} cycle data? Export CSV to archive in Google Sheets.`,
+    `Sudah backup data siklus ${cycleLabel}? Export CSV pengeluaran untuk arsip di Google Sheets.`,
+    `Backed up your ${cycleLabel} cycle data? Export CSV to archive in Google Sheets.`,
   );
 
   return {
@@ -767,56 +748,37 @@ export async function buildCsvExportReminder(): Promise<NotificationPayload> {
 }
 
 // ---------------------------------------------------------------------------
-// E1 – Quarterly Trend Report (Laporan Tren Tabungan Triwulanan)
-// Triwulanan (setiap 3 siklus selesai).
-// Channel: email.
+// E1 – Quarterly Trend Report — email
 // ---------------------------------------------------------------------------
 
-/**
- * Bangun payload notifikasi E1: Quarterly Trend Report.
- * Menampilkan tren tabungan 3 siklus terakhir.
- * Menggunakan 3 siklus SEBELUM siklus saat ini (siklus yang baru saja berakhir).
- * Siklus tanpa data menampilkan 0 untuk sisa tabungan dan pengeluaran.
- * Selalu mengembalikan payload (tidak pernah null) karena dijadwalkan
- * hanya pada bulan triwulanan (Des, Mar, Jun, Sep).
- */
-export async function buildQuarterlyTrend(): Promise<NotificationPayload> {
-  const cycle = getCurrentCycle();
-  // Ambil 3 siklus sebelum siklus saat ini (siklus yang sudah selesai)
-  const prev1 = shiftCycle(cycle, -1);
-  const prev2 = shiftCycle(cycle, -2);
-  const prev3 = shiftCycle(cycle, -3);
+export async function buildQuarterlyTrend(
+  ctx: UserFinance,
+): Promise<NotificationPayload> {
+  const startDay = ctx.settings.cycleStartDay;
+  const cycle = getCurrentCycle(startDay);
+  const prev1 = shiftCycle(cycle, -1, startDay);
+  const prev2 = shiftCycle(cycle, -2, startDay);
+  const prev3 = shiftCycle(cycle, -3, startDay);
 
-  const [rec1, rec2, rec3] = await Promise.all([
-    getPurchasesInRange(prev1.startDate, prev1.endDate),
-    getPurchasesInRange(prev2.startDate, prev2.endDate),
-    getPurchasesInRange(prev3.startDate, prev3.endDate),
+  const [t1, t2, t3] = await Promise.all([
+    getCycleTransactions(ctx, prev1.startDate, prev1.endDate),
+    getCycleTransactions(ctx, prev2.startDate, prev2.endDate),
+    getCycleTransactions(ctx, prev3.startDate, prev3.endDate),
   ]);
 
-  const purchases1 = toPurchases(rec1);
-  const purchases2 = toPurchases(rec2);
-  const purchases3 = toPurchases(rec3);
+  const statsList = [t1, t2, t3].map((t) => statsOf(ctx, t));
+  const cycleLabels = [prev3, prev2, prev1].map((c) =>
+    formatCycleLabel(c.year, c.monthIndex, NOTIFICATION_LOCALE),
+  );
+  const savingsValues = statsList.map((s) => s.netSavings);
 
-  const stats1 = computeCycleStats(purchases1);
-  const stats2 = computeCycleStats(purchases2);
-  const stats3 = computeCycleStats(purchases3);
-
-  const allCycles = [stats3, stats2, stats1];
-  const cycleLabels = [prev3.label, prev2.label, prev1.label];
-  const savingsValues = allCycles.map((s) => s.remaining);
-
-  // Hitung tren
   const avgSavings =
     savingsValues.reduce((a, b) => a + b, 0) / savingsValues.length;
-  const oldestSavings = savingsValues[0];
-  const newestSavings = savingsValues[savingsValues.length - 1];
-  const trendDiff = newestSavings - oldestSavings;
+  const trendDiff =
+    savingsValues[savingsValues.length - 1] - savingsValues[0];
   const trendLabel =
     trendDiff > 0
-      ? L(
-          `naik ${formatShortIDR(trendDiff)}`,
-          `up ${formatShortIDR(trendDiff)}`,
-        )
+      ? L(`naik ${formatShortIDR(trendDiff)}`, `up ${formatShortIDR(trendDiff)}`)
       : trendDiff < 0
         ? L(
             `turun ${formatShortIDR(Math.abs(trendDiff))}`,
@@ -843,13 +805,12 @@ export async function buildQuarterlyTrend(): Promise<NotificationPayload> {
   );
   const ctaText = L("Buka Dashboard", "Open Dashboard");
 
-  // Tabel per siklus
   const categoryHeader = L("Tabungan per Siklus", "Savings per Cycle");
   const categories = cycleLabels.map((label, i) => ({
     name: label,
     detail: L(
-      `Sisa: ${formatShortIDR(savingsValues[i])} · Pengeluaran: ${formatShortIDR(allCycles[i].totalSpent)}`,
-      `Left: ${formatShortIDR(savingsValues[i])} · Spent: ${formatShortIDR(allCycles[i].totalSpent)}`,
+      `Sisa: ${formatShortIDR(savingsValues[i])} · Pengeluaran: ${formatShortIDR(statsList[i].totalSpent)}`,
+      `Left: ${formatShortIDR(savingsValues[i])} · Spent: ${formatShortIDR(statsList[i].totalSpent)}`,
     ),
     dotColor: savingsValues[i] > 0 ? "#22c55e" : "#ef4444",
   }));
@@ -907,80 +868,64 @@ export async function buildQuarterlyTrend(): Promise<NotificationPayload> {
 }
 
 // ---------------------------------------------------------------------------
-// F1 – Yearly Recap (Rekap Akhir Tahunan)
-// Tahunan, tanggal 31 Desember jam 23:59 WIB.
-// Channel: email (rich HTML).
+// F1 – Yearly Recap — email
 // ---------------------------------------------------------------------------
 
-/**
- * Bangun payload notifikasi F1: Yearly Recap.
- * Menampilkan laporan tren tahunan, rekap akhir tahunan, dan top 3 wadah
- * pengeluaran terbesar selama 1 tahun (1 Jan s/d 31 Des).
- */
-export async function buildYearlyRecap(): Promise<NotificationPayload> {
+export async function buildYearlyRecap(
+  ctx: UserFinance,
+): Promise<NotificationPayload> {
   const now = new Date();
   const currentYear = now.getFullYear();
   const prevYear = currentYear - 1;
 
-  // Rentang tahunan: 1 Jan - 31 Des (masa depan jam 23:59 WIB)
   const startDate = new Date(currentYear, 0, 1, 0, 0, 0, 0);
   const endDate = new Date(currentYear, 11, 31, 23, 59, 59, 999);
-
   const prevStartDate = new Date(prevYear, 0, 1, 0, 0, 0, 0);
   const prevEndDate = new Date(prevYear, 11, 31, 23, 59, 59, 999);
 
-  const [recCurrent, recPrev] = await Promise.all([
-    getPurchasesInRange(startDate, endDate),
-    getPurchasesInRange(prevStartDate, prevEndDate),
+  const [currentTx, prevTx] = await Promise.all([
+    getCycleTransactions(ctx, startDate, endDate),
+    getCycleTransactions(ctx, prevStartDate, prevEndDate),
   ]);
 
-  const purchasesCurrent = toPurchases(recCurrent);
-  const purchasesPrev = toPurchases(recPrev);
+  const totalSpentCurrent = currentTx
+    .filter((t) => t.type === "EXPENSE")
+    .reduce((sum, t) => sum + t.amount, 0);
+  const totalSpentPrev = prevTx
+    .filter((t) => t.type === "EXPENSE")
+    .reduce((sum, t) => sum + t.amount, 0);
+  const transactionCountCurrent = currentTx.length;
 
-  // Hitung statistik sederhana untuk seluruh tahun
-  const totalSpentCurrent = purchasesCurrent.reduce(
-    (sum, p) => sum + p.amount,
-    0,
-  );
-  const totalSpentPrev = purchasesPrev.reduce((sum, p) => sum + p.amount, 0);
-  const transactionCountCurrent = purchasesCurrent.length;
-
-  // Hitung pengeluaran per wadah (hanya dialokasikan; subkategori
-  // diakumulasi ke kategori induk, legacy-aware)
+  // Pengeluaran per wadah (EXPENSE saja).
   const spentByEnvelope = new Map<string, number>();
-  const allocatedCats = Object.values(CATEGORY_MAP).filter(
-    (c) => !c.excludeFromAllocation,
-  );
-  for (const p of purchasesCurrent) {
-    const catId = getParentCategoryId(p.categoryId);
-    if (!spentByEnvelope.has(catId)) spentByEnvelope.set(catId, 0);
-    spentByEnvelope.set(catId, spentByEnvelope.get(catId)! + p.amount);
+  for (const t of currentTx) {
+    if (t.type !== "EXPENSE") continue;
+    spentByEnvelope.set(
+      t.categoryId,
+      (spentByEnvelope.get(t.categoryId) ?? 0) + t.amount,
+    );
   }
 
-  // Pengeluaran per Wadah (semua wadah dialokasikan, urut terbesar)
-  const allEnvelopes = allocatedCats
+  const allEnvelopes = ctx.categories
     .map((cat) => ({
-      id: cat.id,
-      label: cat.label[NOTIFICATION_LOCALE] ?? cat.label.id,
+      label: cat.name,
       color: cat.color,
       spent: spentByEnvelope.get(cat.id) ?? 0,
       allocation: cat.allocation,
     }))
     .sort((a, b) => b.spent - a.spent);
 
-  // Hitung tren pengeluaran (tahun ini vs tahun lalu)
   const spentDiff = totalSpentCurrent - totalSpentPrev;
+  const initial = ctx.settings.savingsInitial;
+  const totalIncomeCurrent = currentTx
+    .filter((t) => t.type === "INCOME")
+    .reduce((sum, t) => sum + t.amount, 0);
+  const estimatedSavingsFinal =
+    initial * 12 + totalIncomeCurrent - totalSpentCurrent;
 
-  // Perkiraan tabungan / kumulatif aktual
-  // Estimasi: SAVINGS_INITIAL * 12 - totalSpentCurrent (asumsi 12 siklus)
-  const estimatedSavings = SAVINGS_INITIAL * 12 - totalSpentCurrent;
-
-  // Selisih target kumulatif dengan aktual kumulatif
-  // Target kumulatif savings = (SAVINGS_INITIAL - TOTAL_ALLOCATION) * 12
-  // Aktual kumulatif savings = estimatedSavings
-  // Selisih = aktual - target = TOTAL_ALLOCATION * 12 - totalSpentCurrent
-  const cumulativeTargetSavings = (SAVINGS_INITIAL - TOTAL_ALLOCATION) * 12;
-  const cumulativeDiff = estimatedSavings - cumulativeTargetSavings;
+  const cumulativeTargetSavings =
+    (initial - ctx.categories.reduce((acc, c) => acc + c.allocation, 0)) * 12;
+  const cumulativeDiff = estimatedSavingsFinal - cumulativeTargetSavings;
   const cumulativeDiffLabel =
     cumulativeDiff >= 0
       ? `+${formatShortIDR(cumulativeDiff)}`
@@ -990,11 +935,11 @@ export async function buildYearlyRecap(): Promise<NotificationPayload> {
         );
   const cumulativeDiffColor = cumulativeDiff >= 0 ? "#22c55e" : "#ef4444";
 
-  // Hitung bulan dengan pengeluaran terbanyak tahun ini
   const spentByMonth = new Map<number, number>();
-  for (const p of purchasesCurrent) {
-    const monthIdx = new Date(p.date).getMonth();
-    spentByMonth.set(monthIdx, (spentByMonth.get(monthIdx) ?? 0) + p.amount);
+  for (const t of currentTx) {
+    if (t.type !== "EXPENSE") continue;
+    const monthIdx = new Date(t.date).getMonth();
+    spentByMonth.set(monthIdx, (spentByMonth.get(monthIdx) ?? 0) + t.amount);
   }
   let busiestMonthIdx = -1;
   let busiestMonthSpent = 0;
@@ -1009,11 +954,8 @@ export async function buildYearlyRecap(): Promise<NotificationPayload> {
       ? formatCycleLabel(currentYear, busiestMonthIdx, NOTIFICATION_LOCALE)
       : L("-", "-");
   const busiestMonthValue =
-    busiestMonthIdx >= 0
-      ? `${busiestMonthLabel}`
-      : L("Belum ada data", "No data");
+    busiestMonthIdx >= 0 ? `${busiestMonthLabel}` : L("Belum ada data", "No data");
 
-  // Top 3 bulan pengeluaran terbesar tahun ini
   const topMonths = Array.from(spentByMonth.entries())
     .sort((a, b) => b[1] - a[1])
     .slice(0, 3)
@@ -1032,17 +974,16 @@ export async function buildYearlyRecap(): Promise<NotificationPayload> {
   );
   const subtitle = `${APP_NAME} · ${currentYear}`;
   const previewText = L(
-    `Rekap akhir tahun ${currentYear}: Sisa tabungan ${formatShortIDR(estimatedSavings)}, selisih target ${cumulativeDiffLabel}.${spentDiff < 0 ? ` Hemat ${formatShortIDR(Math.abs(spentDiff))} dari ${prevYear}.` : ""}${busiestMonthIdx >= 0 ? ` Bulan terbanyak: ${busiestMonthLabel}.` : ""} Lihat detail lengkap.`,
-    `End of ${currentYear} recap: Savings left ${formatShortIDR(estimatedSavings)}, target diff ${cumulativeDiffLabel}.${spentDiff < 0 ? ` Saved ${formatShortIDR(Math.abs(spentDiff))} vs ${prevYear}.` : ""}${busiestMonthIdx >= 0 ? ` Top month: ${busiestMonthLabel}.` : ""} See the full report.`,
+    `Rekap akhir tahun ${currentYear}: Sisa tabungan ${formatShortIDR(estimatedSavingsFinal)}, selisih target ${cumulativeDiffLabel}.${spentDiff < 0 ? ` Hemat ${formatShortIDR(Math.abs(spentDiff))} dari ${prevYear}.` : ""}${busiestMonthIdx >= 0 ? ` Bulan terbanyak: ${busiestMonthLabel}.` : ""} Lihat detail lengkap.`,
+    `End of ${currentYear} recap: Savings left ${formatShortIDR(estimatedSavingsFinal)}, target diff ${cumulativeDiffLabel}.${spentDiff < 0 ? ` Saved ${formatShortIDR(Math.abs(spentDiff))} vs ${prevYear}.` : ""}${busiestMonthIdx >= 0 ? ` Top month: ${busiestMonthLabel}.` : ""} See the full report.`,
   );
   const greeting = L("Selamat tahun baru! 🎉", "Happy New Year! 🎉");
   const bluf = L(
-    `<strong>Ringkasan tahun ${currentYear}:</strong> Total tabungan <strong>${formatShortIDR(estimatedSavings)}</strong>.${spentDiff < 0 ? ` Pengeluaran turun ${formatShortIDR(Math.abs(spentDiff))} dibanding ${prevYear}.` : spentDiff > 0 ? ` Pengeluaran naik ${formatShortIDR(spentDiff)} dibanding ${prevYear}.` : ` Pengeluaran sama dengan ${prevYear}.`}`,
-    `<strong>${currentYear} summary:</strong> Total savings left <strong>${formatShortIDR(estimatedSavings)}</strong>.${spentDiff < 0 ? ` Spending dropped ${formatShortIDR(Math.abs(spentDiff))} vs ${prevYear}.` : spentDiff > 0 ? ` Spending rose ${formatShortIDR(spentDiff)} vs ${prevYear}.` : ` Spending is the same as ${prevYear}.`}`,
+    `<strong>Ringkasan tahun ${currentYear}:</strong> Total tabungan <strong>${formatShortIDR(estimatedSavingsFinal)}</strong>.${spentDiff < 0 ? ` Pengeluaran turun ${formatShortIDR(Math.abs(spentDiff))} dibanding ${prevYear}.` : spentDiff > 0 ? ` Pengeluaran naik ${formatShortIDR(spentDiff)} dibanding ${prevYear}.` : ` Pengeluaran sama dengan ${prevYear}.`}`,
+    `<strong>${currentYear} summary:</strong> Total savings left <strong>${formatShortIDR(estimatedSavingsFinal)}</strong>.${spentDiff < 0 ? ` Spending dropped ${formatShortIDR(Math.abs(spentDiff))} vs ${prevYear}.` : spentDiff > 0 ? ` Spending rose ${formatShortIDR(spentDiff)} vs ${prevYear}.` : ` Spending is the same as ${prevYear}.`}`,
   );
   const ctaText = L("Buka Dashboard", "Open Dashboard");
 
-  // Metrik grid 2x2
   const metricsGrid = [
     [
       {
@@ -1058,10 +999,7 @@ export async function buildYearlyRecap(): Promise<NotificationPayload> {
     ],
     [
       {
-        label: L(
-          "Selisih Target vs Aktual",
-          "Target vs Actual Diff",
-        ),
+        label: L("Selisih Target vs Aktual", "Target vs Actual Diff"),
         value: cumulativeDiffLabel,
         color: cumulativeDiffColor,
       },
@@ -1073,7 +1011,6 @@ export async function buildYearlyRecap(): Promise<NotificationPayload> {
     ],
   ];
 
-  // Tabel Pengeluaran per Wadah (semua wadah, urut terbesar)
   const categoryHeader = L("Pengeluaran per Wadah", "Spending by Envelope");
   const categories = allEnvelopes.map((env) => ({
     name: env.label,
@@ -1100,17 +1037,18 @@ export async function buildYearlyRecap(): Promise<NotificationPayload> {
     metricsGrid,
     categoryHeader,
     categories,
-    extraSections: topMonths.length > 0
-      ? [
-          {
-            header: L(
-              "Top 3 Bulan Pengeluaran Terbesar",
-              "Top 3 Highest Spending Months",
-            ),
-            rows: topMonths,
-          },
-        ]
-      : [],
+    extraSections:
+      topMonths.length > 0
+        ? [
+            {
+              header: L(
+                "Top 3 Bulan Pengeluaran Terbesar",
+                "Top 3 Highest Spending Months",
+              ),
+              rows: topMonths,
+            },
+          ]
+        : [],
     ctaText,
     ctaUrl: link,
     closing,
@@ -1118,8 +1056,8 @@ export async function buildYearlyRecap(): Promise<NotificationPayload> {
   });
 
   const body = L(
-    `🎊 Rekap akhir tahun ${currentYear}: Sisa tabungan ${formatShortIDR(estimatedSavings)} (${transactionCountCurrent} transaksi), selisih target ${cumulativeDiffLabel}.${busiestMonthIdx >= 0 ? ` Bulan terbanyak: ${busiestMonthLabel}.` : ""} Pengeluaran ${spentDiff < 0 ? "turun " : spentDiff > 0 ? "naik " : "sama "}${spentDiff !== 0 ? formatShortIDR(Math.abs(spentDiff)) + " " : ""}dibanding ${prevYear}.`,
-    `🎊 End of ${currentYear} recap: Savings left ${formatShortIDR(estimatedSavings)} (${transactionCountCurrent} transactions), target diff ${cumulativeDiffLabel}.${busiestMonthIdx >= 0 ? ` Top month: ${busiestMonthLabel}.` : ""} Spending ${spentDiff < 0 ? "dropped " : spentDiff > 0 ? "rose " : "unchanged "}${spentDiff !== 0 ? formatShortIDR(Math.abs(spentDiff)) + " " : ""}vs ${prevYear}.`,
+    `🎊 Rekap akhir tahun ${currentYear}: Sisa tabungan ${formatShortIDR(estimatedSavingsFinal)} (${transactionCountCurrent} transaksi), selisih target ${cumulativeDiffLabel}.${busiestMonthIdx >= 0 ? ` Bulan terbanyak: ${busiestMonthLabel}.` : ""} Pengeluaran ${spentDiff < 0 ? "turun " : spentDiff > 0 ? "naik " : "sama "}${spentDiff !== 0 ? formatShortIDR(Math.abs(spentDiff)) + " " : ""}dibanding ${prevYear}.`,
+    `🎊 End of ${currentYear} recap: Savings left ${formatShortIDR(estimatedSavingsFinal)} (${transactionCountCurrent} transactions), target diff ${cumulativeDiffLabel}.${busiestMonthIdx >= 0 ? ` Top month: ${busiestMonthLabel}.` : ""} Spending ${spentDiff < 0 ? "dropped " : spentDiff > 0 ? "rose " : "unchanged "}${spentDiff !== 0 ? formatShortIDR(Math.abs(spentDiff)) + " " : ""}vs ${prevYear}.`,
   );
 
   return {
@@ -1133,7 +1071,7 @@ export async function buildYearlyRecap(): Promise<NotificationPayload> {
 }
 
 // ---------------------------------------------------------------------------
-// Shared: Email Builder & Broadcast Helpers
+// Shared: Email Builder & Broadcast Helpers (per user)
 // ---------------------------------------------------------------------------
 
 /**
@@ -1151,7 +1089,6 @@ function buildRichEmailHtml(params: {
   metricsGrid?: { label: string; value: string; color?: string }[][];
   categoryHeader: string;
   categories: { name: string; detail: string; dotColor: string }[];
-  /** Tambahan section tabel (mis. top 3 tanggal pengeluaran). */
   extraSections?: {
     header: string;
     rows: { name: string; detail: string; dotColor: string }[];
@@ -1169,7 +1106,6 @@ function buildRichEmailHtml(params: {
     ? `<div style="display:none;max-height:0;overflow:hidden;opacity:0;color:transparent;height:0;width:0;max-width:0">${escapeHtml(params.previewText)}</div>`
     : "";
 
-  // Build a single metric cell HTML
   const metricCell = (
     metric: { label: string; value: string; color?: string },
     isFirst: boolean,
@@ -1179,21 +1115,17 @@ function buildRichEmailHtml(params: {
           <strong style="font-family:${font};font-size:18px;color:${metric.color || params.themeColor}">${escapeHtml(metric.value)}</strong>
         </td>`;
 
-  // Inline row metrics (1xN)
   const metricsRow =
     m.length > 0
       ? `<hr style="border:none;border-top:1px solid #e5e7eb;margin:0 0 20px" />
     <p style="font-family:${font};margin:0 0 8px;font-size:13px;font-weight:600;color:#6b7280;text-transform:uppercase;letter-spacing:0.5px">${escapeHtml(L("Metrik", "Metrics"))}</p>
     <table style="width:100%;border-collapse:collapse;margin:0 0 20px;font-size:14px">
       <tr>
-        ${m
-          .map((metric, i) => metricCell(metric, i === 0, i === m.length - 1))
-          .join("")}
+        ${m.map((metric, i) => metricCell(metric, i === 0, i === m.length - 1)).join("")}
       </tr>
     </table>`
       : "";
 
-  // Grid metrics (2x2)
   const metricsGridBlock =
     mg && mg.length > 0
       ? `<hr style="border:none;border-top:1px solid #e5e7eb;margin:0 0 20px" />
@@ -1233,10 +1165,8 @@ function buildRichEmailHtml(params: {
     <table style="width:100%;border-collapse:collapse;margin:0 0 20px;font-size:14px">
       ${params.categories
         .map(
-          (
-            cat,
-            i,
-          ) => `<tr><td style="padding:8px 0;${i < params.categories.length - 1 ? "border-bottom:1px solid #e5e7eb;" : ""}">
+          (cat, i) =>
+            `<tr><td style="padding:8px 0;${i < params.categories.length - 1 ? "border-bottom:1px solid #e5e7eb;" : ""}">
         <span style="display:inline-block;width:10px;height:10px;background:${cat.dotColor};border-radius:50%;margin-right:8px"></span>
         ${escapeHtml(cat.name)}<br/><span style="font-family:${font};color:#6b7280;font-size:12px">${escapeHtml(cat.detail)}</span>
       </td></tr>`,
@@ -1245,13 +1175,11 @@ function buildRichEmailHtml(params: {
     </table>`
       : "";
 
-  // Extra sections block (optional additional tables)
   const extraSectionsBlock = (params.extraSections ?? [])
     .filter((sec) => sec.header && sec.rows.length > 0)
     .map(
-      (
-        sec,
-      ) => `<p style="font-family:${font};margin:0 0 8px;font-size:13px;font-weight:600;color:#6b7280;text-transform:uppercase;letter-spacing:0.5px">${escapeHtml(sec.header)}</p>
+      (sec) =>
+        `<p style="font-family:${font};margin:0 0 8px;font-size:13px;font-weight:600;color:#6b7280;text-transform:uppercase;letter-spacing:0.5px">${escapeHtml(sec.header)}</p>
     <table style="width:100%;border-collapse:collapse;margin:0 0 20px;font-size:14px">
       ${sec.rows
         .map(
@@ -1278,7 +1206,6 @@ function buildRichEmailHtml(params: {
 <title>${escapeHtml(params.title)}</title>
 <style type="text/css">
 @media screen{body,table,td,p,a,span,strong,h1,h2,h3{font-family:${font}}}
-/* ===== Responsive: Mobile-first ===== */
 .email-container{width:100%!important;max-width:560px!important}
 .email-card{padding:28px 24px!important}
 .email-header{padding:24px!important}
@@ -1371,31 +1298,33 @@ function escapeHtml(s: string): string {
 }
 
 // ---------------------------------------------------------------------------
-// Broadcast helpers (push & email)
+// Broadcast helpers (push & email) — per user
 // ---------------------------------------------------------------------------
 
-export interface PushSendResult {
+export interface BroadcastResult {
+  /** Jumlah user yang diproses. */
+  users: number;
+  /** Push terkirim. */
   sent: number;
+  /** Push gagal. */
   failed: number;
+  /** Subscription expired yang dibersihkan. */
   cleanedUp: number;
-}
-
-export interface EmailSendResult {
-  emailed: boolean;
+  /** User dilewati (kondisi tidak terpenuhi). */
+  skipped: number;
+  /** Email terkirim. */
+  emailed: number;
 }
 
 /**
- * Kirim notifikasi push ke semua subscriber.
- * Endpoint yang sudah expired (404/410) otomatis dihapus dari database.
+ * Kirim push notification ke semua subscription milik satu user.
+ * Endpoint expired (404/410) otomatis dihapus dari database.
  */
-export async function broadcastPushNotification(
+async function pushToUser(
+  userId: string,
   payload: NotificationPayload,
-): Promise<PushSendResult> {
-  const { getAllSubscriptions, removeStaleSubscription } =
-    await import("@/services/push");
-  const { sendPushNotification } = await import("@/lib/web-push");
-
-  const subs = await getAllSubscriptions();
+): Promise<{ sent: number; failed: number; cleanedUp: number }> {
+  const subs = await getSubscriptionsOfUser(userId);
   let sent = 0;
   let failed = 0;
   let cleanedUp = 0;
@@ -1422,22 +1351,99 @@ export async function broadcastPushNotification(
   return { sent, failed, cleanedUp };
 }
 
-/**
- * Kirim email notifikasi ke penerima yang dikonfigurasi (bila SMTP aktif).
- */
-export async function broadcastEmailNotification(
+/** Kirim email notifikasi ke user (bila SMTP aktif). */
+async function emailToUser(
+  ctx: UserFinance,
   payload: NotificationPayload,
-): Promise<EmailSendResult> {
-  const { sendEmail, isEmailConfigured } = await import("@/lib/email");
+): Promise<boolean> {
+  if (!isEmailConfigured()) return false;
+  return sendEmail({
+    to: ctx.email,
+    subject: payload.title,
+    text: payload.body,
+    html: payload.html ?? toEmailHtml(payload),
+  });
+}
 
-  let emailed = false;
-  if (isEmailConfigured()) {
-    emailed = await sendEmail({
-      subject: payload.title,
-      text: payload.body,
-      html: payload.html ?? toEmailHtml(payload),
-    });
+/**
+ * Jalankan builder notifikasi untuk SEMUA user (push channel).
+ * Builder mengembalikan null = skip user tsb.
+ */
+export async function broadcastPushToAllUsers(
+  build: (ctx: UserFinance) => Promise<NotificationPayload | null>,
+): Promise<BroadcastResult> {
+  const users = await prisma.user.findMany({
+    select: { id: true, email: true, name: true },
+  });
+
+  const result: BroadcastResult = {
+    users: 0,
+    sent: 0,
+    failed: 0,
+    cleanedUp: 0,
+    skipped: 0,
+    emailed: 0,
+  };
+
+  for (const user of users) {
+    result.users++;
+    try {
+      const ctx = await loadUserFinance(user);
+      const payload = await build(ctx);
+      if (!payload) {
+        result.skipped++;
+        continue;
+      }
+      const push = await pushToUser(user.id, payload);
+      result.sent += push.sent;
+      result.failed += push.failed;
+      result.cleanedUp += push.cleanedUp;
+    } catch (err) {
+      console.error(
+        `[notification] gagal kirim push utk user ${user.id}:`,
+        err,
+      );
+      result.failed++;
+    }
   }
 
-  return { emailed };
+  return result;
+}
+
+/**
+ * Jalankan builder notifikasi untuk SEMUA user (email channel).
+ */
+export async function broadcastEmailToAllUsers(
+  build: (ctx: UserFinance) => Promise<NotificationPayload>,
+): Promise<BroadcastResult> {
+  const users = await prisma.user.findMany({
+    select: { id: true, email: true, name: true },
+  });
+
+  const result: BroadcastResult = {
+    users: 0,
+    sent: 0,
+    failed: 0,
+    cleanedUp: 0,
+    skipped: 0,
+    emailed: 0,
+  };
+
+  for (const user of users) {
+    result.users++;
+    try {
+      const ctx = await loadUserFinance(user);
+      const payload = await build(ctx);
+      const emailed = await emailToUser(ctx, payload);
+      if (emailed) result.emailed++;
+    } catch (err) {
+      console.error(
+        `[notification] gagal kirim email utk user ${user.id}:`,
+        err,
+      );
+      result.failed++;
+    }
+  }
+
+  return result;
 }

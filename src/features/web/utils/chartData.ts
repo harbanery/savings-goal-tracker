@@ -1,5 +1,7 @@
-import { getParentCategoryId, TOTAL_ALLOCATION } from "@/features/web/utils/categories";
-import type { Purchase } from "@/features/web/types";
+import type {
+  BudgetCategory,
+  Transaction,
+} from "@/features/web/types";
 import type { Locale } from "@/types/locale";
 import {
   formatCycleLabel,
@@ -7,16 +9,10 @@ import {
   getCycleInfo,
   type CycleInfo,
 } from "@/features/web/utils/cycle";
-import { SAVINGS_INITIAL } from "@/utils/config/variables";
+import { totalAllocation } from "@/features/web/utils/categories";
 
 /**
- * Batas bawah siklus yang ditampilkan di chart: Agustus 2026.
- * Bulan sebelum Agustus 2026 dikosongkan (totalSpent = 0, savings = saldo awal).
- */
-const MIN_CHART_SORT_KEY = 2026 * 12 + 7; // Agustus 2026 (monthIndex 7)
-
-/**
- * Data satu siklus untuk chart historis.
+ * Data satu siklus untuk chart historis (sadar EXPENSE/INCOME/TRANSFER).
  */
 export interface CycleChartData {
   /** Kunci netral locale, mis. "2026-08". */
@@ -25,11 +21,12 @@ export interface CycleChartData {
   label: string;
   savingsInitial: number;
   totalSpent: number;
+  totalIncome: number;
   /** Expected savings = savingsInitial - totalAllocation. */
   expectedSavings: number;
-  /** Actual savings = savingsInitial - totalSpent. */
+  /** Actual savings = savingsInitial + totalIncome - totalSpent. */
   actualSavings: number;
-  /** Pengeluaran per kategori (categoryId -> amount). */
+  /** Pengeluaran per kategori (categoryId -> amount, EXPENSE saja). */
   categorySpent: Record<string, number>;
 }
 
@@ -54,64 +51,68 @@ function keyToParts(key: string): { year: number; monthIndex: number } | null {
 }
 
 /**
- * Ubah map key -> purchases menjadi array CycleChartData yang terurut
- * secara kronologis. Bulan sebelum Agustus 2026 dikosongkan
- * (totalSpent = 0, categorySpent = {}).
+ * Ubah map key -> transactions menjadi array CycleChartData terurut kronologis.
  * @param historical map dengan kunci netral "YYYY-MM"
+ * @param categories kategori milik user (untuk total alokasi)
+ * @param savingsInitial saldo awal per siklus milik user
  * @param locale locale untuk label tampilan
  */
 export function buildCycleChartData(
-  historical: Record<string, Purchase[]>,
+  historical: Record<string, Transaction[]>,
+  categories: BudgetCategory[],
+  savingsInitial: number,
   locale: Locale = "id",
 ): CycleChartData[] {
+  const allocation = totalAllocation(categories);
   const keys = Object.keys(historical).sort(
     (a, b) => keyToSortKey(a) - keyToSortKey(b),
   );
   return keys.map((key) => {
-    const sortKey = keyToSortKey(key);
-    const purchases =
-      sortKey < MIN_CHART_SORT_KEY ? [] : historical[key] ?? [];
+    const transactions = historical[key] ?? [];
     let totalSpent = 0;
+    let totalIncome = 0;
     const categorySpent: Record<string, number> = {};
-    for (const p of purchases) {
-      totalSpent += p.amount;
-      // Akumulasi per kategori/wadah induk (legacy-aware).
-      const catId = getParentCategoryId(p.categoryId);
-      categorySpent[catId] = (categorySpent[catId] ?? 0) + p.amount;
+    for (const tr of transactions) {
+      if (tr.type === "EXPENSE") {
+        totalSpent += tr.amount;
+        categorySpent[tr.categoryId] =
+          (categorySpent[tr.categoryId] ?? 0) + tr.amount;
+      } else if (tr.type === "INCOME") {
+        totalIncome += tr.amount;
+      }
+      // TRANSFER tidak mengubah total saldo.
     }
     const parts = keyToParts(key);
     const label = parts
       ? formatCycleLabel(parts.year, parts.monthIndex, locale)
       : key;
-    // Sebelum Agustus 2026, expected & actual savings dipaksa 0.
-    const isBeforeMin = sortKey < MIN_CHART_SORT_KEY;
     return {
       key,
       label,
-      savingsInitial: SAVINGS_INITIAL,
+      savingsInitial,
       totalSpent,
-      expectedSavings: isBeforeMin ? 0 : SAVINGS_INITIAL - TOTAL_ALLOCATION,
-      actualSavings: isBeforeMin ? 0 : SAVINGS_INITIAL - totalSpent,
+      totalIncome,
+      expectedSavings: savingsInitial - allocation,
+      actualSavings: savingsInitial + totalIncome - totalSpent,
       categorySpent,
     };
   });
 }
 
 /**
- * Kelompokkan daftar pembelian menjadi map kunci siklus -> pembelian.
- * Dipakai mode mockup (data in-memory client) untuk membentuk data
- * historis tanpa server.
+ * Kelompokkan transaksi menjadi map kunci siklus -> transaksi
+ * (untuk membentuk data historis in-memory di client).
  */
-export function groupPurchasesByCycle(
-  purchases: Purchase[],
+export function groupTransactionsByCycle(
+  transactions: Transaction[],
   startDay?: number,
-): Record<string, Purchase[]> {
-  const result: Record<string, Purchase[]> = {};
-  for (const p of purchases) {
-    const d = new Date(p.date);
+): Record<string, Transaction[]> {
+  const result: Record<string, Transaction[]> = {};
+  for (const tr of transactions) {
+    const d = new Date(tr.date);
     if (Number.isNaN(d.getTime())) continue;
     const key = getCycleForDate(d, startDay).key;
-    (result[key] ??= []).push(p);
+    (result[key] ??= []).push(tr);
   }
   return result;
 }
@@ -157,34 +158,8 @@ function formatShortDayLabel(iso: string, locale: Locale): string {
   const day = date.getDate();
   const monthIndex = date.getMonth();
   const SHORT_MONTHS: Record<Locale, string[]> = {
-    id: [
-      "Jan",
-      "Feb",
-      "Mar",
-      "Apr",
-      "Mei",
-      "Jun",
-      "Jul",
-      "Agu",
-      "Sep",
-      "Okt",
-      "Nov",
-      "Des",
-    ],
-    en: [
-      "Jan",
-      "Feb",
-      "Mar",
-      "Apr",
-      "May",
-      "Jun",
-      "Jul",
-      "Aug",
-      "Sep",
-      "Oct",
-      "Nov",
-      "Dec",
-    ],
+    id: ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des"],
+    en: ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"],
   };
   const months = SHORT_MONTHS[locale] ?? SHORT_MONTHS.id;
   return `${day} ${months[monthIndex]}`;
@@ -207,38 +182,31 @@ function daysBetween(start: Date, end: Date): number {
 }
 
 /**
- * Bangun data pengeluaran harian untuk line chart.
- * - Sumbu X: tanggal dalam rentang siklus.
- * - Sumbu Y: total pengeluaran pada tanggal tersebut.
- *
+ * Bangun data pengeluaran harian untuk line chart (EXPENSE saja).
  * Hari tanpa transaksi tetap dimunculkan dengan nilai 0 agar garis kontinu.
- *
- * @param purchases daftar pembelian dalam siklus
- * @param cycle info siklus untuk menentukan rentang tanggal
- * @param locale locale untuk label tampilan
  */
 export function buildDailySpending(
-  purchases: Purchase[],
+  transactions: Transaction[],
   cycle: CycleInfo,
   locale: Locale = "id",
 ): DailySpendingPoint[] {
   const totalDays = daysBetween(cycle.startDate, cycle.endDate);
   const dayMap = new Map<string, { amount: number; count: number }>();
 
-  for (const p of purchases) {
-    const iso = toISODate(p.date);
+  for (const tr of transactions) {
+    if (tr.type !== "EXPENSE") continue;
+    const iso = toISODate(tr.date);
     if (!iso) continue;
     let entry = dayMap.get(iso);
     if (!entry) {
       entry = { amount: 0, count: 0 };
       dayMap.set(iso, entry);
     }
-    entry.amount += p.amount;
+    entry.amount += tr.amount;
     entry.count += 1;
   }
 
   const points: DailySpendingPoint[] = [];
-  // Iterasi seluruh tanggal dalam rentang siklus untuk kontinuitas garis.
   const base = new Date(cycle.startDate);
   base.setHours(0, 0, 0, 0);
   for (let i = 0; i < totalDays; i++) {
@@ -258,14 +226,13 @@ export function buildDailySpending(
 
 /**
  * Versi tanpa cycle eksplisit: turunkan info siklus dari tahun & monthIndex.
- * Berguna bila pemanggil hanya punya data tanggal pembelian.
  */
 export function buildDailySpendingFromYearMonth(
-  purchases: Purchase[],
+  transactions: Transaction[],
   year: number,
   monthIndex: number,
   locale: Locale = "id",
 ): DailySpendingPoint[] {
   const cycle = getCycleInfo(year, monthIndex);
-  return buildDailySpending(purchases, cycle, locale);
+  return buildDailySpending(transactions, cycle, locale);
 }

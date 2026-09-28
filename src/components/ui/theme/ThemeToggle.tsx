@@ -17,6 +17,7 @@ export default function ThemeToggle() {
     <Tooltip title={isDark ? t("theme.light") : t("theme.dark")}>
       <Button
         type="default"
+        shape="circle"
         icon={isDark ? <BulbFilled /> : <BulbOutlined />}
         onClick={toggle}
         aria-label={isDark ? t("theme.enableLight") : t("theme.enableDark")}

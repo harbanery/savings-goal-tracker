@@ -1,24 +1,48 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { getCurrentUser } from "@/lib/auth";
 import {
-  createPurchase as createPurchaseService,
-  deleteManyPurchases as deleteManyPurchasesService,
-  deletePurchase as deletePurchaseService,
-  getPurchasesInRange,
-  updatePurchase as updatePurchaseService,
-} from "@/services/budget";
-import { toPurchases } from "@/features/web/utils/purchaseTransformer";
-import type { Purchase, PurchaseInput } from "@/features/web/types";
+  createCategory,
+  createSubcategory,
+  createTransaction,
+  deleteCategory,
+  deleteManyTransactions,
+  deleteSubcategory,
+  deleteTransaction,
+  getTransactionsInRange,
+  updateCategory,
+  updateSubcategory,
+  updateTransaction,
+  updateUserSettings,
+  getUserCategories,
+  getUserSettings,
+} from "@/services/transaction";
+import type {
+  BudgetCategory,
+  Transaction,
+  TransactionInput,
+  UserSettings,
+} from "@/features/web/types";
 import type { CycleInfo } from "@/features/web/utils/cycle";
 import { shiftCycle } from "@/features/web/utils/cycle";
 
 /**
- * Server Actions untuk mutasi data Monthly Budget Tracker.
+ * Server Actions untuk mutasi data Savings Goal Tracker.
+ * Semua aksi di-scope ke user login (sesi cookie); unauthorized → throw.
  */
 
-function isCuid(id: string): boolean {
-  return /^c[a-z0-9]{20,}$/i.test(id);
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+function isUuid(id: string): boolean {
+  return UUID_RE.test(id);
+}
+
+async function requireUserId(): Promise<string> {
+  const user = await getCurrentUser();
+  if (!user) throw new Error("Unauthorized — silakan login kembali.");
+  return user.id;
 }
 
 function validateAmount(amount: number): void {
@@ -34,37 +58,58 @@ function sanitizeText(text: string, maxLen: number): string {
   return text.trim().slice(0, maxLen);
 }
 
-/** Fetch semua pembelian dalam satu siklus (dipanggil dari Server Component). */
-export async function getCyclePurchasesAction(
+function validateInput(input: TransactionInput): void {
+  if (!["EXPENSE", "INCOME", "TRANSFER"].includes(input.type)) {
+    throw new Error("Jenis transaksi tidak valid.");
+  }
+  if (!input.categoryId || !isUuid(input.categoryId)) {
+    throw new Error("Wadah wajib dipilih.");
+  }
+  if (input.type === "TRANSFER") {
+    if (!input.toCategoryId || !isUuid(input.toCategoryId)) {
+      throw new Error("Wadah tujuan wajib dipilih.");
+    }
+    if (input.toCategoryId === input.categoryId) {
+      throw new Error("Wadah sumber dan tujuan harus berbeda.");
+    }
+  }
+  validateAmount(input.amount);
+}
+
+/** Fetch semua transaksi dalam satu siklus (dipanggil dari client). */
+export async function getCycleTransactionsAction(
   cycle: CycleInfo,
-): Promise<Purchase[]> {
-  const records = await getPurchasesInRange(cycle.startDate, cycle.endDate);
-  return toPurchases(records);
+): Promise<Transaction[]> {
+  const userId = await requireUserId();
+  return getTransactionsInRange(userId, cycle.startDate, cycle.endDate);
 }
 
 /**
- * Fetch pembelian untuk beberapa siklus terakhir (untuk chart historis).
- * Mengembalikan map label siklus -> daftar pembelian.
- * @param endCycle siklus akhir (termasuk)
- * @param count jumlah siklus yang diambil (termasuk endCycle)
+ * Fetch transaksi untuk beberapa siklus terakhir (untuk chart historis).
+ * Mengembalikan map label siklus -> daftar transaksi.
  */
-export async function getHistoricalPurchasesAction(
+export async function getHistoricalTransactionsAction(
   endCycle: CycleInfo,
   count: number,
-): Promise<Record<string, Purchase[]>> {
-  const result: Record<string, Purchase[]> = {};
+): Promise<Record<string, Transaction[]>> {
+  const userId = await requireUserId();
+  const result: Record<string, Transaction[]> = {};
   let current = endCycle;
   const cycles: CycleInfo[] = [];
   for (let i = 0; i < count; i++) {
     cycles.push(current);
     current = shiftCycle(current, -1);
   }
-  cycles.reverse(); // urutkan dari paling lama ke terbaru
+  cycles.reverse();
 
   await Promise.all(
     cycles.map(async (c) => {
       try {
-        result[c.key] = await getCyclePurchasesAction(c);
+        result[c.key] = await getTransactionsInRange(
+          userId,
+          c.startDate,
+          c.endDate,
+        );
       } catch {
         result[c.key] = [];
       }
@@ -74,77 +119,103 @@ export async function getHistoricalPurchasesAction(
   return result;
 }
 
-export async function createPurchaseAction(
-  input: PurchaseInput,
+/** Kategori + settings user (untuk refresh client setelah perubahan). */
+export async function getFinanceBundleAction(): Promise<{
+  categories: BudgetCategory[];
+  settings: UserSettings;
+}> {
+  const userId = await requireUserId();
+  const [categories, settings] = await Promise.all([
+    getUserCategories(userId),
+    getUserSettings(userId),
+  ]);
+  return { categories, settings };
+}
+
+export async function createTransactionAction(
+  input: TransactionInput,
 ): Promise<void> {
+  const userId = await requireUserId();
   const name = sanitizeText(input.name, 100);
-  if (!name) throw new Error("Nama pembelian wajib diisi.");
-  if (!input.categoryId) throw new Error("Subkategori wajib dipilih.");
-  validateAmount(input.amount);
+  if (!name) throw new Error("Nama transaksi wajib diisi.");
+  validateInput(input);
 
   const date = new Date(input.date);
   if (Number.isNaN(date.getTime())) {
     throw new Error("Tanggal tidak valid.");
   }
 
-  await createPurchaseService({
+  await createTransaction(userId, {
+    type: input.type,
     name,
-    categoryId: input.categoryId,
     amount: Math.round(input.amount),
     note: sanitizeText(input.note, 500),
     date,
+    categoryId: input.categoryId,
+    subcategoryId: isUuid(input.subcategoryId ?? "")
+      ? input.subcategoryId
+      : null,
+    toCategoryId: isUuid(input.toCategoryId ?? "") ? input.toCategoryId : null,
   });
   revalidatePath("/");
 }
 
-export async function updatePurchaseAction(
+export async function updateTransactionAction(
   id: string,
-  input: PurchaseInput,
+  input: TransactionInput,
 ): Promise<void> {
-  if (!isCuid(id)) throw new Error(`Invalid purchase id: ${id}`);
+  const userId = await requireUserId();
+  if (!isUuid(id)) throw new Error(`Invalid transaction id: ${id}`);
   const name = sanitizeText(input.name, 100);
-  if (!name) throw new Error("Nama pembelian wajib diisi.");
-  if (!input.categoryId) throw new Error("Subkategori wajib dipilih.");
-  validateAmount(input.amount);
+  if (!name) throw new Error("Nama transaksi wajib diisi.");
+  validateInput(input);
 
   const date = new Date(input.date);
   if (Number.isNaN(date.getTime())) {
     throw new Error("Tanggal tidak valid.");
   }
 
-  await updatePurchaseService(id, {
+  await updateTransaction(userId, id, {
+    type: input.type,
     name,
-    categoryId: input.categoryId,
     amount: Math.round(input.amount),
     note: sanitizeText(input.note, 500),
     date,
+    categoryId: input.categoryId,
+    subcategoryId: isUuid(input.subcategoryId ?? "")
+      ? input.subcategoryId
+      : null,
+    toCategoryId: isUuid(input.toCategoryId ?? "") ? input.toCategoryId : null,
   });
   revalidatePath("/");
 }
 
-export async function deletePurchaseAction(id: string): Promise<void> {
-  if (!isCuid(id)) throw new Error(`Invalid purchase id: ${id}`);
-  await deletePurchaseService(id);
+export async function deleteTransactionAction(id: string): Promise<void> {
+  const userId = await requireUserId();
+  if (!isUuid(id)) throw new Error(`Invalid transaction id: ${id}`);
+  await deleteTransaction(userId, id);
   revalidatePath("/");
 }
 
-/** Hapus banyak pembelian sekaligus. */
-export async function deletePurchasesAction(ids: string[]): Promise<void> {
+/** Hapus banyak transaksi sekaligus. */
+export async function deleteTransactionsAction(ids: string[]): Promise<void> {
+  const userId = await requireUserId();
   if (ids.length === 0) return;
   for (const id of ids) {
-    if (!isCuid(id)) throw new Error(`Invalid purchase id: ${id}`);
+    if (!isUuid(id)) throw new Error(`Invalid transaction id: ${id}`);
   }
-  await deleteManyPurchasesService(ids);
+  await deleteManyTransactions(userId, ids);
   revalidatePath("/");
 }
 
 /**
- * Import massal pembelian dari array PurchaseInput (dari CSV).
+ * Import massal transaksi dari array TransactionInput (dari CSV).
  * Mengembalikan jumlah baris yang berhasil & daftar error.
  */
-export async function importPurchasesAction(
-  inputs: PurchaseInput[],
+export async function importTransactionsAction(
+  inputs: TransactionInput[],
 ): Promise<{ imported: number; errors: string[] }> {
+  const userId = await requireUserId();
   const errors: string[] = [];
   let imported = 0;
 
@@ -152,19 +223,25 @@ export async function importPurchasesAction(
     try {
       const input = inputs[i];
       const name = sanitizeText(input.name, 100);
-      if (!name) throw new Error("Nama pembelian wajib diisi.");
-      if (!input.categoryId) throw new Error("Subkategori wajib dipilih.");
-      validateAmount(input.amount);
+      if (!name) throw new Error("Nama transaksi wajib diisi.");
+      validateInput(input);
 
       const date = new Date(input.date);
       if (Number.isNaN(date.getTime())) throw new Error("Tanggal tidak valid.");
 
-      await createPurchaseService({
+      await createTransaction(userId, {
+        type: input.type,
         name,
-        categoryId: input.categoryId,
         amount: Math.round(input.amount),
         note: sanitizeText(input.note, 500),
         date,
+        categoryId: input.categoryId,
+        subcategoryId: isUuid(input.subcategoryId ?? "")
+          ? input.subcategoryId
+          : null,
+        toCategoryId: isUuid(input.toCategoryId ?? "")
+          ? input.toCategoryId
+          : null,
       });
       imported++;
     } catch (err) {
@@ -176,4 +253,93 @@ export async function importPurchasesAction(
 
   if (imported > 0) revalidatePath("/");
   return { imported, errors };
+}
+
+// ---------------------------------------------------------------------------
+// Settings & kategori (dinamis per user)
+// ---------------------------------------------------------------------------
+
+export async function updateSettingsAction(data: {
+  cycleStartDay?: number;
+  savingsInitial?: number;
+}): Promise<UserSettings> {
+  const userId = await requireUserId();
+  const settings = await updateUserSettings(userId, data);
+  revalidatePath("/");
+  revalidatePath("/settings");
+  return settings;
+}
+
+export async function createCategoryAction(data: {
+  name: string;
+  color: string;
+  allocation: number;
+}): Promise<BudgetCategory> {
+  const userId = await requireUserId();
+  const name = sanitizeText(data.name, 50);
+  if (!name) throw new Error("Nama kategori wajib diisi.");
+  const category = await createCategory(userId, {
+    name,
+    color: data.color,
+    allocation: data.allocation,
+  });
+  revalidatePath("/");
+  revalidatePath("/settings");
+  return category;
+}
+
+export async function updateCategoryAction(
+  categoryId: string,
+  data: { name?: string; color?: string; allocation?: number },
+): Promise<void> {
+  const userId = await requireUserId();
+  if (!isUuid(categoryId)) throw new Error("Invalid category id.");
+  if (data.name !== undefined) data.name = sanitizeText(data.name, 50);
+  await updateCategory(userId, categoryId, data);
+  revalidatePath("/");
+  revalidatePath("/settings");
+}
+
+export async function deleteCategoryAction(categoryId: string): Promise<void> {
+  const userId = await requireUserId();
+  if (!isUuid(categoryId)) throw new Error("Invalid category id.");
+  await deleteCategory(userId, categoryId);
+  revalidatePath("/");
+  revalidatePath("/settings");
+}
+
+export async function createSubcategoryAction(
+  categoryId: string,
+  name: string,
+): Promise<void> {
+  const userId = await requireUserId();
+  if (!isUuid(categoryId)) throw new Error("Invalid category id.");
+  const clean = sanitizeText(name, 50);
+  if (!clean) throw new Error("Nama subkategori wajib diisi.");
+  await createSubcategory(userId, categoryId, clean);
+  revalidatePath("/");
+  revalidatePath("/settings");
+}
+
+export async function deleteSubcategoryAction(
+  subcategoryId: string,
+): Promise<void> {
+  const userId = await requireUserId();
+  if (!isUuid(subcategoryId)) throw new Error("Invalid subcategory id.");
+  await deleteSubcategory(userId, subcategoryId);
+  revalidatePath("/");
+  revalidatePath("/settings");
+}
+
+export async function updateSubcategoryAction(
+  subcategoryId: string,
+  name: string,
+): Promise<void> {
+  const userId = await requireUserId();
+  if (!isUuid(subcategoryId)) throw new Error("Invalid subcategory id.");
+  const clean = sanitizeText(name, 50);
+  if (!clean) throw new Error("Nama subkategori wajib diisi.");
+  await updateSubcategory(userId, subcategoryId, clean);
+  revalidatePath("/");
+  revalidatePath("/settings");
 }

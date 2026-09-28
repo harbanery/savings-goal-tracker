@@ -1,72 +1,69 @@
 /**
- * Tipe data UI untuk Monthly Budget Tracker.
- * Tipe locale global (Locale, LocaleText) berada di @/types/locale.
+ * Tipe data UI untuk Savings Goal Tracker (multi-user, multi-tipe transaksi).
  */
-import type { LocaleText } from "@/types/locale";
 
-/**
- * Subkategori dalam satu kategori/wadah (mis. "Bensin" di dalam Cash).
- * Nilai subkategori terakumulasi ke alokasi kategori induknya.
- */
+/** Jenis transaksi keuangan. */
+export type TransactionType = "EXPENSE" | "INCOME" | "TRANSFER";
+
+/** Subkategori/unit pencatatan dalam satu kategori/wadah. */
 export interface BudgetSubcategory {
   id: string;
-  label: LocaleText;
-  /** Catatan singkat opsional. */
-  description?: LocaleText;
+  name: string;
 }
 
-/** Kategori/wadah sistem dengan alokasi saldo. */
+/** Kategori/wadah alokasi milik user (dinamis dari DB). */
 export interface BudgetCategory {
   id: string;
-  label: LocaleText;
-  description: LocaleText;
+  name: string;
   color: string;
   /** Alokasi saldo per siklus (rupiah). */
   allocation: number;
-  /**
-   * Subkategori di dalam wadah ini. Kategori tanpa subkategori
-   * (mis. Jenius - Langganan) memakai ID kategori itu sendiri
-   * sebagai unit pencatatan.
-   */
-  subcategories?: BudgetSubcategory[];
-  /** Jika true, kategori ini tidak masuk perhitungan alokasi wadah (mis. Belanja). */
-  excludeFromAllocation?: boolean;
+  subcategories: BudgetSubcategory[];
 }
 
-/**
- * Unit pencatatan pembelian: subkategori (untuk kategori yang punya
- * subkategori) atau kategori itu sendiri (untuk yang tidak punya).
- * Purchase.categoryId menyimpan ID unit ini.
- */
-export interface BudgetUnit {
+/** Pengaturan keuangan user (dinamis dari DB). */
+export interface UserSettings {
+  /** Tanggal mulai siklus per bulan (1-28). */
+  cycleStartDay: number;
+  /** Saldo/modal awal per siklus. */
+  savingsInitial: number;
+}
+
+/** User sesi login (Google). */
+export interface SessionUser {
   id: string;
-  label: LocaleText;
-  description?: LocaleText;
-  /** ID kategori/wadah induk. */
-  categoryId: string;
-  color: string;
+  email: string;
+  name: string;
+  avatar: string | null;
+  settings: UserSettings | null;
 }
 
-/** Satu catatan pembelian/pengeluaran. */
-export interface Purchase {
+/** Satu transaksi keuangan (pengeluaran/pemasukan/transfer). */
+export interface Transaction {
   id: string;
-  /** Nama pembelian. */
+  type: TransactionType;
   name: string;
-  /** ID subkategori/unit pencatatan (mis. "kos", "gopay-ojol"). */
-  categoryId: string;
-  /** Jumlah biaya (rupiah). */
-  amount: number;
-  /** Catatan opsional. */
-  note: string;
-  /** ISO datetime pembelian. */
-  date: string;
-}
-
-/** Input untuk membuat/memperbarui pembelian. */
-export interface PurchaseInput {
-  name: string;
-  categoryId: string;
+  /** Nominal selalu positif. */
   amount: number;
   note: string;
+  /** ISO datetime transaksi. */
   date: string;
+  /** Wadah utama: sumber (EXPENSE/TRANSFER) atau tujuan (INCOME). */
+  categoryId: string;
+  /** Unit pencatatan opsional. */
+  subcategoryId: string | null;
+  /** Wadah tujuan khusus TRANSFER. */
+  toCategoryId: string | null;
+}
+
+/** Input untuk membuat/memperbarui transaksi. */
+export interface TransactionInput {
+  type: TransactionType;
+  name: string;
+  amount: number;
+  note: string;
+  date: string;
+  categoryId: string;
+  subcategoryId?: string | null;
+  toCategoryId?: string | null;
 }

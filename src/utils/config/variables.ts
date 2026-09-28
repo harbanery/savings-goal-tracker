@@ -10,24 +10,41 @@ export const BASE_URL: string =
 
 export const DATABASE_URL: string = process.env.DATABASE_URL ?? "";
 
-/**
- * Mode mockup publik (demo). Nilai disuntikkan oleh next.config.ts
- * berdasarkan keberadaan DATABASE_URL saat build, sehingga aman
- * dikonsumsi komponen client maupun server.
- * - true  : DATABASE_URL kosong -> data hanya di memori (hilang saat reload).
- * - false : DATABASE_URL terisi -> flow database normal.
- */
-export const IS_DEMO: boolean = process.env.NEXT_PUBLIC_DEMO_MODE === "true";
-
 export const NODE_ENV: string = process.env.NODE_ENV || "development";
 
-/** Saldo awal setiap siklus bulanan (top-up tanggal 25). */
-export const SAVINGS_INITIAL: number = Number(
+// ---------------------------------------------------------------------------
+// Google OAuth (Google Cloud Console — Web application)
+// Authorized redirect URI: ${BASE_URL}/api/web/auth/google/callback
+// ---------------------------------------------------------------------------
+export const GOOGLE_CLIENT_ID: string = process.env.GOOGLE_CLIENT_ID || "";
+export const GOOGLE_CLIENT_SECRET: string =
+  process.env.GOOGLE_CLIENT_SECRET || "";
+export const GOOGLE_REDIRECT_URI: string =
+  process.env.GOOGLE_REDIRECT_URI ||
+  `${BASE_URL}/api/web/auth/google/callback`;
+/** Google SSO aktif hanya bila client id + secret terisi. */
+export const GOOGLE_IS_CONFIGURED: boolean =
+  GOOGLE_CLIENT_ID !== "" && GOOGLE_CLIENT_SECRET !== "";
+
+// ---------------------------------------------------------------------------
+// Session (custom opaque token, disimpan sha256-hash di DB — ala tourism-village)
+// ---------------------------------------------------------------------------
+export const SESSION_COOKIE = "sgt_session";
+export const OAUTH_STATE_COOKIE = "sgt_oauth_state";
+/** Masa berlaku sesi login (jam). */
+export const SESSION_TTL_HOURS = 720; // 30 hari — login awet untuk app harian
+export const MAX_SESSIONS_PER_USER = 5;
+
+// ---------------------------------------------------------------------------
+// Default data user baru (dipakai saat register Google pertama kali;
+// nilai ini hanya seed awal — selanjutnya dikontrol user dari halaman Settings)
+// ---------------------------------------------------------------------------
+/** Saldo awal default per siklus untuk user baru. */
+export const DEFAULT_SAVINGS_INITIAL: number = Number(
   process.env.NEXT_PUBLIC_SAVINGS_INITIAL ?? "0",
 );
-
-/** Tanggal mulai siklus (tanggal 25 tiap bulan). */
-export const CYCLE_START_DAY: number = 25;
+/** Tanggal mulai siklus default (1-28) untuk user baru. */
+export const DEFAULT_CYCLE_START_DAY = 25;
 
 // Web Push (VAPID keys untuk push notifications)
 export const VAPID_PUBLIC_KEY: string =
@@ -40,6 +57,7 @@ export const VAPID_SUBJECT: string =
 export const CRON_SECRET: string = process.env.CRON_SECRET || "";
 
 // Email (Nodemailer SMTP) - channel notifikasi tambahan selain web push.
+// Penerima email diambil per-user (users.email), bukan env.
 // Bila SMTP_HOST kosong, channel email otomatis dilewati (no-op).
 export const SMTP_HOST: string = process.env.SMTP_HOST || "";
 export const SMTP_PORT: number = Number(process.env.SMTP_PORT || "465");
@@ -51,9 +69,6 @@ export const SMTP_USER: string = process.env.SMTP_USER || "";
 export const SMTP_PASS: string = process.env.SMTP_PASS || "";
 /** Alamat pengirim. Jika kosong, pakai SMTP_USER. */
 export const SMTP_FROM: string = process.env.SMTP_FROM || SMTP_USER;
-/** Alamat penerima notifikasi (single-user app). */
-export const NOTIFICATION_EMAIL_TO: string =
-  process.env.NOTIFICATION_EMAIL_TO || "";
 
 // Bahasa konten notifikasi server-side (id | en). Default "id".
 export type NotificationLocale = "id" | "en";

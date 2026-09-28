@@ -21,6 +21,7 @@
     "antd": "^6.5.2",
     "chart.js": "^4.5.1",
     "dayjs": "^1.11.21",
+    "google-auth-library": "^11.1.0",
     "next": "16.2.12",
     "nodemailer": "^9.0.4",
     "react": "19.2.4",

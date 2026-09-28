@@ -1,67 +1,19 @@
-import { NextResponse } from "next/server";
-import { CRON_SECRET, NODE_ENV } from "@/utils/config/variables";
-import {
-  buildCsvExportReminder,
-  broadcastEmailNotification,
-} from "@/utils/server/notificationBuilder";
+import { createCronHandlers } from "@/utils/server/cronRoute";
+import { buildCsvExportReminder } from "@/utils/server/notificationBuilder";
 
 /**
- * GET /api/cron/csv-export-reminder
- * Vercel Cron tanggal 1 jam 00:00 WIB (17:00 UTC) — awal bulan.
- * Email pengingat backup data (export CSV).
- * Channel: email.
+ * /api/cron/csv-export-reminder
+ * Pengingat backup data via CSV export (E2) — email per user.
  */
-export async function GET(request: Request) {
-  const authHeader = request.headers.get("authorization");
-  if (authHeader !== `Bearer ${CRON_SECRET}`) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 
-  try {
-    const payload = await buildCsvExportReminder();
-    const result = await broadcastEmailNotification(payload);
-    return NextResponse.json({ success: true, ...result, preview: payload });
-  } catch (err) {
-    console.error("[cron/csv-export-reminder] error:", err);
-    return NextResponse.json(
-      { error: "Failed to send CSV export reminder" },
-      { status: 500 },
-    );
-  }
-}
+const handlers = createCronHandlers({
+  name: "csv-export-reminder",
+  channel: "email",
+  buildEmail: buildCsvExportReminder,
+  failMessage: "Failed to send CSV export reminder",
+});
 
-/**
- * POST /api/cron/csv-export-reminder
- * Endpoint development (tanpa CRON_SECRET).
- */
-export async function POST() {
-  if (NODE_ENV !== "development") {
-    return NextResponse.json(
-      { error: "This endpoint is only available in development mode." },
-      { status: 403 },
-    );
-  }
-
-  try {
-    const payload = await buildCsvExportReminder();
-    const result = await broadcastEmailNotification(payload);
-    return NextResponse.json({
-      success: true,
-      message: result.emailed
-        ? "CSV export reminder email sent (dev mode)."
-        : "Email not sent — SMTP not configured (dev mode).",
-      ...result,
-      preview: {
-        title: payload.title,
-        tag: payload.tag,
-        previewText: payload.previewText,
-      },
-    });
-  } catch (err) {
-    console.error("[cron/csv-export-reminder POST] error:", err);
-    return NextResponse.json(
-      { error: "Failed to send CSV export reminder" },
-      { status: 500 },
-    );
-  }
-}
+export const GET = handlers.GET;
+export const POST = handlers.POST;

@@ -1,7 +1,10 @@
 import { NextResponse } from "next/server";
 import { removeSubscription } from "@/services/push";
 
-/** POST /api/push/unsubscribe - hapus push subscription. */
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+
+/** POST /api/web/push/unsubscribe - hapus push subscription. */
 export async function POST(request: Request) {
   try {
     const body = await request.json();
@@ -17,7 +20,7 @@ export async function POST(request: Request) {
     await removeSubscription(endpoint);
     return NextResponse.json({ success: true });
   } catch (err) {
-    console.error("[api/push/unsubscribe] error:", err);
+    console.error("[api/web/push/unsubscribe] error:", err);
     return NextResponse.json(
       { error: "Failed to unsubscribe" },
       { status: 500 },

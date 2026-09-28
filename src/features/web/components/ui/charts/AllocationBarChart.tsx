@@ -15,8 +15,7 @@ import {
 import { useMemo } from "react";
 import { useThemeMode } from "@/components/ui/theme/ThemeProvider";
 import { useLocale } from "@/components/i18n/LocaleProvider";
-import { pickText } from "@/components/i18n/useTranslatedData";
-import { CATEGORIES } from "@/features/web/utils/categories";
+import type { BudgetCategory } from "@/features/web/types";
 import type { CycleChartData } from "@/features/web/utils/chartData";
 import { formatIDR } from "@/utils/helpers";
 
@@ -32,13 +31,14 @@ ChartJS.register(
 
 interface Props {
   cycles: CycleChartData[];
+  categories: BudgetCategory[];
 }
 
 /**
  * Bar chart: X = bulan, Y = total pengeluaran per bulan.
  * Warna per-segmen berdasarkan alokasi kategori (stacked).
  */
-export default function AllocationBarChart({ cycles }: Props) {
+export default function AllocationBarChart({ cycles, categories }: Props) {
   const { mode } = useThemeMode();
   const { t, locale } = useLocale();
   const isDark = mode === "dark";
@@ -48,14 +48,14 @@ export default function AllocationBarChart({ cycles }: Props) {
   const data: ChartData<"bar"> = useMemo(() => {
     return {
       labels: cycles.map((c) => c.label),
-      datasets: CATEGORIES.map((cat) => ({
-        label: pickText(cat.label, locale),
+      datasets: categories.map((cat) => ({
+        label: cat.name,
         data: cycles.map((c) => c.categorySpent[cat.id] ?? 0),
         backgroundColor: cat.color,
         borderRadius: 4,
       })),
     };
-  }, [cycles, locale]);
+  }, [cycles, categories]);
 
   const options: ChartOptions<"bar"> = {
     responsive: true,

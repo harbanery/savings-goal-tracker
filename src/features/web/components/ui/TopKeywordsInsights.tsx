@@ -3,32 +3,40 @@
 import { Card, Empty, Tag, Tooltip, Typography } from "antd";
 import { useMemo } from "react";
 import { useLocale } from "@/components/i18n/LocaleProvider";
-import { pickText } from "@/components/i18n/useTranslatedData";
-import { getTopKeywords, hasKeywordData } from "@/features/web/utils/keywordStats";
-import { CATEGORY_MAP } from "@/features/web/utils/categories";
-import type { Purchase } from "@/features/web/types";
+import {
+  getTopKeywords,
+  hasKeywordData,
+} from "@/features/web/utils/keywordStats";
+import { getCategory } from "@/features/web/utils/categories";
+import type {
+  BudgetCategory,
+  Transaction,
+} from "@/features/web/types";
 import { formatIDR } from "@/utils/helpers";
 
 const { Text } = Typography;
 
 interface Props {
-  purchases: Purchase[];
+  transactions: Transaction[];
+  categories: BudgetCategory[];
 }
 
 /**
- * Menampilkan Top 10 keyword (nama pembelian paling sering muncul)
- * beserta wadah alokasinya. Pola serupa dengan TopTasksInsights
- * di progress-self.
+ * Menampilkan Top 10 keyword (nama transaksi EXPENSE paling sering muncul)
+ * beserta wadah alokasinya.
  */
-export default function TopKeywordsInsights({ purchases }: Props) {
+export default function TopKeywordsInsights({
+  transactions,
+  categories,
+}: Props) {
   const { t, locale } = useLocale();
 
   const keywords = useMemo(
-    () => getTopKeywords(purchases, 10),
-    [purchases],
+    () => getTopKeywords(transactions, categories, 10),
+    [transactions, categories],
   );
 
-  const valid = hasKeywordData(purchases);
+  const valid = hasKeywordData(transactions);
 
   if (!valid) {
     return (
@@ -61,17 +69,14 @@ export default function TopKeywordsInsights({ purchases }: Props) {
         keywords.map((stat, idx) => {
           // Semua tag kategori untuk keyword ini.
           const categoryTags = stat.categoryIds.map((catId) => {
-            const cat = CATEGORY_MAP[catId];
-            const label = cat
-              ? pickText(cat.label, locale)
-              : catId;
+            const cat = getCategory(categories, catId);
+            const label = cat?.name ?? catId;
             const color = cat?.color ?? "#8b5cf6";
             return (
               <Tag
                 key={catId}
                 color={color}
                 className="!m-0 !text-[10px] !leading-4"
-                style={{ borderColor: `${color}40` }}
                 variant="solid"
               >
                 {label}

@@ -34,7 +34,9 @@ export default function BalanceDonutChart({ stats }: Props) {
   const tickColor = isDark ? "#9ca3af" : "#6b7280";
 
   const data: ChartData<"doughnut"> = useMemo(() => {
-    const remaining = Math.max(0, stats.savingsInitial - stats.totalSpent);
+    // Saldo tersedia = modal awal + pemasukan; sisa = bersih setelah pengeluaran.
+    const available = stats.savingsInitial + stats.totalIncome;
+    const remaining = Math.max(0, available - stats.totalSpent);
     return {
       labels: [t("chart.spending"), t("chart.remaining")],
       datasets: [
@@ -79,7 +81,7 @@ export default function BalanceDonutChart({ stats }: Props) {
     },
   };
 
-  const isEmpty = stats.totalSpent === 0 && stats.remaining === stats.savingsInitial;
+  const isEmpty = stats.totalSpent === 0 && stats.totalIncome === 0;
 
   return (
     <Card

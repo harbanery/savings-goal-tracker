@@ -1,4 +1,4 @@
-import { CYCLE_START_DAY } from "@/utils/config/variables";
+﻿import { DEFAULT_CYCLE_START_DAY } from "@/utils/config/variables";
 import type { Locale } from "@/types/locale";
 
 /**
@@ -91,9 +91,9 @@ export function formatCycleLabel(
 export function getCycleInfo(
   year: number,
   monthIndex: number,
-  startDay: number = CYCLE_START_DAY,
+  startDay: number = DEFAULT_CYCLE_START_DAY,
 ): CycleInfo {
-  const day = isValidCycleStartDay(startDay) ? startDay : CYCLE_START_DAY;
+  const day = isValidCycleStartDay(startDay) ? startDay : DEFAULT_CYCLE_START_DAY;
 
   // Start: tanggal startDay bulan sebelumnya
   const prevMonth = monthIndex === 0 ? 11 : monthIndex - 1;
@@ -120,7 +120,7 @@ export function getCycleInfo(
  */
 export function getCycleForDate(
   date: Date,
-  startDay: number = CYCLE_START_DAY,
+  startDay: number = DEFAULT_CYCLE_START_DAY,
 ): CycleInfo {
   const day = date.getDate();
   if (day >= startDay) {
@@ -142,7 +142,7 @@ export function getCurrentCycle(startDay?: number): CycleInfo {
 export function shiftCycle(
   cycle: CycleInfo,
   deltaMonths: number,
-  startDay: number = CYCLE_START_DAY,
+  startDay: number = DEFAULT_CYCLE_START_DAY,
 ): CycleInfo {
   const totalMonths = cycle.year * 12 + cycle.monthIndex + deltaMonths;
   const year = Math.floor(totalMonths / 12);
@@ -168,7 +168,7 @@ export function isSameDay(a: Date, b: Date): boolean {
 /** Apakah `date` adalah hari pertama sebuah siklus (tanggal = startDay)? */
 export function isCycleStartDay(
   date: Date = new Date(),
-  startDay: number = CYCLE_START_DAY,
+  startDay: number = DEFAULT_CYCLE_START_DAY,
 ): boolean {
   const cycle = getCycleForDate(date, startDay);
   const yesterday = new Date(date);
@@ -180,7 +180,7 @@ export function isCycleStartDay(
 /** Apakah `date` adalah hari terakhir sebuah siklus (tanggal = startDay - 1)? */
 export function isCycleLastDay(
   date: Date = new Date(),
-  startDay: number = CYCLE_START_DAY,
+  startDay: number = DEFAULT_CYCLE_START_DAY,
 ): boolean {
   const cycle = getCycleForDate(date, startDay);
   const tomorrow = new Date(date);

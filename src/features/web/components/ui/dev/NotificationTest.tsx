@@ -104,7 +104,24 @@ export default function NotificationTest() {
     [t, message],
   );
 
-  if (!isDev || !visible) return null;
+  if (!isDev) return null;
+
+  // Panel ditutup → hanya tombol icon melayang di pojok kanan bawah.
+  if (!visible) {
+    return (
+      <div className="fixed bottom-4 right-4 z-50">
+        <Tooltip title={t("dev.title")}>
+          <Button
+            type="primary"
+            shape="circle"
+            icon={<ExperimentOutlined />}
+            onClick={() => setVisible(true)}
+            aria-label={t("dev.title")}
+          />
+        </Tooltip>
+      </div>
+    );
+  }
 
   /** Daftar tombol: kunci notifikasi + kunci terjemahan. */
   const buttons: {
@@ -195,6 +212,7 @@ export default function NotificationTest() {
               <Tooltip title={t(btn.tooltipKey)} key={btn.key}>
                 <Button
                   size="small"
+                  shape="round"
                   icon={<Icon />}
                   loading={loading[btn.key]}
                   onClick={() => callDev(btn.key, btn.path)}

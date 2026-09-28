@@ -1,13 +1,12 @@
 "use client";
 
-import { ClockCircleOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
 import { useEffect, useState } from "react";
 import { useLocale } from "@/components/i18n/LocaleProvider";
 
 /**
- * Jam realtime yang diperbarui setiap detik menggunakan `setTimeout` rekursif.
- * `now` dimulai dari `null` pada render server/awal client agar placeholder
+ * Jam realtime (hanya waktu) yang diperbarui setiap detik dengan
+ * `setTimeout` rekursif. `now` dimulai null di server agar placeholder
  * konsisten dan tidak memicu hydration mismatch.
  */
 export default function RealtimeClock() {
@@ -39,18 +38,11 @@ export default function RealtimeClock() {
 
   return (
     <output
-      className="flex select-none items-center gap-2 rounded-lg border border-zinc-200 bg-white px-3 py-1.5 dark:border-zinc-700 dark:bg-zinc-800"
       aria-label={t("clock.ariaTime", { time, date })}
+      className="flex select-none items-center rounded-full border border-zinc-200 px-3 py-1 font-mono text-xs font-semibold tabular-nums dark:border-zinc-700"
+      style={{ lineHeight: "22px" }}
     >
-      <ClockCircleOutlined className="text-indigo-500" />
-      <div className="flex h-10 flex-col justify-center leading-tight">
-        <span className="font-mono text-sm font-semibold tabular-nums">
-          {time}
-        </span>
-        <span className="hidden text-[11px] text-zinc-500 dark:text-zinc-400 sm:block">
-          {date}
-        </span>
-      </div>
+      {time}
     </output>
   );
 }

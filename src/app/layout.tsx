@@ -3,8 +3,6 @@ import { AntdRegistry } from "@ant-design/nextjs-registry";
 import type { Metadata, Viewport } from "next";
 import { ThemeProvider } from "@/components/ui/theme/ThemeProvider";
 import { LocaleProvider } from "@/components/i18n/LocaleProvider";
-import { CycleConfigProvider } from "@/features/web/hooks/CycleConfigProvider";
-import Footer from "@/features/web/components/layout/footer";
 import InstallPrompt from "@/features/web/components/ui/InstallPrompt";
 import NotificationTest from "@/features/web/components/ui/dev/NotificationTest";
 import { VercelCompatibleComponents } from "@/components/ui/vercel";
@@ -122,14 +120,11 @@ export default function RootLayout({
       <body className="min-h-full flex flex-col">
         <AntdRegistry>
           <LocaleProvider>
-            <CycleConfigProvider>
-              <ThemeProvider>
-                {children}
-                <Footer />
-                <InstallPrompt />
-                <NotificationTest />
-              </ThemeProvider>
-            </CycleConfigProvider>
+            <ThemeProvider>
+              {children}
+              <InstallPrompt />
+              <NotificationTest />
+            </ThemeProvider>
           </LocaleProvider>
         </AntdRegistry>
         <VercelCompatibleComponents.Analytics />

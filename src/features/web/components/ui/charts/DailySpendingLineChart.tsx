@@ -18,7 +18,7 @@ import { useMemo } from "react";
 import { useThemeMode } from "@/components/ui/theme/ThemeProvider";
 import { useLocale } from "@/components/i18n/LocaleProvider";
 import { buildDailySpending } from "@/features/web/utils/chartData";
-import type { Purchase } from "@/features/web/types";
+import type { Transaction } from "@/features/web/types";
 import { formatIDR } from "@/utils/helpers";
 import type { CycleInfo } from "@/features/web/utils/cycle";
 
@@ -35,7 +35,7 @@ ChartJS.register(
 );
 
 interface Props {
-  purchases: Purchase[];
+  transactions: Transaction[];
   cycle: CycleInfo;
 }
 
@@ -44,7 +44,10 @@ interface Props {
  * Sumbu X = tanggal, Sumbu Y = total pengeluaran.
  * Hari tanpa transaksi ditampilkan dengan nilai 0.
  */
-export default function DailySpendingLineChart({ purchases, cycle }: Props) {
+export default function DailySpendingLineChart({
+  transactions,
+  cycle,
+}: Props) {
   const { mode } = useThemeMode();
   const { t, locale } = useLocale();
   const isDark = mode === "dark";
@@ -52,12 +55,12 @@ export default function DailySpendingLineChart({ purchases, cycle }: Props) {
   const tickColor = isDark ? "#9ca3af" : "#6b7280";
 
   const { labels, amounts } = useMemo(() => {
-    const points = buildDailySpending(purchases, cycle, locale);
+    const points = buildDailySpending(transactions, cycle, locale);
     return {
       labels: points.map((p) => p.label),
       amounts: points.map((p) => p.amount),
     };
-  }, [purchases, cycle, locale]);
+  }, [transactions, cycle, locale]);
 
   const primary = "#6366f1";
 

@@ -13,8 +13,7 @@ import {
 import { useMemo } from "react";
 import { useThemeMode } from "@/components/ui/theme/ThemeProvider";
 import { useLocale } from "@/components/i18n/LocaleProvider";
-import { pickText } from "@/components/i18n/useTranslatedData";
-import { CATEGORIES } from "@/features/web/utils/categories";
+import type { BudgetCategory } from "@/features/web/types";
 import type { CycleChartData } from "@/features/web/utils/chartData";
 import { formatIDR } from "@/utils/helpers";
 
@@ -24,13 +23,14 @@ ChartJS.register(ArcElement, Tooltip, Legend);
 
 interface Props {
   cycles: CycleChartData[];
+  categories: BudgetCategory[];
 }
 
 /**
  * Pie chart: jumlah pengeluaran tiap alokasi/kategori.
  * Mengakumulasi semua bulan yang tersedia.
  */
-export default function CategoryPieChart({ cycles }: Props) {
+export default function CategoryPieChart({ cycles, categories }: Props) {
   const { mode } = useThemeMode();
   const { t, locale } = useLocale();
   const isDark = mode === "dark";
@@ -43,9 +43,9 @@ export default function CategoryPieChart({ cycles }: Props) {
         spentMap[catId] = (spentMap[catId] ?? 0) + amount;
       }
     }
-    const activeCats = CATEGORIES.filter((c) => (spentMap[c.id] ?? 0) > 0);
+    const activeCats = categories.filter((c) => (spentMap[c.id] ?? 0) > 0);
     return {
-      labels: activeCats.map((c) => pickText(c.label, locale)),
+      labels: activeCats.map((c) => c.name),
       datasets: [
         {
           data: activeCats.map((c) => spentMap[c.id] ?? 0),
@@ -55,7 +55,7 @@ export default function CategoryPieChart({ cycles }: Props) {
         },
       ],
     };
-  }, [cycles, isDark, locale]);
+  }, [cycles, categories, isDark]);
 
   const options: ChartOptions<"pie"> = {
     responsive: true,

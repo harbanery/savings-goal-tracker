@@ -8,48 +8,48 @@ import {
 import { App, Button, Space, Tooltip, Upload } from "antd";
 import type { UploadProps } from "antd";
 import { useState } from "react";
-import { importPurchasesAction } from "@/utils/server/actions";
+import { importTransactionsAction } from "@/utils/server/actions";
 import {
-  generatePurchasesCsv,
+  generateTransactionsCsv,
   generateTemplateCsv,
-  parseCsvToPurchases,
+  parseCsvToTransactions,
 } from "@/features/web/utils/csv";
-import type { Purchase, PurchaseInput } from "@/features/web/types";
+import type {
+  BudgetCategory,
+  Transaction,
+} from "@/features/web/types";
 import { useLocale } from "@/components/i18n/LocaleProvider";
 
 interface Props {
-  purchases: Purchase[];
+  transactions: Transaction[];
+  categories: BudgetCategory[];
   onImported: () => void;
-  /** Import in-memory untuk mode mockup publik (tanpa server action). */
-  demoImport?: (
-    inputs: PurchaseInput[],
-  ) => { imported: number; errors: string[] };
 }
 
 /** Tombol Download Template, Export CSV, dan Import CSV (kompatibel Google Sheets). */
 export default function ImportExportButtons({
-  purchases,
+  transactions,
+  categories,
   onImported,
-  demoImport,
 }: Props) {
   const [importing, setImporting] = useState(false);
   const { t } = useLocale();
   const { message } = App.useApp();
 
-  /** Download template CSV kosong (dengan contoh 1 baris). */
+  /** Download template CSV kosong (dengan contoh). */
   function handleDownloadTemplate() {
-    const csv = generateTemplateCsv();
-    downloadCsv(csv, "template-pembelian.csv");
+    const csv = generateTemplateCsv(categories);
+    downloadCsv(csv, "template-transaksi.csv");
   }
 
-  /** Export pembelian siklus aktif ke CSV. */
+  /** Export transaksi siklus aktif ke CSV. */
   function handleExport() {
-    if (purchases.length === 0) {
+    if (transactions.length === 0) {
       message.warning(t("io.noDataExport"));
       return;
     }
-    const csv = generatePurchasesCsv(purchases);
-    downloadCsv(csv, "pembelian.csv");
+    const csv = generateTransactionsCsv(transactions, categories);
+    downloadCsv(csv, "transaksi.csv");
   }
 
   function downloadCsv(csv: string, filename: string) {
@@ -75,7 +75,7 @@ export default function ImportExportButtons({
           message.error(t("io.fileEmpty"));
           return;
         }
-        const { valid, errors } = parseCsvToPurchases(text);
+        const { valid, errors } = parseCsvToTransactions(text, categories);
         if (valid.length === 0) {
           message.error(
             t("io.noValid", { n: errors.length, first: errors[0] ?? "" }),
@@ -84,13 +84,7 @@ export default function ImportExportButtons({
         }
         setImporting(true);
         try {
-          let result: { imported: number; errors: string[] };
-          if (demoImport) {
-            // Mode mockup publik: import ke memori client.
-            result = demoImport(valid);
-          } else {
-            result = await importPurchasesAction(valid);
-          }
+          const result = await importTransactionsAction(valid);
           if (result.imported > 0) {
             message.success(
               result.errors.length > 0
@@ -124,6 +118,7 @@ export default function ImportExportButtons({
       <Tooltip title={t("io.templateTooltip")}>
         <Button
           size="small"
+          shape="round"
           icon={<DownloadOutlined />}
           onClick={handleDownloadTemplate}
         >
@@ -133,9 +128,10 @@ export default function ImportExportButtons({
       <Tooltip title={t("io.exportTooltip")}>
         <Button
           size="small"
+          shape="round"
           icon={<FileExcelOutlined />}
           onClick={handleExport}
-          disabled={purchases.length === 0}
+          disabled={transactions.length === 0}
         >
           <span className="hidden md:inline">{t("io.export")}</span>
         </Button>
@@ -144,6 +140,7 @@ export default function ImportExportButtons({
         <Tooltip title={t("io.importTooltip")}>
           <Button
             size="small"
+            shape="round"
             icon={<UploadOutlined />}
             loading={importing}
             type="primary"
