@@ -1,0 +1,163 @@
+import {
+  CATEGORIES,
+  getUnit,
+  TOTAL_ALLOCATION,
+} from "@/features/web/utils/categories";
+import type { Purchase } from "@/features/web/types";
+import type { LocaleText } from "@/types/locale";
+import { SAVINGS_INITIAL } from "@/utils/config/variables";
+
+export interface SubcategoryStat {
+  subcategoryId: string;
+  label: LocaleText;
+  spent: number;
+  purchaseCount: number;
+  /** Persentase dari total pengeluaran kategori induk (0-100). */
+  share: number;
+}
+
+export interface CategoryStat {
+  categoryId: string;
+  label: LocaleText;
+  color: string;
+  description: LocaleText;
+  allocation: number;
+  spent: number;
+  remaining: number;
+  /** Persentase terpakai (0-100). */
+  percent: number;
+  purchaseCount: number;
+  /** Apakah kategori ini exclude dari alokasi wadah. */
+  excludeFromAllocation: boolean;
+  /** Breakdown per subkategori (kosong untuk wadah tanpa subkategori). */
+  subcategories: SubcategoryStat[];
+}
+
+export interface CycleStats {
+  /** Saldo awal siklus (dari .env). */
+  savingsInitial: number;
+  /** Total pengeluaran siklus ini (semua kategori/wadah). */
+  totalSpent: number;
+  /** Total pengeluaran hanya dari kategori yang dialokasikan. */
+  allocatedSpent: number;
+  /** Sisa saldo (savingsInitial - totalSpent). */
+  remaining: number;
+  /** Limit pengeluaran = total alokasi wadah. */
+  spendingLimit: number;
+  /** Sisa dari limit pengeluaran (spendingLimit - allocatedSpent, bisa minus). */
+  limitRemaining: number;
+  /** Persentase limit terpakai (0-100, cap 100). */
+  limitPercent: number;
+  /** Apakah sudah melebihi limit? */
+  overLimit: boolean;
+  /** Total alokasi wadah (exclude Belanja). */
+  totalAllocation: number;
+  /** Jumlah pembelian. */
+  purchaseCount: number;
+  /** Breakdown per kategori. */
+  categories: CategoryStat[];
+}
+
+/**
+ * Hitung statistik siklus dari daftar pembelian.
+ * Limit pengeluaran = total alokasi wadah. Pembelian dihitung per unit
+ * (subkategori, legacy-aware) lalu diakumulasi ke kategori induknya.
+ */
+export function computeCycleStats(purchases: Purchase[]): CycleStats {
+  const totalAllocation = TOTAL_ALLOCATION;
+
+  // Inisialisasi stat per kategori + per subkategori
+  const catMap = new Map<string, CategoryStat>();
+  const subMap = new Map<string, Map<string, SubcategoryStat>>();
+  for (const c of CATEGORIES) {
+    catMap.set(c.id, {
+      categoryId: c.id,
+      label: c.label,
+      color: c.color,
+      description: c.description,
+      allocation: c.allocation,
+      spent: 0,
+      remaining: c.allocation,
+      percent: 0,
+      purchaseCount: 0,
+      excludeFromAllocation: !!c.excludeFromAllocation,
+      subcategories: [],
+    });
+    subMap.set(c.id, new Map());
+    for (const s of c.subcategories ?? []) {
+      subMap.get(c.id)!.set(s.id, {
+        subcategoryId: s.id,
+        label: s.label,
+        spent: 0,
+        purchaseCount: 0,
+        share: 0,
+      });
+    }
+  }
+
+  // Akumulasi pengeluaran per kategori (dari unit/subkategori)
+  let totalSpent = 0;
+  let allocatedSpent = 0;
+  for (const p of purchases) {
+    const unit = getUnit(p.categoryId);
+    const parentId = unit?.categoryId ?? p.categoryId;
+    const cat = catMap.get(parentId);
+    if (cat) {
+      cat.spent += p.amount;
+      cat.purchaseCount++;
+      // Untuk wadah tanpa subkategori, unit == kategori (tidak dicatat ulang).
+      if (unit && unit.id !== parentId) {
+        const sub = subMap.get(parentId)?.get(unit.id);
+        if (sub) {
+          sub.spent += p.amount;
+          sub.purchaseCount++;
+        }
+      }
+    }
+    totalSpent += p.amount;
+    // Hanya kategori yang punya alokasi yang masuk ke limit.
+    if (cat && !cat.excludeFromAllocation) {
+      allocatedSpent += p.amount;
+    }
+  }
+
+  // Finalisasi stat per kategori + share subkategori
+  const categories = CATEGORIES.map((c) => {
+    const stat = catMap.get(c.id)!;
+    stat.remaining = c.allocation - stat.spent;
+    stat.percent =
+      c.allocation > 0
+        ? Math.round((stat.spent / c.allocation) * 100)
+        : 0;
+    stat.subcategories = [...(subMap.get(c.id)?.values() ?? [])].map((s) => ({
+      ...s,
+      share:
+        stat.spent > 0 ? Math.round((s.spent / stat.spent) * 100) : 0,
+    }));
+    return stat;
+  });
+
+  const remaining = SAVINGS_INITIAL - totalSpent;
+  const spendingLimit = totalAllocation;
+  // Sisa limit hanya dihitung dari pengeluaran kategori yang dialokasikan.
+  const limitRemaining = spendingLimit - allocatedSpent;
+  const limitPercent =
+    spendingLimit > 0
+      ? Math.min(100, Math.round((allocatedSpent / spendingLimit) * 100))
+      : 0;
+  const overLimit = allocatedSpent > spendingLimit;
+
+  return {
+    savingsInitial: SAVINGS_INITIAL,
+    totalSpent,
+    allocatedSpent,
+    remaining,
+    spendingLimit,
+    limitRemaining,
+    limitPercent,
+    overLimit,
+    totalAllocation,
+    purchaseCount: purchases.length,
+    categories,
+  };
+}

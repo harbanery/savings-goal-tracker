@@ -1,20 +1,20 @@
 import "@/assets/global/index.css";
 import { AntdRegistry } from "@ant-design/nextjs-registry";
 import type { Metadata, Viewport } from "next";
-import { ThemeProvider } from "@/components/theme/ThemeProvider";
-import { LocaleProvider } from "@/components/locale/LocaleProvider";
-import { CycleConfigProvider } from "@/components/config/CycleConfigProvider";
-import Footer from "@/components/footer";
-import InstallPrompt from "@/components/pwa/InstallPrompt";
-import NotificationTest from "@/components/dev/NotificationTest";
-import { VercelCompatibleComponents } from "@/components/vercel";
+import { ThemeProvider } from "@/components/ui/theme/ThemeProvider";
+import { LocaleProvider } from "@/components/i18n/LocaleProvider";
+import { CycleConfigProvider } from "@/features/web/hooks/CycleConfigProvider";
+import Footer from "@/features/web/components/layout/footer";
+import InstallPrompt from "@/features/web/components/ui/InstallPrompt";
+import NotificationTest from "@/features/web/components/ui/dev/NotificationTest";
+import { VercelCompatibleComponents } from "@/components/ui/vercel";
 import { geistMono, geistSans } from "@/utils/fonts/next-google";
 import {
   BASE_URL,
   META_APP,
   META_DESCRIPTION,
   META_TITLE,
-} from "@/config/variables";
+} from "@/utils/config/variables";
 import { neueHaasDisplay } from "@/utils/fonts/next-local";
 
 export const metadata: Metadata = {

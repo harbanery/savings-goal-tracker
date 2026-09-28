@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
-import { CRON_SECRET, NODE_ENV } from "@/config/variables";
+import { CRON_SECRET, NODE_ENV } from "@/utils/config/variables";
 import {
   buildTrackingNudge,
   broadcastPushNotification,
-} from "@/server/notificationBuilder";
+} from "@/utils/server/notificationBuilder";
 
 /**
  * GET /api/cron/tracking-nudge
