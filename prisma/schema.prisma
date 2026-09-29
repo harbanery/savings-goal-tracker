@@ -12,6 +12,14 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+/// Jenis dompet/wadah: rekening bank atau dompet digital (e-wallet).
+enum WalletType {
+  BANK
+  E_WALLET
+
+  @@map("wallet_type")
+}
+
 /// Pengguna aplikasi (dibuat otomatis saat login Google pertama kali).
 model User {
   id            String    @id @default(uuid()) @db.Uuid
@@ -28,6 +36,8 @@ model User {
   settings     UserSettings?
   categories   Category[]
   transactions Transaction[]
+  targets      SavingsTarget[]
+  recurrings   RecurringTransaction[]
   sessions     UserSession[]
   subscriptions PushSubscription[]
 
@@ -54,6 +64,9 @@ model UserSettings {
   cycleStartDay Int @default(25) @map("cycle_start_day")
   /// Saldo/modal awal per siklus (dipakai sebagai baseline tabungan).
   savingsInitial Decimal @default(0) @map("savings_initial") @db.Decimal(14, 2)
+  /// Tabungan yang dilindungi per siklus (menu Budget): pengeluaran tidak
+  /// boleh menyentuh nilai ini kecuali dikonfirmasi "terpaksa" user.
+  protectedSavings Decimal @default(0) @map("protected_savings") @db.Decimal(14, 2)
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
@@ -68,6 +81,8 @@ model Category {
   userId String  @map("user_id") @db.Uuid
   name   String
   color  String  @default("#6366f1")
+  /// Jenis dompet: rekening bank (BANK) atau dompet digital (E_WALLET).
+  walletType WalletType @default(E_WALLET) @map("wallet_type")
   /// Alokasi saldo per siklus (rupiah).
   allocation Decimal @default(0) @db.Decimal(14, 2)
   /// Urutan tampilan.
@@ -122,16 +137,73 @@ model Transaction {
   /// Wadah tujuan khusus TRANSFER.
   toCategoryId  String? @map("to_category_id") @db.Uuid
 
+  /// Aturan berulang yang memmaterialisasi transaksi ini (null = manual).
+  recurringId   String?   @map("recurring_id") @db.Uuid
+  /// Tanggal kemunculan terjadwal (kunci idempotensi transaksi berulang).
+  recurringDate DateTime? @map("recurring_date")
+
   user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
   category    Category    @relation("TransactionFromCategory", fields: [categoryId], references: [id], onDelete: Restrict)
   subcategory Subcategory? @relation(fields: [subcategoryId], references: [id], onDelete: Restrict)
   toCategory  Category?   @relation("TransactionToCategory", fields: [toCategoryId], references: [id], onDelete: Restrict)
+  recurring   RecurringTransaction? @relation(fields: [recurringId], references: [id], onDelete: SetNull)
 
+  @@unique([recurringId, recurringDate])
   @@index([userId, date])
   @@index([userId, type])
   @@index([categoryId])
   @@index([toCategoryId])
   @@map("transactions")
+}
+
+/// Target tabungan user (mis. beli HP, dana 1 tahun) — menu Keuangan > Target.
+model SavingsTarget {
+  id     String   @id @default(uuid()) @db.Uuid
+  userId String   @map("user_id") @db.Uuid
+  name   String
+  /// Nilai target (rupiah).
+  targetAmount Decimal @default(0) @map("target_amount") @db.Decimal(14, 2)
+  /// Dana yang sudah terkumpul (ditambah manual oleh user).
+  savedAmount Decimal @default(0) @map("saved_amount") @db.Decimal(14, 2)
+  /// Batas waktu opsional.
+  deadline DateTime?
+  note   String   @default("")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("savings_targets")
+}
+
+/// Transaksi berulang: aturan bulanan yang otomatis dicatat sebagai
+/// Transaction pada tanggal tertentu setiap bulan (idempoten via
+/// pasangan recurringId + recurringDate).
+model RecurringTransaction {
+  id     String   @id @default(uuid()) @db.Uuid
+  userId String   @map("user_id") @db.Uuid
+  /// Jenis transaksi: EXPENSE | INCOME (TRANSFER tidak didukung).
+  type   String
+  name   String
+  amount Decimal  @db.Decimal(14, 2)
+  /// Tanggal jalur bulanan (1-31; di-clamp ke akhir bulan pendek).
+  dayOfMonth Int @map("day_of_month")
+  /// Wadah tujuan/sumber (tanpa FK — kepemilikan divalidasi di service).
+  categoryId    String  @map("category_id") @db.Uuid
+  subcategoryId String? @map("subcategory_id") @db.Uuid
+  note   String   @default("")
+  /// Aturan nonaktif tidak dimaterialisasi lagi.
+  active Boolean  @default(true)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  transactions Transaction[]
+
+  @@index([userId])
+  @@map("recurring_transactions")
 }
 
 /// Langganan push notification browser (per user).

@@ -1,9 +1,9 @@
 import {
-  AppstoreOutlined,
   DashboardOutlined,
   FileTextOutlined,
   SettingOutlined,
   TransactionOutlined,
+  WalletOutlined,
 } from "@ant-design/icons";
 import type { ReactNode } from "react";
 
@@ -19,7 +19,7 @@ export interface MenuItem {
 export const menuConfig: MenuItem[] = [
   { key: "dashboard", link: "/", icon: <DashboardOutlined />, labelKey: "menu.dashboard" },
   { key: "transactions", link: "/transactions", icon: <TransactionOutlined />, labelKey: "menu.transactions" },
-  { key: "categories", link: "/categories", icon: <AppstoreOutlined />, labelKey: "menu.categories" },
+  { key: "finance", link: "/finance", icon: <WalletOutlined />, labelKey: "menu.finance" },
   { key: "reports", link: "/reports", icon: <FileTextOutlined />, labelKey: "menu.reports" },
   { key: "settings", link: "/settings", icon: <SettingOutlined />, labelKey: "menu.settings" },
 ];

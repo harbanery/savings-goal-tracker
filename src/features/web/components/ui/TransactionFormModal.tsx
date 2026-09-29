@@ -3,17 +3,21 @@
 import {
   ArrowDownOutlined,
   ArrowUpOutlined,
+  RetweetOutlined,
   SwapOutlined,
 } from "@ant-design/icons";
 import {
+  App,
   Button,
   DatePicker,
   Form,
   Input,
   InputNumber,
   Modal,
+  Radio,
   Segmented,
   Select,
+  Typography,
 } from "antd";
 import dayjs from "dayjs";
 import { useSyncExternalStore, useMemo, useState } from "react";
@@ -23,15 +27,18 @@ import {
   getParentCategoryId,
   getUnit,
 } from "@/features/web/utils/categories";
+import { parseSavingsProtectionError } from "@/features/web/utils/finance";
 import type {
   BudgetCategory,
   Transaction,
+  TransactionInput,
   TransactionType,
 } from "@/features/web/types";
 import {
   createTransactionAction,
   updateTransactionAction,
 } from "@/utils/server/actions";
+import { formatIDR } from "@/utils/helpers";
 
 const TOUCH_QUERY = "(pointer: coarse)";
 
@@ -80,6 +87,7 @@ interface FormValues {
   note?: string;
   date?: dayjs.Dayjs;
   toCategoryId?: string;
+  repeat?: "once" | "monthly";
 }
 
 const TYPE_OPTIONS = [
@@ -140,6 +148,7 @@ function TransactionForm({
   const [form] = Form.useForm<FormValues>();
   const [saving, setSaving] = useState(false);
   const { t, locale } = useLocale();
+  const { modal } = App.useApp();
   const isTouchDevice = useTouchDevice();
   const isEdit = editingTransaction !== null;
 
@@ -147,13 +156,18 @@ function TransactionForm({
 
   const selectedType =
     Form.useWatch("type", form) ?? editingTransaction?.type ?? "EXPENSE";
+  const selectedDate = Form.useWatch("date", form);
+  const selectedRepeat = Form.useWatch("repeat", form) ?? "once";
+
+  /** Pengulangan hanya untuk transaksi baru (bukan transfer). */
+  const showRepeat = !isEdit && selectedType !== "TRANSFER";
 
   /** Unit awal: subcategoryId transaksi, atau kategori itu sendiri. */
   const initialUnitId = editingTransaction
     ? (editingTransaction.subcategoryId ?? editingTransaction.categoryId)
     : (units[0]?.id ?? "");
 
-  async function handleFinish(values: FormValues) {
+  async function handleFinish(values: FormValues, force = false): Promise<void> {
     setSaving(true);
     try {
       const unit = getUnit(categories, values.unitId);
@@ -163,7 +177,7 @@ function TransactionForm({
       const subcategoryId =
         unit && unit.id !== unit.categoryId ? unit.id : null;
 
-      const input = {
+      const input: TransactionInput = {
         type: values.type ?? "EXPENSE",
         name: (values.name ?? "").trim(),
         amount: Number(values.amount ?? 0),
@@ -174,16 +188,41 @@ function TransactionForm({
         toCategoryId:
           values.type === "TRANSFER" ? values.toCategoryId ?? "" : null,
       };
+      const recurring = values.repeat === "monthly";
 
       if (isEdit && editingTransaction) {
-        await updateTransactionAction(editingTransaction.id, input);
+        await updateTransactionAction(editingTransaction.id, input, force);
       } else {
-        await createTransactionAction(input);
+        await createTransactionAction(input, { force, recurring });
       }
       onSaved();
       onClosed();
     } catch (err) {
-      console.error("[TransactionFormModal] gagal menyimpan:", err);
+      const messageText = err instanceof Error ? err.message : String(err);
+      const protection = parseSavingsProtectionError(messageText);
+      if (protection && !force) {
+        // Pengeluaran menyentuh tabungan dilindungi (Budget) — minta
+        // konfirmasi "terpaksa" sebelum menyimpan.
+        modal.confirm({
+          title: t("form.protectionTitle"),
+          content: t("form.protectionDesc", {
+            projected: formatIDR(protection.projected, locale),
+            limit: formatIDR(protection.limit, locale),
+          }),
+          okText: t("form.protectionConfirm"),
+          okButtonProps: { danger: true },
+          cancelText: t("common.cancel"),
+          onOk: () => handleFinish(values, true),
+        });
+      } else {
+        console.error("[TransactionFormModal] gagal menyimpan:", err);
+        if (!protection) {
+          modal.error({
+            title: t("error.title"),
+            content: messageText,
+          });
+        }
+      }
     } finally {
       setSaving(false);
     }
@@ -343,6 +382,27 @@ function TransactionForm({
           placeholder={t("form.datePlaceholder")}
         />
       </Form.Item>
+
+      {showRepeat && (
+        <Form.Item name="repeat" label={t("form.repeatLabel")}>
+          <Radio.Group
+            options={[
+              { value: "once", label: t("form.repeatOnce") },
+              { value: "monthly", label: t("form.repeatMonthly") },
+            ]}
+            optionType="button"
+            buttonStyle="solid"
+          />
+        </Form.Item>
+      )}
+      {showRepeat && selectedRepeat === "monthly" && (
+        <Typography.Text type="secondary" className="block -mt-3 mb-4" style={{ fontSize: 12 }}>
+          <RetweetOutlined className="mr-1" />
+          {t("form.recurHint", {
+            n: selectedDate?.date() ?? dayjs().date(),
+          })}
+        </Typography.Text>
+      )}
 
       <Form.Item name="note" label={t("form.note")}>
         <Input.TextArea

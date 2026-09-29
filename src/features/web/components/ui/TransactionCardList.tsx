@@ -68,6 +68,11 @@ export default function TransactionCardList({
                   <Text strong style={{ fontSize: 13 }} className="truncate">
                     {tr.name}
                   </Text>
+                  {tr.recurringId && (
+                    <Tag style={{ margin: 0, fontSize: 10 }}>
+                      {t("transactions.recurringTag")}
+                    </Tag>
+                  )}
                   {unit && (
                     <Tooltip title={parent?.name}>
                       <Tag

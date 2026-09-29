@@ -190,7 +190,7 @@ const id: TranslationDict = {
   // Menu / Navigasi
   "menu.dashboard": "Dashboard",
   "menu.transactions": "Transaksi",
-  "menu.categories": "Kategori",
+  "menu.finance": "Keuangan",
   "menu.reports": "Laporan",
   "menu.settings": "Pengaturan",
   "menu.open": "Buka menu",
@@ -268,6 +268,57 @@ const id: TranslationDict = {
   "categories.filterWadah": "Filter Wadah",
   "categories.filterWadahPlaceholder": "Semua Wadah",
   "categories.subCount": "{n} subkategori",
+
+  // Keuangan: Dompet / Budget / Target
+  "finance.tabWallets": "Dompet",
+  "finance.tabBudget": "Budget",
+  "finance.tabTargets": "Target",
+  "finance.walletType": "Jenis Dompet",
+  "finance.walletBank": "Bank",
+  "finance.walletEwallet": "E-Wallet",
+  "finance.budgetIncome": "Pemasukan Siklus Ini",
+  "finance.budgetProtected": "Tabungan Dilindungi",
+  "finance.budgetAllocatable": "Bisa Dialokasikan",
+  "finance.budgetSpent": "Terpakai",
+  "finance.budgetSettingTitle": "Atur Tabungan per Siklus",
+  "finance.budgetSettingHint":
+    "Contoh: pemasukan 5 juta dengan tabungan 2 juta → hanya 3 juta yang bisa dialokasikan ke masing-masing wadah. Pengeluaran yang mencoba menyentuh tabungan akan meminta konfirmasi terpaksa.",
+  "finance.budgetOverTitle": "Alokasi Terlampaui",
+  "finance.budgetOverDesc":
+    "Pengeluaran {spent} sudah melebihi batas alokasi {limit} dan menyentuh tabungan dilindungi.",
+  "finance.targetsTitle": "Target Tabungan",
+  "finance.addTarget": "Tambah Target",
+  "finance.editTarget": "Edit Target",
+  "finance.targetName": "Nama Target",
+  "finance.targetNameHint": "Contoh: Beli HP, Tabungan 1 Tahun",
+  "finance.targetAmount": "Nilai Target",
+  "finance.targetDeadlineLabel": "Batas Waktu",
+  "finance.targetDeadline": "Batas Waktu (opsional)",
+  "finance.targetNote": "Catatan (opsional)",
+  "finance.addTargetFunds": "Tambah Dana",
+  "finance.addFundsTitle": "Tambah Dana Target",
+  "finance.deleteTargetConfirm": "Hapus target ini?",
+  "finance.targetsEmpty":
+    "Belum ada target. Buat target pertama Anda, mis. beli HP atau tabungan 1 tahun.",
+  "finance.targetProgress": "{saved} dari {target}",
+
+  // Transaksi berulang & proteksi tabungan
+  "form.repeatLabel": "Pengulangan",
+  "form.repeatOnce": "Sekali",
+  "form.repeatMonthly": "Setiap Bulan",
+  "form.recurHint":
+    "Otomatis tercatat setiap tanggal {n} bulan berikutnya — tanpa perlu tambah transaksi lagi.",
+  "form.protectionTitle": "Menyentuh Tabungan Dilindungi",
+  "form.protectionDesc":
+    "Pengeluaran akan menjadi {projected}, melebihi batas alokasi {limit} dan menyentuh tabungan yang Anda lindungi. Lanjutkan terpaksa?",
+  "form.protectionConfirm": "Lanjutkan Terpaksa",
+  "transactions.recurringTitle": "Transaksi Berulang",
+  "transactions.recurringEvery": "tiap tanggal {n}",
+  "transactions.recurringEmpty": "Belum ada transaksi berulang.",
+  "transactions.recurringTag": "Berulang",
+  "transactions.recurringToggle": "Aktifkan/nonaktifkan aturan",
+  "transactions.deleteRecurringConfirm":
+    "Hapus aturan berulang ini? Transaksi yang sudah tercatat tetap ada.",
 };
 
 const en: TranslationDict = {
@@ -437,7 +488,7 @@ const en: TranslationDict = {
   // Menu / Navigation
   "menu.dashboard": "Dashboard",
   "menu.transactions": "Transactions",
-  "menu.categories": "Categories",
+  "menu.finance": "Finance",
   "menu.reports": "Reports",
   "menu.settings": "Settings",
   "menu.open": "Open menu",
@@ -516,6 +567,57 @@ const en: TranslationDict = {
   "categories.filterWadah": "Filter Envelope",
   "categories.filterWadahPlaceholder": "All Envelopes",
   "categories.subCount": "{n} subcategories",
+
+  // Finance: Wallets / Budget / Targets
+  "finance.tabWallets": "Wallets",
+  "finance.tabBudget": "Budget",
+  "finance.tabTargets": "Targets",
+  "finance.walletType": "Wallet Type",
+  "finance.walletBank": "Bank",
+  "finance.walletEwallet": "E-Wallet",
+  "finance.budgetIncome": "Income This Cycle",
+  "finance.budgetProtected": "Protected Savings",
+  "finance.budgetAllocatable": "Available to Allocate",
+  "finance.budgetSpent": "Spent",
+  "finance.budgetSettingTitle": "Set Savings per Cycle",
+  "finance.budgetSettingHint":
+    "Example: with 5M income and 2M savings, only 3M can be allocated to each envelope. Spending that tries to touch the savings will require a forced confirmation.",
+  "finance.budgetOverTitle": "Allocation Exceeded",
+  "finance.budgetOverDesc":
+    "Spending {spent} has exceeded the {limit} allocation limit and touched your protected savings.",
+  "finance.targetsTitle": "Savings Targets",
+  "finance.addTarget": "Add Target",
+  "finance.editTarget": "Edit Target",
+  "finance.targetName": "Target Name",
+  "finance.targetNameHint": "e.g. Buy a Phone, 1-Year Savings",
+  "finance.targetAmount": "Target Amount",
+  "finance.targetDeadlineLabel": "Deadline",
+  "finance.targetDeadline": "Deadline (optional)",
+  "finance.targetNote": "Note (optional)",
+  "finance.addTargetFunds": "Add Funds",
+  "finance.addFundsTitle": "Add Funds to Target",
+  "finance.deleteTargetConfirm": "Delete this target?",
+  "finance.targetsEmpty":
+    "No targets yet. Create your first one, e.g. buy a phone or a 1-year savings goal.",
+  "finance.targetProgress": "{saved} of {target}",
+
+  // Recurring transactions & savings protection
+  "form.repeatLabel": "Repeat",
+  "form.repeatOnce": "Once",
+  "form.repeatMonthly": "Every Month",
+  "form.recurHint":
+    "Automatically recorded on day {n} of the following months — no need to add it again.",
+  "form.protectionTitle": "Touching Protected Savings",
+  "form.protectionDesc":
+    "Spending will reach {projected}, exceeding the {limit} allocation limit and touching your protected savings. Force continue?",
+  "form.protectionConfirm": "Force Continue",
+  "transactions.recurringTitle": "Recurring Transactions",
+  "transactions.recurringEvery": "every day {n}",
+  "transactions.recurringEmpty": "No recurring transactions yet.",
+  "transactions.recurringTag": "Recurring",
+  "transactions.recurringToggle": "Enable/disable the rule",
+  "transactions.deleteRecurringConfirm":
+    "Delete this recurring rule? Already-recorded transactions remain.",
 };
 
 export const TRANSLATIONS: Record<Locale, TranslationDict> = { id, en };

@@ -10,6 +10,7 @@ import {
   deleteManyTransactions,
   deleteSubcategory,
   deleteTransaction,
+  getTransactionById,
   getTransactionsInRange,
   updateCategory,
   updateSubcategory,
@@ -18,11 +19,32 @@ import {
   getUserCategories,
   getUserSettings,
 } from "@/services/transaction";
+import {
+  createRecurringRule,
+  createRecurringWithFirstTransaction,
+  deleteRecurringRule,
+  getRecurringRules,
+  materializeRecurringForCycle,
+  setRecurringActive,
+} from "@/services/recurring";
+import {
+  addTargetFunds,
+  assertSavingsProtection,
+  createTarget,
+  deleteTarget,
+  getBudgetOverview,
+  getTargets,
+  updateTarget,
+} from "@/services/finance";
 import type {
   BudgetCategory,
+  BudgetOverview,
+  RecurringRule,
+  SavingsTarget,
   Transaction,
   TransactionInput,
   UserSettings,
+  WalletType,
 } from "@/features/web/types";
 import type { CycleInfo } from "@/features/web/utils/cycle";
 import { shiftCycle } from "@/features/web/utils/cycle";
@@ -76,11 +98,15 @@ function validateInput(input: TransactionInput): void {
   validateAmount(input.amount);
 }
 
-/** Fetch semua transaksi dalam satu siklus (dipanggil dari client). */
+/**
+ * Fetch semua transaksi dalam satu siklus (dipanggil dari client).
+ * Aturan transaksi berulang dimaterialisasi lebih dulu (idempoten).
+ */
 export async function getCycleTransactionsAction(
   cycle: CycleInfo,
 ): Promise<Transaction[]> {
   const userId = await requireUserId();
+  await materializeRecurringForCycle(userId, cycle);
   return getTransactionsInRange(userId, cycle.startDate, cycle.endDate);
 }
 
@@ -105,6 +131,7 @@ export async function getHistoricalTransactionsAction(
   await Promise.all(
     cycles.map(async (c) => {
       try {
+        await materializeRecurringForCycle(userId, c);
         result[c.key] = await getTransactionsInRange(
           userId,
           c.startDate,
@@ -132,8 +159,15 @@ export async function getFinanceBundleAction(): Promise<{
   return { categories, settings };
 }
 
+/**
+ * Buat transaksi baru.
+ * - `options.force`: lewati proteksi tabungan (konfirmasi "terpaksa").
+ * - `options.recurring`: sekalian buat aturan berulang bulanan dengan
+ *   tanggal jalur = tanggal transaksi (hanya EXPENSE/INCOME).
+ */
 export async function createTransactionAction(
   input: TransactionInput,
+  options?: { force?: boolean; recurring?: boolean },
 ): Promise<void> {
   const userId = await requireUserId();
   const name = sanitizeText(input.name, 100);
@@ -145,6 +179,29 @@ export async function createTransactionAction(
     throw new Error("Tanggal tidak valid.");
   }
 
+  // Proteksi tabungan (Budget): pengeluaran tidak boleh menyentuh tabungan
+  // dilindungi tanpa konfirmasi terpaksa dari user.
+  await assertSavingsProtection(userId, date, input.amount, options?.force ?? false);
+
+  const subcategoryId = isUuid(input.subcategoryId ?? "")
+    ? input.subcategoryId
+    : null;
+
+  if (options?.recurring && input.type !== "TRANSFER") {
+    await createRecurringWithFirstTransaction(userId, {
+      type: input.type,
+      name,
+      amount: Math.round(input.amount),
+      dayOfMonth: date.getDate(),
+      categoryId: input.categoryId,
+      subcategoryId,
+      note: sanitizeText(input.note, 500),
+      date,
+    });
+    revalidatePath("/");
+    return;
+  }
+
   await createTransaction(userId, {
     type: input.type,
     name,
@@ -152,9 +209,7 @@ export async function createTransactionAction(
     note: sanitizeText(input.note, 500),
     date,
     categoryId: input.categoryId,
-    subcategoryId: isUuid(input.subcategoryId ?? "")
-      ? input.subcategoryId
-      : null,
+    subcategoryId,
     toCategoryId: isUuid(input.toCategoryId ?? "") ? input.toCategoryId : null,
   });
   revalidatePath("/");
@@ -163,6 +218,7 @@ export async function createTransactionAction(
 export async function updateTransactionAction(
   id: string,
   input: TransactionInput,
+  force?: boolean,
 ): Promise<void> {
   const userId = await requireUserId();
   if (!isUuid(id)) throw new Error(`Invalid transaction id: ${id}`);
@@ -174,6 +230,18 @@ export async function updateTransactionAction(
   if (Number.isNaN(date.getTime())) {
     throw new Error("Tanggal tidak valid.");
   }
+
+  // Proteksi tabungan: hitung delta pengeluaran terhadap transaksi lama.
+  const old = await getTransactionById(userId, id);
+  if (!old) throw new Error("Transaksi tidak ditemukan.");
+  const oldExpense = old.type === "EXPENSE" ? old.amount : 0;
+  const newExpense = input.type === "EXPENSE" ? input.amount : 0;
+  await assertSavingsProtection(
+    userId,
+    date,
+    newExpense - oldExpense,
+    force ?? false,
+  );
 
   await updateTransaction(userId, id, {
     type: input.type,
@@ -262,11 +330,13 @@ export async function importTransactionsAction(
 export async function updateSettingsAction(data: {
   cycleStartDay?: number;
   savingsInitial?: number;
+  protectedSavings?: number;
 }): Promise<UserSettings> {
   const userId = await requireUserId();
   const settings = await updateUserSettings(userId, data);
   revalidatePath("/");
   revalidatePath("/settings");
+  revalidatePath("/finance");
   return settings;
 }
 
@@ -274,6 +344,7 @@ export async function createCategoryAction(data: {
   name: string;
   color: string;
   allocation: number;
+  walletType?: WalletType;
 }): Promise<BudgetCategory> {
   const userId = await requireUserId();
   const name = sanitizeText(data.name, 50);
@@ -282,15 +353,22 @@ export async function createCategoryAction(data: {
     name,
     color: data.color,
     allocation: data.allocation,
+    walletType: data.walletType,
   });
   revalidatePath("/");
   revalidatePath("/settings");
+  revalidatePath("/finance");
   return category;
 }
 
 export async function updateCategoryAction(
   categoryId: string,
-  data: { name?: string; color?: string; allocation?: number },
+  data: {
+    name?: string;
+    color?: string;
+    allocation?: number;
+    walletType?: WalletType;
+  },
 ): Promise<void> {
   const userId = await requireUserId();
   if (!isUuid(categoryId)) throw new Error("Invalid category id.");
@@ -298,6 +376,7 @@ export async function updateCategoryAction(
   await updateCategory(userId, categoryId, data);
   revalidatePath("/");
   revalidatePath("/settings");
+  revalidatePath("/finance");
 }
 
 export async function deleteCategoryAction(categoryId: string): Promise<void> {
@@ -306,6 +385,7 @@ export async function deleteCategoryAction(categoryId: string): Promise<void> {
   await deleteCategory(userId, categoryId);
   revalidatePath("/");
   revalidatePath("/settings");
+  revalidatePath("/finance");
 }
 
 export async function createSubcategoryAction(
@@ -319,6 +399,7 @@ export async function createSubcategoryAction(
   await createSubcategory(userId, categoryId, clean);
   revalidatePath("/");
   revalidatePath("/settings");
+  revalidatePath("/finance");
 }
 
 export async function deleteSubcategoryAction(
@@ -329,6 +410,7 @@ export async function deleteSubcategoryAction(
   await deleteSubcategory(userId, subcategoryId);
   revalidatePath("/");
   revalidatePath("/settings");
+  revalidatePath("/finance");
 }
 
 export async function updateSubcategoryAction(
@@ -342,4 +424,144 @@ export async function updateSubcategoryAction(
   await updateSubcategory(userId, subcategoryId, clean);
   revalidatePath("/");
   revalidatePath("/settings");
+  revalidatePath("/finance");
+}
+
+// ---------------------------------------------------------------------------
+// Keuangan: Budget (proteksi tabungan) & Target tabungan
+// ---------------------------------------------------------------------------
+
+/** Ringkasan Budget satu siklus (dipanggil dari client). */
+export async function getBudgetOverviewAction(
+  cycle: CycleInfo,
+): Promise<BudgetOverview> {
+  const userId = await requireUserId();
+  return getBudgetOverview(userId, cycle);
+}
+
+export async function getTargetsAction(): Promise<SavingsTarget[]> {
+  const userId = await requireUserId();
+  return getTargets(userId);
+}
+
+export async function createTargetAction(data: {
+  name: string;
+  targetAmount: number;
+  deadline?: string | null;
+  note?: string;
+}): Promise<SavingsTarget> {
+  const userId = await requireUserId();
+  const deadline = parseDeadline(data.deadline);
+  const target = await createTarget(userId, {
+    name: sanitizeText(data.name, 100),
+    targetAmount: data.targetAmount,
+    deadline,
+    note: data.note,
+  });
+  revalidatePath("/finance");
+  return target;
+}
+
+export async function updateTargetAction(
+  id: string,
+  data: {
+    name: string;
+    targetAmount: number;
+    deadline?: string | null;
+    note?: string;
+  },
+): Promise<void> {
+  const userId = await requireUserId();
+  if (!isUuid(id)) throw new Error("Invalid target id.");
+  const deadline = parseDeadline(data.deadline);
+  await updateTarget(userId, id, {
+    name: sanitizeText(data.name, 100),
+    targetAmount: data.targetAmount,
+    deadline,
+    note: data.note,
+  });
+  revalidatePath("/finance");
+}
+
+export async function deleteTargetAction(id: string): Promise<void> {
+  const userId = await requireUserId();
+  if (!isUuid(id)) throw new Error("Invalid target id.");
+  await deleteTarget(userId, id);
+  revalidatePath("/finance");
+}
+
+/** Tambah dana terkumpul pada target. */
+export async function addTargetFundsAction(
+  id: string,
+  amount: number,
+): Promise<SavingsTarget> {
+  const userId = await requireUserId();
+  if (!isUuid(id)) throw new Error("Invalid target id.");
+  const target = await addTargetFunds(userId, id, amount);
+  revalidatePath("/finance");
+  return target;
+}
+
+function parseDeadline(deadline?: string | null): Date | null {
+  if (!deadline) return null;
+  const d = new Date(deadline);
+  if (Number.isNaN(d.getTime())) throw new Error("Batas waktu tidak valid.");
+  return d;
+}
+
+// ---------------------------------------------------------------------------
+// Transaksi berulang
+// ---------------------------------------------------------------------------
+
+export async function getRecurringRulesAction(): Promise<RecurringRule[]> {
+  const userId = await requireUserId();
+  return getRecurringRules(userId);
+}
+
+/** Aktifkan/nonaktifkan aturan berulang. */
+export async function toggleRecurringAction(
+  id: string,
+  active: boolean,
+): Promise<void> {
+  const userId = await requireUserId();
+  if (!isUuid(id)) throw new Error("Invalid recurring id.");
+  await setRecurringActive(userId, id, active);
+  revalidatePath("/");
+}
+
+/** Hapus aturan berulang (transaksi yang sudah tercatat tetap ada). */
+export async function deleteRecurringAction(id: string): Promise<void> {
+  const userId = await requireUserId();
+  if (!isUuid(id)) throw new Error("Invalid recurring id.");
+  await deleteRecurringRule(userId, id);
+  revalidatePath("/");
+}
+
+/** Buat aturan berulang mandiri (tanpa transaksi pertama). */
+export async function createRecurringRuleAction(data: {
+  type: string;
+  name: string;
+  amount: number;
+  dayOfMonth: number;
+  categoryId: string;
+  subcategoryId?: string | null;
+  note?: string;
+}): Promise<RecurringRule> {
+  const userId = await requireUserId();
+  const name = sanitizeText(data.name, 100);
+  if (!name) throw new Error("Nama transaksi wajib diisi.");
+  if (!isUuid(data.categoryId)) throw new Error("Wadah wajib dipilih.");
+  const rule = await createRecurringRule(userId, {
+    type: data.type as "EXPENSE" | "INCOME",
+    name,
+    amount: data.amount,
+    dayOfMonth: data.dayOfMonth,
+    categoryId: data.categoryId,
+    subcategoryId: isUuid(data.subcategoryId ?? "")
+      ? data.subcategoryId
+      : null,
+    note: sanitizeText(data.note ?? "", 500),
+  });
+  revalidatePath("/");
+  return rule;
 }

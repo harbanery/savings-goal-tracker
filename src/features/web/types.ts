@@ -5,6 +5,9 @@
 /** Jenis transaksi keuangan. */
 export type TransactionType = "EXPENSE" | "INCOME" | "TRANSFER";
 
+/** Jenis dompet/wadah: rekening bank atau dompet digital (e-wallet). */
+export type WalletType = "BANK" | "E_WALLET";
+
 /** Subkategori/unit pencatatan dalam satu kategori/wadah. */
 export interface BudgetSubcategory {
   id: string;
@@ -16,6 +19,8 @@ export interface BudgetCategory {
   id: string;
   name: string;
   color: string;
+  /** Jenis dompet: bank atau e-wallet. */
+  walletType: WalletType;
   /** Alokasi saldo per siklus (rupiah). */
   allocation: number;
   subcategories: BudgetSubcategory[];
@@ -27,6 +32,8 @@ export interface UserSettings {
   cycleStartDay: number;
   /** Saldo/modal awal per siklus. */
   savingsInitial: number;
+  /** Tabungan yang dilindungi per siklus (menu Budget). */
+  protectedSavings: number;
 }
 
 /** User sesi login (Google). */
@@ -54,6 +61,8 @@ export interface Transaction {
   subcategoryId: string | null;
   /** Wadah tujuan khusus TRANSFER. */
   toCategoryId: string | null;
+  /** Aturan berulang pembuat transaksi ini (null = manual). */
+  recurringId: string | null;
 }
 
 /** Input untuk membuat/memperbarui transaksi. */
@@ -66,4 +75,49 @@ export interface TransactionInput {
   categoryId: string;
   subcategoryId?: string | null;
   toCategoryId?: string | null;
+}
+
+/** Ringkasan Budget per siklus (menu Keuangan > Budget). */
+export interface BudgetOverview {
+  /** Tabungan yang dilindungi (set user). */
+  protectedSavings: number;
+  /** Saldo awal siklus. */
+  savingsInitial: number;
+  /** Total pemasukan siklus. */
+  totalIncome: number;
+  /** Total pengeluaran siklus. */
+  totalSpent: number;
+  /** Bisa dialokasikan = saldo awal + pemasukan - tabungan dilindungi. */
+  allocatable: number;
+  /** Sisa alokasi = bisa dialokasikan - pengeluaran (bisa minus). */
+  remaining: number;
+  /** true bila pengeluaran sudah menyentuh/melebihi batas alokasi. */
+  overProtected: boolean;
+}
+
+/** Target tabungan user (menu Keuangan > Target). */
+export interface SavingsTarget {
+  id: string;
+  name: string;
+  /** Nilai target (rupiah). */
+  targetAmount: number;
+  /** Dana yang sudah terkumpul. */
+  savedAmount: number;
+  /** ISO date batas waktu (opsional). */
+  deadline: string | null;
+  note: string;
+}
+
+/** Aturan transaksi berulang (per bulan, tanggal tertentu). */
+export interface RecurringRule {
+  id: string;
+  type: TransactionType;
+  name: string;
+  amount: number;
+  /** Tanggal jalur bulanan (1-31). */
+  dayOfMonth: number;
+  categoryId: string;
+  subcategoryId: string | null;
+  note: string;
+  active: boolean;
 }

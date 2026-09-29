@@ -1,16 +1,31 @@
 "use client";
 
 import { LeftOutlined, PlusOutlined, RightOutlined } from "@ant-design/icons";
-import { Button, Space, Tooltip, Typography } from "antd";
+import {
+  Button,
+  Card,
+  Empty,
+  Popconfirm,
+  Space,
+  Switch,
+  Tag,
+  Tooltip,
+  Typography,
+} from "antd";
+import { DeleteOutlined } from "@ant-design/icons";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useLocale } from "@/components/i18n/LocaleProvider";
 import {
+  deleteRecurringAction,
   deleteTransactionAction,
   deleteTransactionsAction,
   getCycleTransactionsAction,
+  getRecurringRulesAction,
+  toggleRecurringAction,
 } from "@/utils/server/actions";
 import type {
   BudgetCategory,
+  RecurringRule,
   Transaction,
   UserSettings,
 } from "@/features/web/types";
@@ -23,6 +38,7 @@ import {
 import TransactionFormModal from "./TransactionFormModal";
 import TransactionTable from "./TransactionTable";
 import ImportExportButtons from "./ImportExportButtons";
+import { formatIDR } from "@/utils/helpers";
 
 const { Text } = Typography;
 
@@ -49,6 +65,7 @@ export default function TransactionsView({
   const [cycle, setCycle] = useState<CycleInfo>(() =>
     getCurrentCycle(settings.cycleStartDay),
   );
+  const [rules, setRules] = useState<RecurringRule[]>([]);
 
   const { t, locale } = useLocale();
 
@@ -79,7 +96,46 @@ export default function TransactionsView({
   useEffect(() => {
     refreshCycle(cycle).catch(() => {});
   }, [cycle, refreshCycle]);
+
+  useEffect(() => {
+    getRecurringRulesAction()
+      .then(setRules)
+      .catch(() => setRules([]));
+  }, []);
   /* eslint-enable react-hooks/set-state-in-effect */
+
+  const refreshRules = useCallback(async () => {
+    try {
+      setRules(await getRecurringRulesAction());
+    } catch {
+      // biarkan state lama
+    }
+  }, []);
+
+  async function handleToggleRule(id: string, active: boolean) {
+    // Optimistis: update UI dulu, rollback bila gagal.
+    const prev = rules;
+    setRules((rs) =>
+      rs.map((r) => (r.id === id ? { ...r, active } : r)),
+    );
+    try {
+      await toggleRecurringAction(id, active);
+    } catch (err) {
+      console.error("[TransactionsView] gagal toggle aturan:", err);
+      setRules(prev);
+    }
+  }
+
+  async function handleDeleteRule(id: string) {
+    const prev = rules;
+    setRules((rs) => rs.filter((r) => r.id !== id));
+    try {
+      await deleteRecurringAction(id);
+    } catch (err) {
+      console.error("[TransactionsView] gagal hapus aturan:", err);
+      setRules(prev);
+    }
+  }
 
   const handleDelete = useCallback(
     async (id: string) => {
@@ -178,6 +234,83 @@ export default function TransactionsView({
         onDeleteBulk={handleDeleteBulk}
       />
 
+      {/* Aturan transaksi berulang (materialisasi otomatis per bulan) */}
+      <Card
+        variant="borderless"
+        className="shadow-sm"
+        style={{ marginTop: 16 }}
+        title={<Text strong>{t("transactions.recurringTitle")}</Text>}
+        styles={{ body: { padding: rules.length === 0 ? 0 : 16 } }}
+      >
+        {rules.length === 0 ? (
+          <div className="flex items-center justify-center py-8">
+            <Empty description={t("transactions.recurringEmpty")} />
+          </div>
+        ) : (
+          <div className="flex flex-col gap-2">
+            {rules.map((rule) => {
+              const category = categories.find(
+                (c) => c.id === rule.categoryId,
+              );
+              return (
+                <div
+                  key={rule.id}
+                  className="flex flex-wrap items-center justify-between gap-2 rounded-lg px-2 py-1.5 bg-black/[0.03] dark:bg-white/[0.05]"
+                >
+                  <div className="flex min-w-0 flex-wrap items-center gap-2">
+                    <Tag
+                      color={
+                        rule.type === "INCOME" ? "green" : "red"
+                      }
+                      style={{ margin: 0 }}
+                    >
+                      {t(`form.type${rule.type.charAt(0)}${rule.type.slice(1).toLowerCase()}`)}
+                    </Tag>
+                    <Text strong ellipsis className="max-w-40">
+                      {rule.name}
+                    </Text>
+                    <Text>{formatIDR(rule.amount, locale)}</Text>
+                    <Text type="secondary" style={{ fontSize: 12 }}>
+                      {t("transactions.recurringEvery", { n: rule.dayOfMonth })}
+                    </Text>
+                    {category && (
+                      <Tag style={{ margin: 0 }}>{category.name}</Tag>
+                    )}
+                  </div>
+                  <Space size="small">
+                    <Tooltip title={t("transactions.recurringToggle")}>
+                      <Switch
+                        size="small"
+                        checked={rule.active}
+                        onChange={(checked) =>
+                          void handleToggleRule(rule.id, checked)
+                        }
+                      />
+                    </Tooltip>
+                    <Popconfirm
+                      title={t("transactions.deleteRecurringConfirm")}
+                      okText={t("common.delete")}
+                      okButtonProps={{ danger: true }}
+                      cancelText={t("common.cancel")}
+                      onConfirm={() => void handleDeleteRule(rule.id)}
+                    >
+                      <Button
+                        type="text"
+                        shape="circle"
+                        size="small"
+                        danger
+                        icon={<DeleteOutlined />}
+                        aria-label={t("common.delete")}
+                      />
+                    </Popconfirm>
+                  </Space>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </Card>
+
       <TransactionFormModal
         open={formOpen}
         editingTransaction={editingTransaction}
@@ -187,7 +320,10 @@ export default function TransactionsView({
           setFormOpen(false);
           setEditingId(null);
         }}
-        onSaved={() => void refreshCycle(cycle)}
+        onSaved={() => {
+          void refreshCycle(cycle);
+          void refreshRules();
+        }}
       />
     </div>
   );

@@ -155,9 +155,16 @@ export default function TransactionTable({
       ellipsis: true,
       render: (name: string, record: RowData) => (
         <div>
-          <Text strong style={{ fontSize: 13 }}>
-            {name}
-          </Text>
+          <span className="flex items-center gap-1.5">
+            <Text strong style={{ fontSize: 13 }} ellipsis>
+              {name}
+            </Text>
+            {record.transaction.recurringId && (
+              <Tag style={{ margin: 0, fontSize: 11 }}>
+                {t("transactions.recurringTag")}
+              </Tag>
+            )}
+          </span>
           {record.transaction.note && (
             <div>
               <Text type="secondary" style={{ fontSize: 11 }}>

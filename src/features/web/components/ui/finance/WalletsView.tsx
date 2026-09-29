@@ -1,11 +1,13 @@
 "use client";
 
 import {
+  BankOutlined,
   CheckOutlined,
   CloseOutlined,
   DeleteOutlined,
   EditOutlined,
   PlusOutlined,
+  WalletOutlined,
 } from "@ant-design/icons";
 import {
   App,
@@ -18,16 +20,18 @@ import {
   InputNumber,
   Modal,
   Popconfirm,
+  Segmented,
   Select,
   Space,
   Table,
+  Tag,
   Tooltip,
   Typography,
 } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import { useCallback, useEffect, useState } from "react";
 import { useLocale } from "@/components/i18n/LocaleProvider";
-import type { BudgetCategory } from "@/features/web/types";
+import type { BudgetCategory, WalletType } from "@/features/web/types";
 import {
   createCategoryAction,
   createSubcategoryAction,
@@ -60,6 +64,7 @@ interface CategoryFormValues {
   name: string;
   color: string;
   allocation: number;
+  walletType: WalletType;
 }
 
 interface SubFormValues {
@@ -72,18 +77,33 @@ interface CategoryRow {
   category: BudgetCategory;
 }
 
+/** Opsi jenis dompet (dipakai di form & filter). */
+function useWalletTypeOptions() {
+  const { t } = useLocale();
+  return [
+    { value: "BANK", label: t("finance.walletBank"), icon: <BankOutlined /> },
+    {
+      value: "E_WALLET",
+      label: t("finance.walletEwallet"),
+      icon: <WalletOutlined />,
+    },
+  ];
+}
+
 /**
- * Halaman Kategori (dipindah dari Pengaturan): tabel wadah (CRUD penuh)
- * dan tabel subkategori — subkategori dikelompokkan per wadah lewat
- * expanded row (baris wadah tanpa aksi edit/hapus).
+ * Tab Dompet (menu Keuangan): tabel wadah (CRUD penuh, dikelompokkan per
+ * jenis bank/e-wallet) dan tabel subkategori — dikelompokkan per wadah
+ * lewat expanded row (baris wadah tanpa aksi edit/hapus).
  */
-export default function CategoriesView({ initialCategories }: Props) {
+export default function WalletsView({ initialCategories }: Props) {
   const { t, locale } = useLocale();
   const { message } = App.useApp();
+  const walletTypeOptions = useWalletTypeOptions();
 
   const [categories, setCategories] = useState(initialCategories);
   const [reloadKey, setReloadKey] = useState(0);
   const [wadahFilter, setWadahFilter] = useState<string | null>(null);
+  const [typeFilter, setTypeFilter] = useState<WalletType | "ALL">("ALL");
 
   const [categoryForm] = Form.useForm<CategoryFormValues>();
   const [subForm] = Form.useForm<SubFormValues>();
@@ -179,8 +199,11 @@ export default function CategoriesView({ initialCategories }: Props) {
     }
   }
 
-  /** Baris tabel wadah. */
-  const categoryDataSource: CategoryRow[] = categories.map((c) => ({
+  /** Baris tabel wadah (difilter per jenis dompet). */
+  const typeFiltered = categories.filter(
+    (c) => typeFilter === "ALL" || c.walletType === typeFilter,
+  );
+  const categoryDataSource: CategoryRow[] = typeFiltered.map((c) => ({
     key: c.id,
     category: c,
   }));
@@ -203,6 +226,19 @@ export default function CategoriesView({ initialCategories }: Props) {
     0,
   );
 
+  /** Tag jenis dompet (Bank / E-Wallet). */
+  function renderWalletType(type: WalletType) {
+    const opt = walletTypeOptions.find((o) => o.value === type);
+    return (
+      <Tag>
+        <span className="flex items-center gap-1">
+          {opt?.icon}
+          {opt?.label ?? type}
+        </span>
+      </Tag>
+    );
+  }
+
   const categoryColumns: ColumnsType<CategoryRow> = [
     {
       title: t("settings.categoryName"),
@@ -224,9 +260,16 @@ export default function CategoriesView({ initialCategories }: Props) {
       ),
     },
     {
+      title: t("finance.walletType"),
+      key: "walletType",
+      width: 130,
+      render: (_: unknown, { category }: CategoryRow) =>
+        renderWalletType(category.walletType),
+    },
+    {
       title: t("settings.allocation"),
       key: "allocation",
-      width: 160,
+      width: 140,
       align: "right",
       render: (_: unknown, { category }: CategoryRow) => (
         <Text>{formatIDR(category.allocation, locale)}</Text>
@@ -250,6 +293,7 @@ export default function CategoriesView({ initialCategories }: Props) {
                 name: category.name,
                 color: category.color,
                 allocation: category.allocation,
+                walletType: category.walletType,
               });
               setCatModalOpen(true);
             }}
@@ -301,6 +345,13 @@ export default function CategoriesView({ initialCategories }: Props) {
       ),
     },
     {
+      title: t("finance.walletType"),
+      key: "walletType",
+      width: 130,
+      render: (_: unknown, { category }: CategoryRow) =>
+        renderWalletType(category.walletType),
+    },
+    {
       title: t("categories.subTitle"),
       key: "count",
       width: 140,
@@ -314,7 +365,7 @@ export default function CategoriesView({ initialCategories }: Props) {
   ];
 
   return (
-    <div className="mx-auto w-full max-w-350">
+    <div className="w-full">
       {/* Tabel subkategori sengaja lebih lebar (3/5) dari tabel wadah (2/5) */}
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-5">
         {/* Tabel wadah */}
@@ -324,17 +375,37 @@ export default function CategoriesView({ initialCategories }: Props) {
             className="shadow-sm h-full"
             title={<Text strong>{t("categories.wadahTitle")}</Text>}
             extra={
-              <Button
-                type="primary"
-                icon={<PlusOutlined />}
-                onClick={() => {
-                  setEditingCat(null);
-                  categoryForm.resetFields();
-                  setCatModalOpen(true);
-                }}
-              >
-                {t("settings.addCategory")}
-              </Button>
+              <Space size="small" wrap>
+                <Segmented
+                  size="small"
+                  value={typeFilter}
+                  onChange={(v) => setTypeFilter(v as WalletType | "ALL")}
+                  options={[
+                    { value: "ALL", label: t("table.filterAll") },
+                    ...walletTypeOptions.map((o) => ({
+                      value: o.value,
+                      label: (
+                        <span className="flex items-center gap-1">
+                          {o.icon}
+                          <span className="hidden sm:inline">{o.label}</span>
+                        </span>
+                      ),
+                    })),
+                  ]}
+                  aria-label={t("finance.walletType")}
+                />
+                <Button
+                  type="primary"
+                  icon={<PlusOutlined />}
+                  onClick={() => {
+                    setEditingCat(null);
+                    categoryForm.resetFields();
+                    setCatModalOpen(true);
+                  }}
+                >
+                  {t("settings.addCategory")}
+                </Button>
+              </Space>
             }
             styles={{ body: { padding: 0 } }}
           >
@@ -490,7 +561,11 @@ export default function CategoriesView({ initialCategories }: Props) {
           form={categoryForm}
           layout="vertical"
           onFinish={handleCategorySubmit}
-          initialValues={{ color: PRESET_COLORS[0], allocation: 0 }}
+          initialValues={{
+            color: PRESET_COLORS[0],
+            allocation: 0,
+            walletType: "E_WALLET",
+          }}
         >
           <Form.Item
             name="name"
@@ -498,6 +573,23 @@ export default function CategoriesView({ initialCategories }: Props) {
             rules={[{ required: true }]}
           >
             <Input maxLength={50} />
+          </Form.Item>
+          <Form.Item
+            name="walletType"
+            label={t("finance.walletType")}
+            rules={[{ required: true }]}
+          >
+            <Select
+              options={walletTypeOptions.map((o) => ({
+                value: o.value,
+                label: (
+                  <span className="flex items-center gap-2">
+                    {o.icon}
+                    {o.label}
+                  </span>
+                ),
+              }))}
+            />
           </Form.Item>
           <Form.Item
             name="color"

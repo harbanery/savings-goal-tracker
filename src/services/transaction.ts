@@ -6,6 +6,7 @@ import type {
   Transaction,
   TransactionType,
   UserSettings,
+  WalletType,
 } from "@/features/web/types";
 
 /**
@@ -27,6 +28,7 @@ export function toTransaction(t: TransactionRecord): Transaction {
     categoryId: t.categoryId,
     subcategoryId: t.subcategoryId,
     toCategoryId: t.toCategoryId,
+    recurringId: t.recurringId,
   };
 }
 
@@ -43,6 +45,7 @@ export async function getUserCategories(userId: string): Promise<BudgetCategory[
     id: c.id,
     name: c.name,
     color: c.color,
+    walletType: c.walletType,
     allocation: Number(c.allocation),
     subcategories: c.subcategories.map((s) => ({ id: s.id, name: s.name })),
   }));
@@ -56,7 +59,19 @@ export async function getUserSettings(userId: string): Promise<UserSettings> {
   return {
     cycleStartDay: s?.cycleStartDay ?? 25,
     savingsInitial: s ? Number(s.savingsInitial) : 0,
+    protectedSavings: s ? Number(s.protectedSavings) : 0,
   };
+}
+
+/** Ambil satu transaksi milik user (null bila tidak ada). */
+export async function getTransactionById(
+  userId: string,
+  id: string,
+): Promise<Transaction | null> {
+  const row = await withRetry(() =>
+    prisma.transaction.findFirst({ where: { id, userId } }),
+  );
+  return row ? toTransaction(row) : null;
 }
 
 /** Ambil semua transaksi user dalam rentang tanggal (siklus). */
@@ -225,10 +240,14 @@ export async function deleteManyTransactions(
 // Settings
 // ---------------------------------------------------------------------------
 
-/** Perbarui settings user (cycle start day / saldo awal). */
+/** Perbarui settings user (cycle start day / saldo awal / tabungan dilindungi). */
 export async function updateUserSettings(
   userId: string,
-  data: { cycleStartDay?: number; savingsInitial?: number },
+  data: {
+    cycleStartDay?: number;
+    savingsInitial?: number;
+    protectedSavings?: number;
+  },
 ): Promise<UserSettings> {
   const patch: Prisma.UserSettingsUpdateInput = {};
   if (data.cycleStartDay !== undefined) {
@@ -245,6 +264,14 @@ export async function updateUserSettings(
       Math.round(data.savingsInitial),
     );
   }
+  if (data.protectedSavings !== undefined) {
+    if (!Number.isFinite(data.protectedSavings) || data.protectedSavings < 0) {
+      throw new Error("Tabungan dilindungi tidak valid.");
+    }
+    patch.protectedSavings = new Prisma.Decimal(
+      Math.round(data.protectedSavings),
+    );
+  }
   const row = await withRetry(() =>
     prisma.userSettings.upsert({
       where: { userId },
@@ -253,12 +280,14 @@ export async function updateUserSettings(
         userId,
         cycleStartDay: data.cycleStartDay ?? 25,
         savingsInitial: Math.round(data.savingsInitial ?? 0),
+        protectedSavings: Math.round(data.protectedSavings ?? 0),
       },
     }),
   );
   return {
     cycleStartDay: row.cycleStartDay,
     savingsInitial: Number(row.savingsInitial),
+    protectedSavings: Number(row.protectedSavings),
   };
 }
 
@@ -268,7 +297,12 @@ export async function updateUserSettings(
 
 export async function createCategory(
   userId: string,
-  data: { name: string; color: string; allocation: number },
+  data: {
+    name: string;
+    color: string;
+    allocation: number;
+    walletType?: WalletType;
+  },
 ): Promise<BudgetCategory> {
   const count = await prisma.category.count({ where: { userId } });
   const row = await withRetry(() =>
@@ -277,6 +311,7 @@ export async function createCategory(
         userId,
         name: data.name,
         color: data.color,
+        walletType: data.walletType ?? "E_WALLET",
         allocation: new Prisma.Decimal(data.allocation),
         order: count,
       },
@@ -287,6 +322,7 @@ export async function createCategory(
     id: row.id,
     name: row.name,
     color: row.color,
+    walletType: row.walletType,
     allocation: Number(row.allocation),
     subcategories: row.subcategories.map((s) => ({ id: s.id, name: s.name })),
   };
@@ -295,12 +331,23 @@ export async function createCategory(
 export async function updateCategory(
   userId: string,
   categoryId: string,
-  data: { name?: string; color?: string; allocation?: number },
+  data: {
+    name?: string;
+    color?: string;
+    allocation?: number;
+    walletType?: WalletType;
+  },
 ): Promise<void> {
   await assertCategoryOwned(userId, categoryId);
   const patch: Prisma.CategoryUpdateInput = {};
   if (data.name !== undefined) patch.name = data.name;
   if (data.color !== undefined) patch.color = data.color;
+  if (data.walletType !== undefined) {
+    if (data.walletType !== "BANK" && data.walletType !== "E_WALLET") {
+      throw new Error("Jenis dompet tidak valid.");
+    }
+    patch.walletType = data.walletType;
+  }
   if (data.allocation !== undefined) {
     if (!Number.isFinite(data.allocation) || data.allocation < 0) {
       throw new Error("Alokasi tidak valid.");
@@ -312,7 +359,7 @@ export async function updateCategory(
   );
 }
 
-/** Hapus kategori — ditolak bila masih ada transaksi terkait. */
+/** Hapus kategori — ditolak bila masih dipakai transaksi/aturan berulang. */
 export async function deleteCategory(userId: string, categoryId: string): Promise<void> {
   await assertCategoryOwned(userId, categoryId);
   const used = await prisma.transaction.count({
@@ -323,6 +370,12 @@ export async function deleteCategory(userId: string, categoryId: string): Promis
   });
   if (used > 0) {
     throw new Error("Kategori masih dipakai transaksi; hapus/pindahkan transaksinya dulu.");
+  }
+  const usedRecurring = await prisma.recurringTransaction.count({
+    where: { userId, categoryId },
+  });
+  if (usedRecurring > 0) {
+    throw new Error("Kategori masih dipakai transaksi berulang; hapus aturannya dulu.");
   }
   await withRetry(() => prisma.category.delete({ where: { id: categoryId } }));
 }

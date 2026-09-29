@@ -1,8 +1,6 @@
-import CategoriesSection from "./section/CategoriesSection";
+import { redirect } from "next/navigation";
 
-// Selalu render dinamis agar data terbaru dari DB selalu ditampilkan.
-export const dynamic = "force-dynamic";
-
+// Menu Kategori digabung ke menu Keuangan (tab Dompet).
 export default function CategoriesPage() {
-  return <CategoriesSection />;
+  redirect("/finance");
 }
