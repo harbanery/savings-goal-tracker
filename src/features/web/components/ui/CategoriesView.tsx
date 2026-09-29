@@ -19,8 +19,9 @@ import {
   Modal,
   Popconfirm,
   Select,
+  Space,
   Table,
-  Tag,
+  Tooltip,
   Typography,
 } from "antd";
 import type { ColumnsType } from "antd/es/table";
@@ -71,15 +72,10 @@ interface CategoryRow {
   category: BudgetCategory;
 }
 
-interface SubRow {
-  key: string;
-  sub: BudgetCategory["subcategories"][number];
-  category: BudgetCategory;
-}
-
 /**
- * Halaman Kategori (dipindah dari Pengaturan): tabel wadah dan tabel
- * subkategori dipisah — masing-masing dengan CRUD sendiri.
+ * Halaman Kategori (dipindah dari Pengaturan): tabel wadah (CRUD penuh)
+ * dan tabel subkategori — subkategori dikelompokkan per wadah lewat
+ * expanded row (baris wadah tanpa aksi edit/hapus).
  */
 export default function CategoriesView({ initialCategories }: Props) {
   const { t, locale } = useLocale();
@@ -87,6 +83,7 @@ export default function CategoriesView({ initialCategories }: Props) {
 
   const [categories, setCategories] = useState(initialCategories);
   const [reloadKey, setReloadKey] = useState(0);
+  const [wadahFilter, setWadahFilter] = useState<string | null>(null);
 
   const [categoryForm] = Form.useForm<CategoryFormValues>();
   const [subForm] = Form.useForm<SubFormValues>();
@@ -188,9 +185,22 @@ export default function CategoriesView({ initialCategories }: Props) {
     category: c,
   }));
 
-  /** Baris tabel subkategori (diflatten dari semua wadah). */
-  const subDataSource: SubRow[] = categories.flatMap((c) =>
-    c.subcategories.map((s) => ({ key: s.id, sub: s, category: c })),
+  /**
+   * Baris tabel subkategori: dikelompokkan per wadah (seperti desain awal,
+   * via expanded row). Bisa difilter per wadah lewat Select.
+   */
+  const filteredCategories = wadahFilter
+    ? categories.filter((c) => c.id === wadahFilter)
+    : categories;
+
+  const subDataSource: CategoryRow[] = filteredCategories.map((c) => ({
+    key: c.id,
+    category: c,
+  }));
+
+  const totalFilteredSubs = filteredCategories.reduce(
+    (n, c) => n + c.subcategories.length,
+    0,
   );
 
   const categoryColumns: ColumnsType<CategoryRow> = [
@@ -266,136 +276,199 @@ export default function CategoriesView({ initialCategories }: Props) {
     },
   ];
 
-  const subColumns: ColumnsType<SubRow> = [
+  /**
+   * Kolom tabel subkategori: barisnya wadah (tanpa aksi edit/hapus —
+   * CRUD wadah ada di tabel wadah). Subkategori muncul saat row di-expand.
+   */
+  const subColumns: ColumnsType<CategoryRow> = [
     {
-      title: t("settings.subcategoryName"),
+      title: t("settings.categoryName"),
       key: "name",
-      render: (_: unknown, { sub }: SubRow) => <Text strong>{sub.name}</Text>,
-    },
-    {
-      title: t("categories.wadahTitle"),
-      key: "category",
-      render: (_: unknown, { category }: SubRow) => (
-        <Tag color={category.color} style={{ margin: 0 }}>
-          {category.name}
-        </Tag>
+      render: (_: unknown, { category }: CategoryRow) => (
+        <div className="flex items-center gap-2">
+          <span
+            style={{
+              display: "inline-block",
+              width: 10,
+              height: 10,
+              borderRadius: "50%",
+              background: category.color,
+              flexShrink: 0,
+            }}
+          />
+          <Text strong>{category.name}</Text>
+        </div>
       ),
     },
     {
-      title: t("table.colAction"),
-      key: "action",
-      width: 90,
-      align: "center",
-      render: (_: unknown, { sub }: SubRow) => (
-        <div className="flex justify-center gap-1">
-          <Button
-            type="text"
-            shape="circle"
-            size="small"
-            icon={<EditOutlined />}
-            onClick={() => {
-              setEditingSub(sub);
-              subForm.setFieldsValue({ name: sub.name });
-              setSubModalOpen(true);
-            }}
-            aria-label={t("settings.editSubcategory")}
-          />
-          <Popconfirm
-            title={t("settings.deleteSubConfirm")}
-            okText={t("common.delete")}
-            okButtonProps={{ danger: true }}
-            cancelText={t("common.cancel")}
-            onConfirm={() => void handleDeleteSub(sub.id)}
-          >
-            <Button
-              type="text"
-              shape="circle"
-              size="small"
-              danger
-              icon={<DeleteOutlined />}
-              aria-label={t("common.delete")}
-            />
-          </Popconfirm>
-        </div>
+      title: t("categories.subTitle"),
+      key: "count",
+      width: 140,
+      align: "right",
+      render: (_: unknown, { category }: CategoryRow) => (
+        <Text type="secondary">
+          {t("categories.subCount", { n: category.subcategories.length })}
+        </Text>
       ),
     },
   ];
 
   return (
     <div className="mx-auto w-full max-w-350">
-      <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+      {/* Tabel subkategori sengaja lebih lebar (3/5) dari tabel wadah (2/5) */}
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-5">
         {/* Tabel wadah */}
-        <Card
-          variant="borderless"
-          className="shadow-sm"
-          title={<Text strong>{t("categories.wadahTitle")}</Text>}
-          extra={
-            <Button
-              icon={<PlusOutlined />}
-              onClick={() => {
-                setEditingCat(null);
-                categoryForm.resetFields();
-                setCatModalOpen(true);
-              }}
-            >
-              {t("settings.addCategory")}
-            </Button>
-          }
-          styles={{ body: { padding: 0 } }}
-        >
-          {categories.length === 0 ? (
-            <div className="flex items-center justify-center py-12">
-              <Empty description={t("settings.categoriesEmpty")} />
-            </div>
-          ) : (
-            <Table
-              columns={categoryColumns}
-              dataSource={categoryDataSource}
-              size="small"
-              pagination={false}
-            />
-          )}
-        </Card>
-
-        {/* Tabel subkategori */}
-        <Card
-          variant="borderless"
-          className="shadow-sm"
-          title={<Text strong>{t("categories.subTitle")}</Text>}
-          extra={
-            <Button
-              icon={<PlusOutlined />}
-              disabled={categories.length === 0}
-              onClick={() => {
-                setEditingSub(null);
-                subForm.resetFields();
-                setSubModalOpen(true);
-              }}
-            >
-              {t("settings.addSubcategory")}
-            </Button>
-          }
-          styles={{ body: { padding: 0 } }}
-        >
-          {subDataSource.length === 0 ? (
-            <div className="flex items-center justify-center py-12">
-              <Empty
-                description={
-                  categories.length === 0
-                    ? t("settings.categoriesEmpty")
-                    : t("categories.subEmpty")
-                }
+        <div className="xl:col-span-2">
+          <Card
+            variant="borderless"
+            className="shadow-sm h-full"
+            title={<Text strong>{t("categories.wadahTitle")}</Text>}
+            extra={
+              <Button
+                type="primary"
+                icon={<PlusOutlined />}
+                onClick={() => {
+                  setEditingCat(null);
+                  categoryForm.resetFields();
+                  setCatModalOpen(true);
+                }}
+              >
+                {t("settings.addCategory")}
+              </Button>
+            }
+            styles={{ body: { padding: 0 } }}
+          >
+            {categories.length === 0 ? (
+              <div className="flex items-center justify-center py-12">
+                <Empty description={t("settings.categoriesEmpty")} />
+              </div>
+            ) : (
+              <Table
+                columns={categoryColumns}
+                dataSource={categoryDataSource}
+                size="small"
+                pagination={false}
               />
-            </div>
-          ) : (
-            <Table
-              columns={subColumns}
-              dataSource={subDataSource}
-              size="small"
-              pagination={false}
-            />
-          )}
-        </Card>
+            )}
+          </Card>
+        </div>
+
+        {/* Tabel subkategori: dikelompokkan per wadah via expanded row,
+            baris wadah tanpa aksi (CRUD wadah ada di tabel sebelah). */}
+        <div className="xl:col-span-3">
+          <Card
+            variant="borderless"
+            className="shadow-sm h-full"
+            title={<Text strong>{t("categories.subTitle")}</Text>}
+            extra={
+              <Space size="small" wrap>
+                <Select
+                  value={wadahFilter ?? undefined}
+                  onChange={(v) => setWadahFilter(v ?? null)}
+                  placeholder={t("categories.filterWadahPlaceholder")}
+                  allowClear
+                  showSearch
+                  optionFilterProp="label"
+                  options={categories.map((c) => ({
+                    value: c.id,
+                    label: c.name,
+                  }))}
+                  style={{ minWidth: 150 }}
+                  aria-label={t("categories.filterWadah")}
+                />
+                <Button
+                  type="primary"
+                  icon={<PlusOutlined />}
+                  disabled={categories.length === 0}
+                  onClick={() => {
+                    setEditingSub(null);
+                    subForm.resetFields();
+                    // Pra-pilih wadah yang sedang difilter bila ada.
+                    if (wadahFilter) {
+                      subForm.setFieldValue("categoryId", wadahFilter);
+                    }
+                    setSubModalOpen(true);
+                  }}
+                >
+                  {t("settings.addSubcategory")}
+                </Button>
+              </Space>
+            }
+            styles={{ body: { padding: 0 } }}
+          >
+            {categories.length === 0 ? (
+              <div className="flex items-center justify-center py-12">
+                <Empty description={t("settings.categoriesEmpty")} />
+              </div>
+            ) : totalFilteredSubs === 0 ? (
+              <div className="flex items-center justify-center py-12">
+                <Empty description={t("categories.subEmpty")} />
+              </div>
+            ) : (
+              /* key mengikuti filter agar tabel remount dan semua baris
+                 wadah ter-expand ulang (perilaku defaultExpandAllRows). */
+              <Table
+                key={wadahFilter ?? "all"}
+                columns={subColumns}
+                dataSource={subDataSource}
+                size="small"
+                pagination={false}
+                expandable={{
+                  defaultExpandAllRows: true,
+                  expandRowByClick: true,
+                  rowExpandable: ({ category }) =>
+                    category.subcategories.length > 0,
+                  expandedRowRender: ({ category }: CategoryRow) => (
+                    <div className="space-y-1">
+                      {category.subcategories.map((sub) => (
+                        <div
+                          key={sub.id}
+                          className="flex items-center justify-between gap-2"
+                        >
+                          <Text type="secondary" style={{ fontSize: 12 }}>
+                            • {sub.name}
+                          </Text>
+                          <Space size={0}>
+                            <Tooltip title={t("settings.editSubcategory")}>
+                              <Button
+                                type="text"
+                                shape="circle"
+                                size="small"
+                                icon={<EditOutlined />}
+                                onClick={() => {
+                                  setEditingSub(sub);
+                                  subForm.setFieldsValue({ name: sub.name });
+                                  setSubModalOpen(true);
+                                }}
+                                aria-label={t("settings.editSubcategory")}
+                              />
+                            </Tooltip>
+                            <Popconfirm
+                              title={t("settings.deleteSubConfirm")}
+                              okText={t("common.delete")}
+                              okButtonProps={{ danger: true }}
+                              cancelText={t("common.cancel")}
+                              onConfirm={() => void handleDeleteSub(sub.id)}
+                            >
+                              <Button
+                                type="text"
+                                shape="circle"
+                                size="small"
+                                danger
+                                icon={<DeleteOutlined />}
+                                aria-label={t("common.delete")}
+                              />
+                            </Popconfirm>
+                          </Space>
+                        </div>
+                      ))}
+                    </div>
+                  ),
+                }}
+              />
+            )}
+          </Card>
+        </div>
       </div>
 
       {/* Modal wadah */}

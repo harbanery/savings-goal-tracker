@@ -265,6 +265,9 @@ const id: TranslationDict = {
   "categories.wadahTitle": "Wadah",
   "categories.subTitle": "Subkategori",
   "categories.subEmpty": "Belum ada subkategori. Tambahkan dari wadah yang tersedia.",
+  "categories.filterWadah": "Filter Wadah",
+  "categories.filterWadahPlaceholder": "Semua Wadah",
+  "categories.subCount": "{n} subkategori",
 };
 
 const en: TranslationDict = {
@@ -510,6 +513,9 @@ const en: TranslationDict = {
   "categories.subTitle": "Subcategories",
   "categories.subEmpty":
     "No subcategories yet. Add one from an existing envelope.",
+  "categories.filterWadah": "Filter Envelope",
+  "categories.filterWadahPlaceholder": "All Envelopes",
+  "categories.subCount": "{n} subcategories",
 };
 
 export const TRANSLATIONS: Record<Locale, TranslationDict> = { id, en };
