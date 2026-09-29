@@ -109,7 +109,6 @@ const id: TranslationDict = {
   "chart.dailySpendingTitle": "Pengeluaran Harian per Tanggal",
 
   // Import / Export
-  "io.menu": "Import / Export",
   "io.template": "Template",
   "io.export": "Export",
   "io.import": "Import",
@@ -261,6 +260,11 @@ const id: TranslationDict = {
   "settings.addSubcategory": "Tambah Subkategori",
   "settings.editSubcategory": "Edit Subkategori",
   "settings.subcategoryName": "Nama Subkategori",
+
+  // Kategori (table wadah & subkategori dipisah)
+  "categories.wadahTitle": "Wadah",
+  "categories.subTitle": "Subkategori",
+  "categories.subEmpty": "Belum ada subkategori. Tambahkan dari wadah yang tersedia.",
 };
 
 const en: TranslationDict = {
@@ -352,7 +356,6 @@ const en: TranslationDict = {
   "chart.dailySpending": "Daily Spending",
   "chart.dailySpendingTitle": "Daily Spending by Date",
 
-  "io.menu": "Import / Export",
   "io.template": "Template",
   "io.export": "Export",
   "io.import": "Import",
@@ -501,6 +504,12 @@ const en: TranslationDict = {
   "settings.addSubcategory": "Add Subcategory",
   "settings.editSubcategory": "Edit Subcategory",
   "settings.subcategoryName": "Subcategory Name",
+
+  // Categories (separate envelope & subcategory tables)
+  "categories.wadahTitle": "Envelopes",
+  "categories.subTitle": "Subcategories",
+  "categories.subEmpty":
+    "No subcategories yet. Add one from an existing envelope.",
 };
 
 export const TRANSLATIONS: Record<Locale, TranslationDict> = { id, en };
