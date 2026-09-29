@@ -45,7 +45,7 @@ const { Text } = Typography;
  * dan sisa border — dengan batas minimum agar tetap usable di layar
  * pendek.
  */
-const TABLE_SCROLL_Y = "max(240px, calc(100dvh - 380px))";
+const TABLE_SCROLL_Y = "max(240px, calc(100dvh - 300px))";
 
 interface Props {
   transactions: Transaction[];
@@ -113,7 +113,8 @@ export default function TransactionTable({
       const q = searchText.trim().toLowerCase();
       result = result.filter(
         (tr) =>
-          tr.name.toLowerCase().includes(q) || tr.note.toLowerCase().includes(q),
+          tr.name.toLowerCase().includes(q) ||
+          tr.note.toLowerCase().includes(q),
       );
     }
     if (filterType !== "ALL") {
@@ -176,7 +177,9 @@ export default function TransactionTable({
           color={TYPE_TAG[record.transaction.type].color}
           style={{ margin: 0, fontSize: 11 }}
         >
-          {t(`form.type${record.transaction.type.charAt(0)}${record.transaction.type.slice(1).toLowerCase()}`)}
+          {t(
+            `form.type${record.transaction.type.charAt(0)}${record.transaction.type.slice(1).toLowerCase()}`,
+          )}
         </Tag>
       ),
     },
@@ -213,7 +216,17 @@ export default function TransactionTable({
       render: (_: unknown, record: RowData) => {
         const { color, icon } = TYPE_TAG[record.transaction.type];
         return (
-          <Text strong style={{ color: color === "red" ? "#ef4444" : color === "green" ? "#16a34a" : undefined }}>
+          <Text
+            strong
+            style={{
+              color:
+                color === "red"
+                  ? "#ef4444"
+                  : color === "green"
+                    ? "#16a34a"
+                    : undefined,
+            }}
+          >
             {icon} {formatIDR(record.transaction.amount, locale)}
           </Text>
         );
@@ -331,11 +344,21 @@ export default function TransactionTable({
       styles={{ body: { padding: 0 } }}
     >
       {transactions.length === 0 ? (
-        <div className="flex items-center justify-center py-12">
+        <div
+          style={{
+            height: TABLE_SCROLL_Y,
+          }}
+          className="flex items-center justify-center py-12"
+        >
           <Empty description={t("table.empty")} />
         </div>
       ) : filtered.length === 0 ? (
-        <div className="flex items-center justify-center py-12">
+        <div
+          style={{
+            height: TABLE_SCROLL_Y,
+          }}
+          className="flex items-center justify-center py-12"
+        >
           <Empty description={t("table.noMatch")} />
         </div>
       ) : (
@@ -348,7 +371,7 @@ export default function TransactionTable({
               dataSource={dataSource}
               pagination={{ pageSize: 10, size: "small" }}
               size="small"
-              scroll={{ x: 700, y: TABLE_SCROLL_Y }}
+              scroll={{ y: TABLE_SCROLL_Y }}
             />
           </div>
           {/* Kartu untuk mobile */}

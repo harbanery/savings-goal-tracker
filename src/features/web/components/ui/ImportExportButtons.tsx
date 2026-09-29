@@ -14,10 +14,7 @@ import {
   generateTemplateCsv,
   parseCsvToTransactions,
 } from "@/features/web/utils/csv";
-import type {
-  BudgetCategory,
-  Transaction,
-} from "@/features/web/types";
+import type { BudgetCategory, Transaction } from "@/features/web/types";
 import { useLocale } from "@/components/i18n/LocaleProvider";
 
 interface Props {
@@ -78,9 +75,7 @@ export default function ImportExportButtons({
   }
 
   /** Parse & import file CSV yang dipilih. */
-  async function handleFileChange(
-    event: React.ChangeEvent<HTMLInputElement>,
-  ) {
+  async function handleFileChange(event: React.ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
     // Reset value agar file yang sama bisa dipilih ulang.
     event.target.value = "";
@@ -174,7 +169,7 @@ export default function ImportExportButtons({
         placement="bottomRight"
         trigger={["click"]}
       >
-        <span className="flex items-center gap-1">
+        <span className="flex items-center gap-2">
           <UploadOutlined />
           {t("io.import")}
         </span>
