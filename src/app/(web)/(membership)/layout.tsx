@@ -2,6 +2,8 @@ import { redirect } from "next/navigation";
 import type { ReactNode } from "react";
 import { getCurrentUser } from "@/lib/auth";
 import { ensureUserDefaults } from "@/services/user";
+import { getUserSettings } from "@/services/transaction";
+import { CycleProvider } from "@/features/web/hooks/cycle";
 import BaseLayout from "@/features/web/components/layout";
 
 export const dynamic = "force-dynamic";
@@ -20,5 +22,11 @@ export default async function MembershipLayout({
   }
   await ensureUserDefaults(user.id);
 
-  return <BaseLayout>{children}</BaseLayout>;
+  const settings = await getUserSettings(user.id);
+
+  return (
+    <CycleProvider startDay={settings.cycleStartDay}>
+      <BaseLayout>{children}</BaseLayout>
+    </CycleProvider>
+  );
 }

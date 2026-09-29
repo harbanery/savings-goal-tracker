@@ -1,6 +1,6 @@
 "use client";
 
-import { LeftOutlined, PlusOutlined, RightOutlined } from "@ant-design/icons";
+import { PlusOutlined } from "@ant-design/icons";
 import {
   Button,
   Card,
@@ -27,12 +27,10 @@ import type {
   BudgetCategory,
   RecurringRule,
   Transaction,
-  UserSettings,
 } from "@/features/web/types";
+import { useCycle } from "@/features/web/hooks/cycle";
 import {
   formatCycleLabel,
-  getCurrentCycle,
-  shiftCycle,
   type CycleInfo,
 } from "@/features/web/utils/cycle";
 import TransactionFormModal from "./TransactionFormModal";
@@ -45,35 +43,30 @@ const { Text } = Typography;
 interface Props {
   initialTransactions: Transaction[];
   categories: BudgetCategory[];
-  settings: UserSettings;
 }
 
 /**
  * Halaman Transaksi (generate_web.md): seluruh catatan transaksi siklus —
  * semua jenis (pemasukan/pengeluaran/transfer), pencarian, filter,
- * import/export, dan CRUD.
+ * import/export, CRUD, dan daftar transaksi berulang. Navigasi siklus
+ * ada di navbar (DatePicker month).
  */
 export default function TransactionsView({
   initialTransactions,
   categories,
-  settings,
 }: Readonly<Props>) {
   const [transactions, setTransactions] =
     useState<Transaction[]>(initialTransactions);
   const [formOpen, setFormOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [cycle, setCycle] = useState<CycleInfo>(() =>
-    getCurrentCycle(settings.cycleStartDay),
-  );
   const [rules, setRules] = useState<RecurringRule[]>([]);
+
+  /** Siklus aktif global (dipilih lewat DatePicker month di navbar). */
+  const { cycle } = useCycle();
 
   const { t, locale } = useLocale();
 
   const cycleLabel = formatCycleLabel(cycle.year, cycle.monthIndex, locale);
-  const isCurrentCycle = useMemo(
-    () => cycle.key === getCurrentCycle(settings.cycleStartDay).key,
-    [cycle, settings.cycleStartDay],
-  );
 
   const editingTransaction = useMemo(
     () =>
@@ -165,45 +158,8 @@ export default function TransactionsView({
 
   return (
     <div className="mx-auto flex w-full max-w-350 flex-col">
-      {/* Baris navigasi siklus + tombol tambah */}
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
-        <Space size="small">
-          <Tooltip title={t("app.prevCycle")}>
-            <Button
-              shape="circle"
-              icon={<LeftOutlined />}
-              onClick={() =>
-                setCycle((c) => shiftCycle(c, -1, settings.cycleStartDay))
-              }
-              aria-label={t("app.prevCycle")}
-            />
-          </Tooltip>
-          <Text
-            strong
-            style={{ fontSize: 15, minWidth: 130, textAlign: "center" }}
-          >
-            {cycleLabel}
-          </Text>
-          <Tooltip title={t("app.nextCycle")}>
-            <Button
-              shape="circle"
-              icon={<RightOutlined />}
-              onClick={() =>
-                setCycle((c) => shiftCycle(c, 1, settings.cycleStartDay))
-              }
-              aria-label={t("app.nextCycle")}
-            />
-          </Tooltip>
-          {!isCurrentCycle && (
-            <Button
-              onClick={() =>
-                setCycle(getCurrentCycle(settings.cycleStartDay))
-              }
-            >
-              {t("app.currentCycle")}
-            </Button>
-          )}
-        </Space>
+      {/* Navigasi siklus ada di navbar (DatePicker month); sisakan aksi transaksi */}
+      <div className="mb-4 flex flex-wrap items-center justify-end gap-2">
         <Space size="small" wrap>
           <ImportExportButtons
             transactions={transactions}

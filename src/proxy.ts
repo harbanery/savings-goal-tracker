@@ -10,10 +10,10 @@ import { SESSION_COOKIE } from "@/utils/config/variables";
 const PRIVATE_PAGES = [
   "/",
   "/transactions",
-  "/categories",
   "/finance",
+  "/finance/budget",
+  "/finance/target",
   "/reports",
-  "/settings",
 ];
 const PRIVATE_API_PREFIXES = ["/api/web/push"];
 

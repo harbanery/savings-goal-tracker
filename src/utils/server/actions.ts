@@ -335,7 +335,7 @@ export async function updateSettingsAction(data: {
   const userId = await requireUserId();
   const settings = await updateUserSettings(userId, data);
   revalidatePath("/");
-  revalidatePath("/settings");
+  revalidatePath("/finance/budget");
   revalidatePath("/finance");
   return settings;
 }
@@ -356,7 +356,7 @@ export async function createCategoryAction(data: {
     walletType: data.walletType,
   });
   revalidatePath("/");
-  revalidatePath("/settings");
+  revalidatePath("/finance/budget");
   revalidatePath("/finance");
   return category;
 }
@@ -375,7 +375,7 @@ export async function updateCategoryAction(
   if (data.name !== undefined) data.name = sanitizeText(data.name, 50);
   await updateCategory(userId, categoryId, data);
   revalidatePath("/");
-  revalidatePath("/settings");
+  revalidatePath("/finance/budget");
   revalidatePath("/finance");
 }
 
@@ -384,7 +384,7 @@ export async function deleteCategoryAction(categoryId: string): Promise<void> {
   if (!isUuid(categoryId)) throw new Error("Invalid category id.");
   await deleteCategory(userId, categoryId);
   revalidatePath("/");
-  revalidatePath("/settings");
+  revalidatePath("/finance/budget");
   revalidatePath("/finance");
 }
 
@@ -398,7 +398,7 @@ export async function createSubcategoryAction(
   if (!clean) throw new Error("Nama subkategori wajib diisi.");
   await createSubcategory(userId, categoryId, clean);
   revalidatePath("/");
-  revalidatePath("/settings");
+  revalidatePath("/finance/budget");
   revalidatePath("/finance");
 }
 
@@ -409,7 +409,7 @@ export async function deleteSubcategoryAction(
   if (!isUuid(subcategoryId)) throw new Error("Invalid subcategory id.");
   await deleteSubcategory(userId, subcategoryId);
   revalidatePath("/");
-  revalidatePath("/settings");
+  revalidatePath("/finance/budget");
   revalidatePath("/finance");
 }
 
@@ -423,7 +423,7 @@ export async function updateSubcategoryAction(
   if (!clean) throw new Error("Nama subkategori wajib diisi.");
   await updateSubcategory(userId, subcategoryId, clean);
   revalidatePath("/");
-  revalidatePath("/settings");
+  revalidatePath("/finance/budget");
   revalidatePath("/finance");
 }
 
@@ -458,7 +458,7 @@ export async function createTargetAction(data: {
     deadline,
     note: data.note,
   });
-  revalidatePath("/finance");
+  revalidatePath("/finance/target");
   return target;
 }
 
@@ -480,14 +480,14 @@ export async function updateTargetAction(
     deadline,
     note: data.note,
   });
-  revalidatePath("/finance");
+  revalidatePath("/finance/target");
 }
 
 export async function deleteTargetAction(id: string): Promise<void> {
   const userId = await requireUserId();
   if (!isUuid(id)) throw new Error("Invalid target id.");
   await deleteTarget(userId, id);
-  revalidatePath("/finance");
+  revalidatePath("/finance/target");
 }
 
 /** Tambah dana terkumpul pada target. */
@@ -498,7 +498,7 @@ export async function addTargetFundsAction(
   const userId = await requireUserId();
   if (!isUuid(id)) throw new Error("Invalid target id.");
   const target = await addTargetFunds(userId, id, amount);
-  revalidatePath("/finance");
+  revalidatePath("/finance/target");
   return target;
 }
 

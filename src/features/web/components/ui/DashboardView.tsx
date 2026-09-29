@@ -1,7 +1,7 @@
 "use client";
 
-import { LeftOutlined, PlusOutlined, RightOutlined } from "@ant-design/icons";
-import { Alert, Button, Space, Tooltip, Typography } from "antd";
+import { PlusOutlined } from "@ant-design/icons";
+import { Alert, Button } from "antd";
 import dynamic from "next/dynamic";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useLocale } from "@/components/i18n/LocaleProvider";
@@ -16,12 +16,8 @@ import type {
   Transaction,
   UserSettings,
 } from "@/features/web/types";
-import {
-  formatCycleLabel,
-  getCurrentCycle,
-  shiftCycle,
-  type CycleInfo,
-} from "@/features/web/utils/cycle";
+import { useCycle } from "@/features/web/hooks/cycle";
+import { formatCycleLabel, type CycleInfo } from "@/features/web/utils/cycle";
 import { formatIDR } from "@/utils/helpers";
 import TransactionFormModal from "./TransactionFormModal";
 import StatsCards from "./StatsCards";
@@ -29,7 +25,6 @@ import StatsCards from "./StatsCards";
 const ChartLoading = () => (
   <div className="flex h-[300px] items-center justify-center">Loading…</div>
 );
-
 const AllocationBarChart = dynamic(
   () => import("./charts/AllocationBarChart"),
   { ssr: false, loading: ChartLoading },
@@ -54,8 +49,6 @@ const SavingsComparisonBarChart = dynamic(
   () => import("./charts/SavingsComparisonBarChart"),
   { ssr: false, loading: ChartLoading },
 );
-
-const { Text } = Typography;
 
 interface Props {
   initialTransactions: Transaction[];
@@ -82,17 +75,13 @@ export default function DashboardView({
     useState<Record<string, Transaction[]>>(initialHistorical);
   const [formOpen, setFormOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [cycle, setCycle] = useState<CycleInfo>(() =>
-    getCurrentCycle(settings.cycleStartDay),
-  );
+
+  /** Siklus aktif global (dipilih lewat DatePicker month di navbar). */
+  const { cycle } = useCycle();
 
   const { t, locale } = useLocale();
 
   const cycleLabel = formatCycleLabel(cycle.year, cycle.monthIndex, locale);
-  const isCurrentCycle = useMemo(
-    () => cycle.key === getCurrentCycle(settings.cycleStartDay).key,
-    [cycle, settings.cycleStartDay],
-  );
 
   const stats = useMemo(
     () => computeCycleStats(transactions, categories, settings.savingsInitial),
@@ -139,43 +128,8 @@ export default function DashboardView({
 
   return (
     <div className="mx-auto w-full max-w-350">
-      {/* Baris navigasi siklus + tombol tambah */}
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
-        <Space size="small">
-          <Tooltip title={t("app.prevCycle")}>
-            <Button
-              shape="circle"
-              icon={<LeftOutlined />}
-              onClick={() =>
-                setCycle((c) => shiftCycle(c, -1, settings.cycleStartDay))
-              }
-              aria-label={t("app.prevCycle")}
-            />
-          </Tooltip>
-          <Text
-            strong
-            style={{ fontSize: 15, minWidth: 130, textAlign: "center" }}
-          >
-            {cycleLabel}
-          </Text>
-          <Tooltip title={t("app.nextCycle")}>
-            <Button
-              shape="circle"
-              icon={<RightOutlined />}
-              onClick={() =>
-                setCycle((c) => shiftCycle(c, 1, settings.cycleStartDay))
-              }
-              aria-label={t("app.nextCycle")}
-            />
-          </Tooltip>
-          {!isCurrentCycle && (
-            <Button
-              onClick={() => setCycle(getCurrentCycle(settings.cycleStartDay))}
-            >
-              {t("app.currentCycle")}
-            </Button>
-          )}
-        </Space>
+      {/* Navigasi siklus ada di navbar (DatePicker month); sisakan tombol tambah */}
+      <div className="mb-4 flex flex-wrap items-center justify-end gap-2">
         <Button
           type="primary"
           icon={<PlusOutlined />}

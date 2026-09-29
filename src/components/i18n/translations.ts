@@ -191,14 +191,13 @@ const id: TranslationDict = {
   "menu.dashboard": "Dashboard",
   "menu.transactions": "Transaksi",
   "menu.finance": "Keuangan",
+  "menu.budget": "Budget",
+  "menu.target": "Target",
   "menu.reports": "Laporan",
-  "menu.settings": "Pengaturan",
   "menu.open": "Buka menu",
 
-  // Navigasi siklus
-  "app.prevCycle": "Siklus sebelumnya",
-  "app.nextCycle": "Siklus berikutnya",
-  "app.currentCycle": "Sekarang",
+  // Navigasi siklus (navbar)
+  "app.cyclePicker": "Pilih siklus bulan",
 
   // Auth / Login
   "auth.logout": "Keluar",
@@ -234,17 +233,13 @@ const id: TranslationDict = {
   "table.filterAll": "Semua",
   "table.filterAllUnits": "Semua Wadah",
 
-  // Settings
-  "settings.title": "Pengaturan",
-  "settings.financeTitle": "Keuangan & Siklus",
-  "settings.cycleStartDay": "Tanggal Mulai Siklus",
-  "settings.cycleStartDayHint":
-    "Tanggal mulai siklus setiap bulan (1-28), berlaku per akun.",
-  "settings.savingsInitial": "Saldo Awal",
+  // Settings (kini tinggal label yang dipakai halaman Budget)
   "settings.save": "Simpan",
   "settings.saved": "Perubahan tersimpan",
   "settings.saveFailed": "Gagal menyimpan perubahan",
-  "settings.categoriesTitle": "Wadah & Subkategori",
+  "settings.cycleStartDay": "Tanggal Mulai Siklus",
+  "settings.cycleStartDayHint":
+    "Tanggal mulai siklus setiap bulan (1-28), berlaku per akun.",
   "settings.categoriesEmpty":
     "Belum ada wadah. Tambahkan wadah pertama Anda untuk mulai mencatat transaksi.",
   "settings.addCategory": "Tambah Wadah",
@@ -269,10 +264,7 @@ const id: TranslationDict = {
   "categories.filterWadahPlaceholder": "Semua Wadah",
   "categories.subCount": "{n} subkategori",
 
-  // Keuangan: Dompet / Budget / Target
-  "finance.tabWallets": "Dompet",
-  "finance.tabBudget": "Budget",
-  "finance.tabTargets": "Target",
+  // Keuangan: halaman Dompet / Budget / Target
   "finance.walletType": "Jenis Dompet",
   "finance.walletBank": "Bank",
   "finance.walletEwallet": "E-Wallet",
@@ -282,7 +274,7 @@ const id: TranslationDict = {
   "finance.budgetSpent": "Terpakai",
   "finance.budgetSettingTitle": "Atur Tabungan per Siklus",
   "finance.budgetSettingHint":
-    "Contoh: pemasukan 5 juta dengan tabungan 2 juta → hanya 3 juta yang bisa dialokasikan ke masing-masing wadah. Pengeluaran yang mencoba menyentuh tabungan akan meminta konfirmasi terpaksa.",
+    "Nominal tabungan yang tidak boleh tersentuh pengeluaran pada setiap siklus. Pengeluaran yang mencoba melampaui batas alokasi akan diminta konfirmasi terpaksa sebelum tersimpan.",
   "finance.budgetOverTitle": "Alokasi Terlampaui",
   "finance.budgetOverDesc":
     "Pengeluaran {spent} sudah melebihi batas alokasi {limit} dan menyentuh tabungan dilindungi.",
@@ -489,14 +481,13 @@ const en: TranslationDict = {
   "menu.dashboard": "Dashboard",
   "menu.transactions": "Transactions",
   "menu.finance": "Finance",
+  "menu.budget": "Budget",
+  "menu.target": "Target",
   "menu.reports": "Reports",
-  "menu.settings": "Settings",
   "menu.open": "Open menu",
 
-  // Cycle navigation
-  "app.prevCycle": "Previous cycle",
-  "app.nextCycle": "Next cycle",
-  "app.currentCycle": "Now",
+  // Cycle navigation (navbar)
+  "app.cyclePicker": "Select cycle month",
 
   // Auth / Login
   "auth.logout": "Log out",
@@ -532,17 +523,13 @@ const en: TranslationDict = {
   "table.filterAll": "All",
   "table.filterAllUnits": "All Envelopes",
 
-  // Settings
-  "settings.title": "Settings",
-  "settings.financeTitle": "Finance & Cycle",
-  "settings.cycleStartDay": "Cycle Start Day",
-  "settings.cycleStartDayHint":
-    "Day of month the cycle starts (1-28), configured per account.",
-  "settings.savingsInitial": "Initial Balance",
+  // Settings (only labels used by the Budget page remain)
   "settings.save": "Save",
   "settings.saved": "Changes saved",
   "settings.saveFailed": "Failed to save changes",
-  "settings.categoriesTitle": "Envelopes & Subcategories",
+  "settings.cycleStartDay": "Cycle Start Day",
+  "settings.cycleStartDayHint":
+    "Day of month the cycle starts (1-28), configured per account.",
   "settings.categoriesEmpty":
     "No envelopes yet. Add your first envelope to start recording transactions.",
   "settings.addCategory": "Add Envelope",
@@ -568,10 +555,7 @@ const en: TranslationDict = {
   "categories.filterWadahPlaceholder": "All Envelopes",
   "categories.subCount": "{n} subcategories",
 
-  // Finance: Wallets / Budget / Targets
-  "finance.tabWallets": "Wallets",
-  "finance.tabBudget": "Budget",
-  "finance.tabTargets": "Targets",
+  // Finance: Wallets / Budget / Target pages
   "finance.walletType": "Wallet Type",
   "finance.walletBank": "Bank",
   "finance.walletEwallet": "E-Wallet",
@@ -581,7 +565,7 @@ const en: TranslationDict = {
   "finance.budgetSpent": "Spent",
   "finance.budgetSettingTitle": "Set Savings per Cycle",
   "finance.budgetSettingHint":
-    "Example: with 5M income and 2M savings, only 3M can be allocated to each envelope. Spending that tries to touch the savings will require a forced confirmation.",
+    "The amount of savings that spending must not touch each cycle. Expenses that would exceed the allocation limit will require a forced confirmation before saving.",
   "finance.budgetOverTitle": "Allocation Exceeded",
   "finance.budgetOverDesc":
     "Spending {spent} has exceeded the {limit} allocation limit and touched your protected savings.",

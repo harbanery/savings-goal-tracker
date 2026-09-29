@@ -1,7 +1,7 @@
 "use client";
 
-import { BulbOutlined, LeftOutlined, RightOutlined } from "@ant-design/icons";
-import { Button, Space, Tooltip, Typography } from "antd";
+import { BulbOutlined } from "@ant-design/icons";
+import { Typography } from "antd";
 import dynamic from "next/dynamic";
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { useLocale } from "@/components/i18n/LocaleProvider";
@@ -12,19 +12,15 @@ import type {
   Transaction,
   UserSettings,
 } from "@/features/web/types";
-import {
-  formatCycleLabel,
-  getCurrentCycle,
-  shiftCycle,
-  type CycleInfo,
-} from "@/features/web/utils/cycle";
+import { useCycle } from "@/features/web/hooks/cycle";
+import type { CycleInfo } from "@/features/web/utils/cycle";
 import CategoryBreakdown from "./CategoryBreakdown";
 
 const TopKeywordsInsights = dynamic(() => import("./TopKeywordsInsights"), {
   ssr: false,
 });
 
-const { Text, Title } = Typography;
+const { Title } = Typography;
 
 /** Judul sub-bagian laporan. */
 function ReportSection({
@@ -67,17 +63,11 @@ export default function ReportsView({
 }: Readonly<Props>) {
   const [transactions, setTransactions] =
     useState<Transaction[]>(initialTransactions);
-  const [cycle, setCycle] = useState<CycleInfo>(() =>
-    getCurrentCycle(settings.cycleStartDay),
-  );
 
-  const { t, locale } = useLocale();
+  /** Siklus aktif global (dipilih lewat DatePicker month di navbar). */
+  const { cycle } = useCycle();
 
-  const cycleLabel = formatCycleLabel(cycle.year, cycle.monthIndex, locale);
-  const isCurrentCycle = useMemo(
-    () => cycle.key === getCurrentCycle(settings.cycleStartDay).key,
-    [cycle, settings.cycleStartDay],
-  );
+  const { t } = useLocale();
 
   const stats = useMemo(
     () => computeCycleStats(transactions, categories, settings.savingsInitial),
@@ -101,48 +91,6 @@ export default function ReportsView({
 
   return (
     <div className="mx-auto w-full max-w-350">
-      {/* Baris navigasi siklus */}
-      <div className="mb-4 flex flex-wrap items-center gap-2">
-        <Space size="small">
-          <Tooltip title={t("app.prevCycle")}>
-            <Button
-              shape="circle"
-              icon={<LeftOutlined />}
-              onClick={() =>
-                setCycle((c) => shiftCycle(c, -1, settings.cycleStartDay))
-              }
-              aria-label={t("app.prevCycle")}
-            />
-          </Tooltip>
-          <Text
-            strong
-            style={{ fontSize: 15, minWidth: 130, textAlign: "center" }}
-          >
-            {cycleLabel}
-          </Text>
-          <Tooltip title={t("app.nextCycle")}>
-            <Button
-              shape="circle"
-              icon={<RightOutlined />}
-              onClick={() =>
-                setCycle((c) => shiftCycle(c, 1, settings.cycleStartDay))
-              }
-              aria-label={t("app.nextCycle")}
-            />
-          </Tooltip>
-          {!isCurrentCycle && (
-            <Button
-              size="small"
-              onClick={() =>
-                setCycle(getCurrentCycle(settings.cycleStartDay))
-              }
-            >
-              {t("app.currentCycle")}
-            </Button>
-          )}
-        </Space>
-      </div>
-
       {/* Alokasi wadah (dipindah dari dashboard) */}
       <CategoryBreakdown stats={stats} />
 

@@ -36,7 +36,6 @@ export default async function TransactionsSection() {
     <TransactionsView
       initialTransactions={initialTransactions}
       categories={categories}
-      settings={settings}
     />
   );
 }

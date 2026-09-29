@@ -1,8 +1,21 @@
 "use client";
 
-import { Alert, App, Button, Card, Col, Form, InputNumber, Row, Statistic, Typography } from "antd";
+import {
+  Alert,
+  App,
+  Button,
+  Card,
+  Col,
+  Form,
+  InputNumber,
+  Row,
+  Select,
+  Statistic,
+  Typography,
+} from "antd";
 import {
   CheckOutlined,
+  CalendarOutlined,
   ExclamationCircleOutlined,
   LockOutlined,
   PayCircleOutlined,
@@ -10,14 +23,12 @@ import {
   RiseOutlined,
   WalletOutlined,
 } from "@ant-design/icons";
-import { useCallback, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useLocale } from "@/components/i18n/LocaleProvider";
 import type { BudgetOverview, UserSettings } from "@/features/web/types";
-import { getCurrentCycle } from "@/features/web/utils/cycle";
-import {
-  getBudgetOverviewAction,
-  updateSettingsAction,
-} from "@/utils/server/actions";
+import { useCycle } from "@/features/web/hooks/cycle";
+import { getBudgetOverviewAction, updateSettingsAction } from "@/utils/server/actions";
 import { formatIDR } from "@/utils/helpers";
 
 const { Text } = Typography;
@@ -29,44 +40,55 @@ interface Props {
 
 interface BudgetFormValues {
   protectedSavings?: number;
+  cycleStartDay?: number;
 }
 
 /**
- * Tab Budget (menu Keuangan): atur tabungan yang dilindungi per siklus.
- * Bisa dialokasikan = saldo awal + pemasukan - tabungan dilindungi;
- * pengeluaran yang menyentuh tabungan akan meminta konfirmasi terpaksa.
+ * Halaman Budget (menu Keuangan): atur tabungan yang dilindungi per
+ * siklus + tanggal mulai siklus (dipindah dari Pengaturan).
+ * Bisa dialokasikan = pemasukan - tabungan dilindungi; pengeluaran yang
+ * menyentuh tabungan akan meminta konfirmasi terpaksa.
  */
 export default function BudgetView({ initialOverview, settings }: Props) {
   const { t, locale } = useLocale();
   const { message } = App.useApp();
+  const router = useRouter();
   const [form] = Form.useForm<BudgetFormValues>();
   const [overview, setOverview] = useState(initialOverview);
   const [saving, setSaving] = useState(false);
-  const [reloadKey, setReloadKey] = useState(0);
+
+  /** Siklus aktif global (dipilih lewat DatePicker month di navbar). */
+  const { cycle } = useCycle();
 
   const refresh = useCallback(async () => {
     try {
-      const cycle = getCurrentCycle(settings.cycleStartDay);
       setOverview(await getBudgetOverviewAction(cycle));
     } catch {
       // biarkan state lama
     }
-  }, [settings.cycleStartDay]);
+  }, [cycle]);
 
-  /* eslint-disable react-hooks/set-state-in-effect */
+  const mounted = useRef(false);
   useEffect(() => {
-    if (reloadKey > 0) void refresh();
-  }, [reloadKey, refresh]);
-  /* eslint-enable react-hooks/set-state-in-effect */
+    // Lewati fetch pertama (initialOverview sudah dari server).
+    if (!mounted.current) {
+      mounted.current = true;
+      return;
+    }
+    refresh();
+  }, [refresh]);
 
   async function handleSave(values: BudgetFormValues) {
     setSaving(true);
     try {
       await updateSettingsAction({
         protectedSavings: Number(values.protectedSavings ?? 0),
+        cycleStartDay: Number(values.cycleStartDay ?? settings.cycleStartDay),
       });
       message.success(t("settings.saved"));
-      setReloadKey((k) => k + 1);
+      // Refresh server component agar startDay baru tersalur ke
+      // CycleProvider (batas tanggal siklus diturunkan ulang).
+      router.refresh();
     } catch (err) {
       message.error(
         err instanceof Error ? err.message : t("settings.saveFailed"),
@@ -77,7 +99,7 @@ export default function BudgetView({ initialOverview, settings }: Props) {
   }
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="mx-auto flex w-full max-w-350 flex-col gap-4">
       {overview.overProtected && (
         <Alert
           type="warning"
@@ -145,7 +167,10 @@ export default function BudgetView({ initialOverview, settings }: Props) {
           form={form}
           layout="vertical"
           onFinish={handleSave}
-          initialValues={{ protectedSavings: settings.protectedSavings }}
+          initialValues={{
+            protectedSavings: settings.protectedSavings,
+            cycleStartDay: settings.cycleStartDay,
+          }}
           className="max-w-md"
         >
           <Form.Item
@@ -165,6 +190,20 @@ export default function BudgetView({ initialOverview, settings }: Props) {
               }
               parser={(v) => Number((v ?? "").replace(/\D/g, "") || 0)}
               prefix={<WalletOutlined />}
+            />
+          </Form.Item>
+          <Form.Item
+            name="cycleStartDay"
+            label={t("settings.cycleStartDay")}
+            extra={t("settings.cycleStartDayHint")}
+            rules={[{ required: true }]}
+          >
+            <Select
+              options={Array.from({ length: 28 }, (_, i) => ({
+                value: i + 1,
+                label: String(i + 1),
+              }))}
+              suffixIcon={<CalendarOutlined />}
             />
           </Form.Item>
           <div className="flex justify-end">

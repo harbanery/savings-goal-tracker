@@ -91,9 +91,10 @@ function useWalletTypeOptions() {
 }
 
 /**
- * Tab Dompet (menu Keuangan): tabel wadah (CRUD penuh, dikelompokkan per
+ * Halaman Keuangan (Dompet): tabel wadah (CRUD penuh, dikelompokkan per
  * jenis bank/e-wallet) dan tabel subkategori — dikelompokkan per wadah
  * lewat expanded row (baris wadah tanpa aksi edit/hapus).
+ * Budget & Target ada di halaman masing-masing.
  */
 export default function WalletsView({ initialCategories }: Props) {
   const { t, locale } = useLocale();
@@ -323,6 +324,7 @@ export default function WalletsView({ initialCategories }: Props) {
   /**
    * Kolom tabel subkategori: barisnya wadah (tanpa aksi edit/hapus —
    * CRUD wadah ada di tabel wadah). Subkategori muncul saat row di-expand.
+   * Jenis dompet hanya ada di tabel wadah (tidak diulang di sini).
    */
   const subColumns: ColumnsType<CategoryRow> = [
     {
@@ -343,13 +345,6 @@ export default function WalletsView({ initialCategories }: Props) {
           <Text strong>{category.name}</Text>
         </div>
       ),
-    },
-    {
-      title: t("finance.walletType"),
-      key: "walletType",
-      width: 130,
-      render: (_: unknown, { category }: CategoryRow) =>
-        renderWalletType(category.walletType),
     },
     {
       title: t("categories.subTitle"),

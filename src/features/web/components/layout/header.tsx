@@ -5,6 +5,7 @@ import {
   Avatar,
   Breadcrumb,
   Button,
+  DatePicker,
   Dropdown,
   Grid,
   Layout,
@@ -12,6 +13,7 @@ import {
   theme,
   Typography,
 } from "antd";
+import dayjs from "dayjs";
 import { usePathname, useRouter } from "next/navigation";
 import { useMemo } from "react";
 import LanguageToggle from "@/components/i18n/LanguageToggle";
@@ -19,6 +21,8 @@ import { useLocale } from "@/components/i18n/LocaleProvider";
 import ThemeToggle from "@/components/ui/theme/ThemeToggle";
 import NotificationBell from "@/features/web/components/ui/NotificationBell";
 import RealtimeClock from "@/features/web/components/ui/RealtimeClock";
+import { useCycle } from "@/features/web/hooks/cycle";
+import { getCycleInfo } from "@/features/web/utils/cycle";
 import { clearWebSession, useWebSession } from "@/features/web/hooks/session";
 import { menuConfig } from "@/features/web/utils/menu";
 
@@ -35,6 +39,7 @@ export default function HeaderLayout({
   const pathname = usePathname();
   const { t } = useLocale();
   const { user } = useWebSession();
+  const { cycle, setCycle, startDay } = useCycle();
   const screens = Grid.useBreakpoint();
   const isMobile = !screens.md;
   // Warna header mengikuti tema antd (light/dark) via design token.
@@ -98,6 +103,18 @@ export default function HeaderLayout({
       </div>
 
       <Space size="middle" wrap={false}>
+        {/* Pemilih siklus bulanan (menggantikan baris navigasi per halaman) */}
+        <DatePicker
+          picker="month"
+          allowClear={false}
+          value={dayjs().year(cycle.year).month(cycle.monthIndex)}
+          onChange={(date) => {
+            if (date) {
+              setCycle(getCycleInfo(date.year(), date.month(), startDay));
+            }
+          }}
+          aria-label={t("app.cyclePicker")}
+        />
         {!isMobile && <RealtimeClock />}
         <ThemeToggle />
         <LanguageToggle />
