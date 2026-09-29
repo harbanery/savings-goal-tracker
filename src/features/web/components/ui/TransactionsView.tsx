@@ -22,6 +22,7 @@ import {
 } from "@/features/web/utils/cycle";
 import TransactionFormModal from "./TransactionFormModal";
 import TransactionTable from "./TransactionTable";
+import ImportExportButtons from "./ImportExportButtons";
 
 const { Text, Title } = Typography;
 
@@ -151,33 +152,35 @@ export default function TransactionsView({
             </Button>
           )}
         </Space>
-        <Button
-          type="primary"
-          shape="round"
-          icon={<PlusOutlined />}
-          onClick={() => {
-            setEditingId(null);
-            setFormOpen(true);
-          }}
-        >
-          {t("table.addPurchase")}
-        </Button>
+        <Space size="small" wrap>
+          <ImportExportButtons
+            transactions={transactions}
+            categories={categories}
+            onImported={() => void refreshCycle(cycle)}
+          />
+          <Button
+            type="primary"
+            shape="round"
+            icon={<PlusOutlined />}
+            onClick={() => {
+              setEditingId(null);
+              setFormOpen(true);
+            }}
+          >
+            {t("table.addPurchase")}
+          </Button>
+        </Space>
       </div>
 
       <TransactionTable
         transactions={transactions}
         categories={categories}
-        onCreate={() => {
-          setEditingId(null);
-          setFormOpen(true);
-        }}
         onEdit={(transaction) => {
           setEditingId(transaction.id);
           setFormOpen(true);
         }}
         onDelete={handleDelete}
         onDeleteBulk={handleDeleteBulk}
-        onImported={() => void refreshCycle(cycle)}
       />
 
       <TransactionFormModal

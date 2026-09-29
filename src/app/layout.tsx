@@ -118,6 +118,14 @@ export default function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} ${neueHaasDisplay.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
+        {/* Set class `dark` sebelum hidrasi agar tidak ada flash tema terang
+            (FOUC) bagi pengguna dark mode. Harus sinkron dengan STORAGE_KEY
+            dan logika preferensi sistem di ThemeProvider. */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{var s=localStorage.getItem("savings-goal-tracker:theme");var d=s==="dark"||((s!=="light")&&window.matchMedia("(prefers-color-scheme: dark)").matches);var r=document.documentElement;if(d){r.classList.add("dark");r.style.colorScheme="dark";}else{r.style.colorScheme="light";}}catch(e){}})();`,
+          }}
+        />
         <AntdRegistry>
           <LocaleProvider>
             <ThemeProvider>

@@ -396,6 +396,7 @@ export default function SettingsSection({
                     <Button
                       type="dashed"
                       size="small"
+                      shape="round"
                       block
                       icon={<PlusOutlined />}
                       onClick={() => {
@@ -481,6 +482,7 @@ export default function SettingsSection({
           </Form.Item>
           <div className="mt-2 flex justify-end gap-2">
             <Button
+              shape="round"
               onClick={() => {
                 setCatModalOpen(false);
                 setEditingCat(null);
@@ -491,6 +493,7 @@ export default function SettingsSection({
             </Button>
             <Button
               type="primary"
+              shape="round"
               htmlType="submit"
               loading={catSaving}
               icon={<CheckOutlined />}
@@ -524,13 +527,19 @@ export default function SettingsSection({
           </Form.Item>
           <div className="mt-2 flex justify-end gap-2">
             <Button
+              shape="round"
               onClick={() =>
                 setSubModal({ open: false, categoryId: "", sub: null })
               }
             >
               {t("common.cancel")}
             </Button>
-            <Button type="primary" htmlType="submit" loading={subSaving}>
+            <Button
+              type="primary"
+              shape="round"
+              htmlType="submit"
+              loading={subSaving}
+            >
               {t("settings.save")}
             </Button>
           </div>

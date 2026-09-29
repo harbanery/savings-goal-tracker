@@ -228,6 +228,7 @@ export default function NotificationTest() {
           <Button
             type="text"
             size="small"
+            shape="round"
             onClick={() => setVisible(false)}
             className="text-xs opacity-50"
           >

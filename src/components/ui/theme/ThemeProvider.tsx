@@ -86,6 +86,9 @@ function applyMode(next: ThemeMode): void {
   const root = document.documentElement;
   if (next === "dark") root.classList.add("dark");
   else root.classList.remove("dark");
+  // Sinkron dengan script pre-hydration di root layout (scrollbar natif,
+  // form control, dll mengikuti tema).
+  root.style.colorScheme = next;
   emit();
 }
 
@@ -109,14 +112,10 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   }, [locale]);
 
   useEffect(() => {
-    const persisted = readPersistedMode();
-    if (persisted !== clientMode) {
-      applyMode(persisted);
-    } else {
-      const root = document.documentElement;
-      if (persisted === "dark") root.classList.add("dark");
-      else root.classList.remove("dark");
-    }
+    // Sinkron dengan script pre-hydration di root layout (sudah menset
+    // class & colorScheme sebelum paint); applyMode memastikan state
+    // internal + DOM konsisten setelah hidrasi.
+    applyMode(readPersistedMode());
     clientHydrated = true;
     emit();
   }, []);

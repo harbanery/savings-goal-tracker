@@ -1,4 +1,4 @@
-﻿import type { Locale } from "@/types/locale";
+import type { Locale } from "@/types/locale";
 
 /** Dictionary type: flat key -> value per locale. */
 export type TranslationDict = Record<string, string>;
@@ -109,6 +109,7 @@ const id: TranslationDict = {
   "chart.dailySpendingTitle": "Pengeluaran Harian per Tanggal",
 
   // Import / Export
+  "io.menu": "Import / Export",
   "io.template": "Template",
   "io.export": "Export",
   "io.import": "Import",
@@ -159,7 +160,7 @@ const id: TranslationDict = {
   // Insights / Analitik
   "insights.topKeywordsTitle": "Top 10 Keyword Transaksi",
   "insights.empty": "Belum ada data",
-  "insights.keywordStat": "{count}x transaksi â€” total {total}",
+  "insights.keywordStat": "{count}x transaksi — total {total}",
   "insights.wadahTooltip": "Muncul di {n} wadah alokasi",
   "insights.keywordFreqTooltip": "Frekuensi: {val}x",
 
@@ -184,7 +185,7 @@ const id: TranslationDict = {
   "dev.yearlyRecapTooltip": "Kirim email: rekap akhir tahunan + top 3 wadah terboros",
   "dev.pushSuccess": "Notifikasi terkirim ({val} subscriber).",
   "dev.emailSuccess": "Email berhasil dikirim.",
-  "dev.skipped": "Notifikasi dilewati â€” kondisi tidak terpenuhi.",
+  "dev.skipped": "Notifikasi dilewati — kondisi tidak terpenuhi.",
   "dev.pushFailed": "Gagal mengirim notifikasi.",
 
   // Menu / Navigasi
@@ -203,7 +204,7 @@ const id: TranslationDict = {
   "auth.logout": "Keluar",
   "auth.loginSubtitle": "Pantau pengeluaran bulanan dengan sistem wadah.",
   "auth.loginHint":
-    "Login dengan Google â€” data keuangan Anda tersimpan aman per akun.",
+    "Login dengan Google — data keuangan Anda tersimpan aman per akun.",
   "auth.googleBtn": "Login dengan Google",
   "auth.googleNotConfigured":
     "Google Auth belum dikonfigurasi (isi GOOGLE_CLIENT_ID & GOOGLE_CLIENT_SECRET)",
@@ -350,6 +351,7 @@ const en: TranslationDict = {
   "chart.dailySpending": "Daily Spending",
   "chart.dailySpendingTitle": "Daily Spending by Date",
 
+  "io.menu": "Import / Export",
   "io.template": "Template",
   "io.export": "Export",
   "io.import": "Import",
@@ -395,7 +397,7 @@ const en: TranslationDict = {
   // Insights / Analytics
   "insights.topKeywordsTitle": "Top 10 Transaction Keywords",
   "insights.empty": "No data yet",
-  "insights.keywordStat": "{count}x transactions â€” total {total}",
+  "insights.keywordStat": "{count}x transactions — total {total}",
   "insights.wadahTooltip": "Appears in {n} allocation envelopes",
   "insights.keywordFreqTooltip": "Frequency: {val}x",
 
@@ -422,7 +424,7 @@ const en: TranslationDict = {
   "dev.yearlyRecapTooltip": "Send email: end-of-year recap + top 3 spending envelopes",
   "dev.pushSuccess": "Notification sent ({val} subscriber).",
   "dev.emailSuccess": "Email sent successfully.",
-  "dev.skipped": "Notification skipped â€” condition not met.",
+  "dev.skipped": "Notification skipped — condition not met.",
   "dev.pushFailed": "Failed to send notification.",
 
   // Menu / Navigation
@@ -441,7 +443,7 @@ const en: TranslationDict = {
   "auth.logout": "Log out",
   "auth.loginSubtitle": "Track monthly spending with an envelope system.",
   "auth.loginHint":
-    "Sign in with Google â€” your finance data is stored safely per account.",
+    "Sign in with Google — your finance data is stored safely per account.",
   "auth.googleBtn": "Sign in with Google",
   "auth.googleNotConfigured":
     "Google Auth is not configured (set GOOGLE_CLIENT_ID & GOOGLE_CLIENT_SECRET)",

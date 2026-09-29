@@ -3,7 +3,6 @@
 import {
   DeleteOutlined,
   EditOutlined,
-  PlusOutlined,
   SearchOutlined,
 } from "@ant-design/icons";
 import {
@@ -34,7 +33,6 @@ import type {
   TransactionType,
 } from "@/features/web/types";
 import { formatIDR } from "@/utils/helpers";
-import ImportExportButtons from "./ImportExportButtons";
 import TransactionCardList from "./TransactionCardList";
 
 const { Text } = Typography;
@@ -42,11 +40,9 @@ const { Text } = Typography;
 interface Props {
   transactions: Transaction[];
   categories: BudgetCategory[];
-  onCreate: () => void;
   onEdit: (transaction: Transaction) => void;
   onDelete: (id: string) => void;
   onDeleteBulk: (ids: string[]) => void;
-  onImported: () => void;
 }
 
 interface RowData {
@@ -64,11 +60,9 @@ const TYPE_TAG: Record<TransactionType, { color: string; icon: string }> = {
 export default function TransactionTable({
   transactions,
   categories,
-  onCreate,
   onEdit,
   onDelete,
   onDeleteBulk,
-  onImported,
 }: Props) {
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
   const [searchText, setSearchText] = useState("");
@@ -305,42 +299,26 @@ export default function TransactionTable({
       className="shadow-sm"
       title={searchBar}
       extra={
-        <Space size="medium" wrap>
-          {hasSelected && (
-            <>
-              <Text type="secondary" style={{ fontSize: 12 }}>
-                {t("table.selected", { n: selectedRowKeys.length })}
-              </Text>
-              <Popconfirm
-                title={t("table.deleteBulkConfirm", {
-                  n: selectedRowKeys.length,
-                })}
-                okText={t("common.delete")}
-                okButtonProps={{ danger: true }}
-                cancelText={t("common.cancel")}
-                onConfirm={handleBulkDelete}
-              >
-                <Button size="small" shape="round" danger icon={<DeleteOutlined />}>
-                  <span className="hidden md:inline">{t("common.delete")}</span>
-                </Button>
-              </Popconfirm>
-            </>
-          )}
-          <ImportExportButtons
-            transactions={transactions}
-            categories={categories}
-            onImported={onImported}
-          />
-          <Button
-            type="primary"
-            size="small"
-            shape="round"
-            icon={<PlusOutlined />}
-            onClick={onCreate}
-          >
-            <span className="hidden md:inline">{t("table.addPurchase")}</span>
-          </Button>
-        </Space>
+        hasSelected ? (
+          <Space size="medium" wrap>
+            <Text type="secondary" style={{ fontSize: 12 }}>
+              {t("table.selected", { n: selectedRowKeys.length })}
+            </Text>
+            <Popconfirm
+              title={t("table.deleteBulkConfirm", {
+                n: selectedRowKeys.length,
+              })}
+              okText={t("common.delete")}
+              okButtonProps={{ danger: true }}
+              cancelText={t("common.cancel")}
+              onConfirm={handleBulkDelete}
+            >
+              <Button size="small" shape="round" danger icon={<DeleteOutlined />}>
+                <span className="hidden md:inline">{t("common.delete")}</span>
+              </Button>
+            </Popconfirm>
+          </Space>
+        ) : null
       }
       style={{ marginBottom: 24 }}
       styles={{ body: { padding: 0 } }}

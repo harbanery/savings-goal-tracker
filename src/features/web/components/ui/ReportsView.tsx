@@ -5,12 +5,8 @@ import { Button, Space, Tooltip, Typography } from "antd";
 import dynamic from "next/dynamic";
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { useLocale } from "@/components/i18n/LocaleProvider";
-import {
-  getCycleTransactionsAction,
-  getHistoricalTransactionsAction,
-} from "@/utils/server/actions";
+import { getCycleTransactionsAction } from "@/utils/server/actions";
 import { computeCycleStats } from "@/features/web/utils/stats";
-import { buildCycleChartData } from "@/features/web/utils/chartData";
 import type {
   BudgetCategory,
   Transaction,
@@ -22,31 +18,8 @@ import {
   shiftCycle,
   type CycleInfo,
 } from "@/features/web/utils/cycle";
+import CategoryBreakdown from "./CategoryBreakdown";
 
-const ChartLoading = () => (
-  <div className="flex h-[300px] items-center justify-center">Loading…</div>
-);
-
-const AllocationBarChart = dynamic(
-  () => import("./charts/AllocationBarChart"),
-  { ssr: false, loading: ChartLoading },
-);
-const BalanceDonutChart = dynamic(() => import("./charts/BalanceDonutChart"), {
-  ssr: false,
-  loading: ChartLoading,
-});
-const CategoryPieChart = dynamic(() => import("./charts/CategoryPieChart"), {
-  ssr: false,
-  loading: ChartLoading,
-});
-const CumulativeSavingsLineChart = dynamic(
-  () => import("./charts/CumulativeSavingsLineChart"),
-  { ssr: false, loading: ChartLoading },
-);
-const SavingsComparisonBarChart = dynamic(
-  () => import("./charts/SavingsComparisonBarChart"),
-  { ssr: false, loading: ChartLoading },
-);
 const TopKeywordsInsights = dynamic(() => import("./TopKeywordsInsights"), {
   ssr: false,
 });
@@ -78,26 +51,22 @@ function ReportSection({
 
 interface Props {
   initialTransactions: Transaction[];
-  initialHistorical: Record<string, Transaction[]>;
   categories: BudgetCategory[];
   settings: UserSettings;
 }
 
 /**
- * Halaman Laporan (generate_web.md): kumpulan grafik — saldo, kategori,
- * alokasi per bulan, perbandingan & kumulatif tabungan, pengeluaran
- * per kategori, plus insight keyword.
+ * Halaman Laporan (generate_web.md): alokasi wadah + insight keyword.
+ * Grafik historis (donut saldo, pie kategori, bar alokasi bulanan,
+ * perbandingan & kumulatif tabungan) dipindah ke Dashboard.
  */
 export default function ReportsView({
   initialTransactions,
-  initialHistorical,
   categories,
   settings,
 }: Readonly<Props>) {
   const [transactions, setTransactions] =
     useState<Transaction[]>(initialTransactions);
-  const [historical, setHistorical] =
-    useState<Record<string, Transaction[]>>(initialHistorical);
   const [cycle, setCycle] = useState<CycleInfo>(() =>
     getCurrentCycle(settings.cycleStartDay),
   );
@@ -114,27 +83,12 @@ export default function ReportsView({
     () => computeCycleStats(transactions, categories, settings.savingsInitial),
     [transactions, categories, settings.savingsInitial],
   );
-  const chartData = useMemo(
-    () =>
-      buildCycleChartData(
-        historical,
-        categories,
-        settings.savingsInitial,
-        locale,
-      ),
-    [historical, categories, settings.savingsInitial, locale],
-  );
 
   const refreshCycle = useCallback(async (targetCycle: CycleInfo) => {
     try {
-      const [fresh, freshHistorical] = await Promise.all([
-        getCycleTransactionsAction(targetCycle),
-        getHistoricalTransactionsAction(targetCycle, 6),
-      ]);
-      setTransactions(fresh);
-      setHistorical(freshHistorical);
+      setTransactions(await getCycleTransactionsAction(targetCycle));
     } catch (err) {
-      console.error("[ReportsView] gagal memuat data:", err);
+      console.error("[ReportsView] gagal memuat transaksi:", err);
       setTransactions([]);
     }
   }, []);
@@ -192,22 +146,8 @@ export default function ReportsView({
         </Space>
       </div>
 
-      {/* Row 1: Donut (saldo) + Pie (kategori) */}
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <BalanceDonutChart stats={stats} />
-        <CategoryPieChart cycles={chartData} categories={categories} />
-      </div>
-
-      {/* Row 2: Allocation Bar */}
-      <div className="mt-4">
-        <AllocationBarChart cycles={chartData} categories={categories} />
-      </div>
-
-      {/* Row 3: Savings comparison + Cumulative line */}
-      <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <SavingsComparisonBarChart cycles={chartData} />
-        <CumulativeSavingsLineChart cycles={chartData} />
-      </div>
+      {/* Alokasi wadah (dipindah dari dashboard) */}
+      <CategoryBreakdown stats={stats} />
 
       <ReportSection icon={<BulbOutlined />} title={t("app.tabFacts")}>
         <TopKeywordsInsights

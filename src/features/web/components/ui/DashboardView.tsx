@@ -7,8 +7,10 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useLocale } from "@/components/i18n/LocaleProvider";
 import {
   getCycleTransactionsAction,
+  getHistoricalTransactionsAction,
 } from "@/utils/server/actions";
 import { computeCycleStats } from "@/features/web/utils/stats";
+import { buildCycleChartData } from "@/features/web/utils/chartData";
 import type {
   BudgetCategory,
   Transaction,
@@ -23,14 +25,33 @@ import {
 import { formatIDR } from "@/utils/helpers";
 import TransactionFormModal from "./TransactionFormModal";
 import StatsCards from "./StatsCards";
-import CategoryBreakdown from "./CategoryBreakdown";
 
 const ChartLoading = () => (
   <div className="flex h-[300px] items-center justify-center">Loading…</div>
 );
 
+const AllocationBarChart = dynamic(
+  () => import("./charts/AllocationBarChart"),
+  { ssr: false, loading: ChartLoading },
+);
+const BalanceDonutChart = dynamic(() => import("./charts/BalanceDonutChart"), {
+  ssr: false,
+  loading: ChartLoading,
+});
+const CategoryPieChart = dynamic(() => import("./charts/CategoryPieChart"), {
+  ssr: false,
+  loading: ChartLoading,
+});
+const CumulativeSavingsLineChart = dynamic(
+  () => import("./charts/CumulativeSavingsLineChart"),
+  { ssr: false, loading: ChartLoading },
+);
 const DailySpendingLineChart = dynamic(
   () => import("./charts/DailySpendingLineChart"),
+  { ssr: false, loading: ChartLoading },
+);
+const SavingsComparisonBarChart = dynamic(
+  () => import("./charts/SavingsComparisonBarChart"),
   { ssr: false, loading: ChartLoading },
 );
 
@@ -38,22 +59,27 @@ const { Text } = Typography;
 
 interface Props {
   initialTransactions: Transaction[];
+  initialHistorical: Record<string, Transaction[]>;
   categories: BudgetCategory[];
   settings: UserSettings;
 }
 
 /**
- * Dashboard ringkas sesuai generate_web.md:
- * kartu Saldo / Pemasukan / Pengeluaran / Cash Flow, pengeluaran harian,
- * dan breakdown wadah. Catatan transaksi ada di halaman Transaksi.
+ * Dashboard ringkas sesuai generate_web.md: kartu Saldo / Pemasukan /
+ * Pengeluaran / Cash Flow, pengeluaran harian, dan grafik historis
+ * (donut saldo, pie kategori, bar alokasi bulanan, perbandingan &
+ * kumulatif tabungan). Catatan transaksi ada di halaman Transaksi.
  */
 export default function DashboardView({
   initialTransactions,
+  initialHistorical,
   categories,
   settings,
 }: Readonly<Props>) {
   const [transactions, setTransactions] =
     useState<Transaction[]>(initialTransactions);
+  const [historical, setHistorical] =
+    useState<Record<string, Transaction[]>>(initialHistorical);
   const [formOpen, setFormOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [cycle, setCycle] = useState<CycleInfo>(() =>
@@ -72,6 +98,16 @@ export default function DashboardView({
     () => computeCycleStats(transactions, categories, settings.savingsInitial),
     [transactions, categories, settings.savingsInitial],
   );
+  const chartData = useMemo(
+    () =>
+      buildCycleChartData(
+        historical,
+        categories,
+        settings.savingsInitial,
+        locale,
+      ),
+    [historical, categories, settings.savingsInitial, locale],
+  );
 
   const editingTransaction = useMemo(
     () =>
@@ -83,9 +119,14 @@ export default function DashboardView({
 
   const refreshCycle = useCallback(async (targetCycle: CycleInfo) => {
     try {
-      setTransactions(await getCycleTransactionsAction(targetCycle));
+      const [fresh, freshHistorical] = await Promise.all([
+        getCycleTransactionsAction(targetCycle),
+        getHistoricalTransactionsAction(targetCycle, 6),
+      ]);
+      setTransactions(fresh);
+      setHistorical(freshHistorical);
     } catch (err) {
-      console.error("[DashboardView] gagal memuat transaksi:", err);
+      console.error("[DashboardView] gagal memuat data:", err);
       setTransactions([]);
     }
   }, []);
@@ -129,11 +170,8 @@ export default function DashboardView({
           </Tooltip>
           {!isCurrentCycle && (
             <Button
-              size="small"
               shape="round"
-              onClick={() =>
-                setCycle(getCurrentCycle(settings.cycleStartDay))
-              }
+              onClick={() => setCycle(getCurrentCycle(settings.cycleStartDay))}
             >
               {t("app.currentCycle")}
             </Button>
@@ -172,7 +210,22 @@ export default function DashboardView({
         <DailySpendingLineChart transactions={transactions} cycle={cycle} />
       </div>
 
-      <CategoryBreakdown stats={stats} />
+      {/* Row: Donut (saldo) + Pie (kategori) */}
+      <div className="mb-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <BalanceDonutChart stats={stats} />
+        <CategoryPieChart cycles={chartData} categories={categories} />
+      </div>
+
+      {/* Row: Allocation Bar */}
+      <div className="mb-4">
+        <AllocationBarChart cycles={chartData} categories={categories} />
+      </div>
+
+      {/* Row: Savings comparison + Cumulative line */}
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <SavingsComparisonBarChart cycles={chartData} />
+        <CumulativeSavingsLineChart cycles={chartData} />
+      </div>
 
       <TransactionFormModal
         open={formOpen}

@@ -2,11 +2,12 @@
 
 import {
   DownloadOutlined,
-  UploadOutlined,
   FileExcelOutlined,
+  SwapOutlined,
+  UploadOutlined,
 } from "@ant-design/icons";
-import { App, Button, Space, Tooltip, Upload } from "antd";
-import type { UploadProps } from "antd";
+import { App, Button, Dropdown, Tooltip, Upload } from "antd";
+import type { MenuProps, UploadProps } from "antd";
 import { useState } from "react";
 import { importTransactionsAction } from "@/utils/server/actions";
 import {
@@ -26,7 +27,11 @@ interface Props {
   onImported: () => void;
 }
 
-/** Tombol Download Template, Export CSV, dan Import CSV (kompatibel Google Sheets). */
+/**
+ * Satu dropdown berisi Download Template, Export CSV, dan Import CSV
+ * (kompatibel Google Sheets). Diposisikan di samping kiri tombol
+ * Tambah Transaksi di luar tabel.
+ */
 export default function ImportExportButtons({
   transactions,
   categories,
@@ -113,43 +118,50 @@ export default function ImportExportButtons({
     },
   };
 
+  /** Item menu: template, export, import (import dibungkus Upload). */
+  const items: MenuProps["items"] = [
+    {
+      key: "template",
+      icon: <DownloadOutlined />,
+      label: t("io.template"),
+      title: t("io.templateTooltip"),
+    },
+    {
+      key: "export",
+      icon: <FileExcelOutlined />,
+      label: t("io.export"),
+      disabled: transactions.length === 0,
+      title: t("io.exportTooltip"),
+    },
+    {
+      key: "import",
+      icon: <UploadOutlined />,
+      label: <Upload {...uploadProps}>{t("io.import")}</Upload>,
+      title: t("io.importTooltip"),
+    },
+  ];
+
   return (
-    <Space size="small" wrap>
-      <Tooltip title={t("io.templateTooltip")}>
+    <Dropdown
+      menu={{
+        items,
+        onClick: ({ key }) => {
+          if (key === "template") handleDownloadTemplate();
+          if (key === "export") handleExport();
+        },
+      }}
+      placement="bottomRight"
+      trigger={["click"]}
+    >
+      <Tooltip title={t("io.importTooltip")}>
         <Button
-          size="small"
           shape="round"
-          icon={<DownloadOutlined />}
-          onClick={handleDownloadTemplate}
+          icon={<SwapOutlined />}
+          loading={importing}
         >
-          <span className="hidden md:inline">{t("io.template")}</span>
+          {t("io.menu")}
         </Button>
       </Tooltip>
-      <Tooltip title={t("io.exportTooltip")}>
-        <Button
-          size="small"
-          shape="round"
-          icon={<FileExcelOutlined />}
-          onClick={handleExport}
-          disabled={transactions.length === 0}
-        >
-          <span className="hidden md:inline">{t("io.export")}</span>
-        </Button>
-      </Tooltip>
-      <Upload {...uploadProps}>
-        <Tooltip title={t("io.importTooltip")}>
-          <Button
-            size="small"
-            shape="round"
-            icon={<UploadOutlined />}
-            loading={importing}
-            type="primary"
-            ghost
-          >
-            <span className="hidden md:inline">{t("io.import")}</span>
-          </Button>
-        </Tooltip>
-      </Upload>
-    </Space>
+    </Dropdown>
   );
 }

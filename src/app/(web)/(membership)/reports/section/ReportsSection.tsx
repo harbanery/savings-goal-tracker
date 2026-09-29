@@ -1,8 +1,5 @@
 import ReportsView from "@/features/web/components/ui/ReportsView";
-import {
-  getCycleTransactionsAction,
-  getHistoricalTransactionsAction,
-} from "@/utils/server/actions";
+import { getCycleTransactionsAction } from "@/utils/server/actions";
 import type {
   BudgetCategory,
   Transaction,
@@ -14,7 +11,8 @@ import { ensureUserDefaults } from "@/services/user";
 import { getCurrentCycle } from "@/features/web/utils/cycle";
 
 /**
- * Feature module halaman Laporan: grafik historis + insight keyword.
+ * Feature module halaman Laporan: alokasi wadah + insight keyword.
+ * Grafik historis dipindah ke Dashboard.
  */
 export default async function ReportsSection() {
   const user = await getCurrentUser();
@@ -29,13 +27,9 @@ export default async function ReportsSection() {
 
   const cycle = getCurrentCycle(settings.cycleStartDay);
   let initialTransactions: Transaction[] = [];
-  let initialHistorical: Record<string, Transaction[]> = {};
 
   try {
-    [initialTransactions, initialHistorical] = await Promise.all([
-      getCycleTransactionsAction(cycle),
-      getHistoricalTransactionsAction(cycle, 6),
-    ]);
+    initialTransactions = await getCycleTransactionsAction(cycle);
   } catch (err) {
     console.error("[ReportsSection] gagal memuat data awal:", err);
   }
@@ -43,7 +37,6 @@ export default async function ReportsSection() {
   return (
     <ReportsView
       initialTransactions={initialTransactions}
-      initialHistorical={initialHistorical}
       categories={categories}
       settings={settings}
     />
