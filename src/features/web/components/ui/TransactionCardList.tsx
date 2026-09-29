@@ -47,7 +47,7 @@ export default function TransactionCardList({
   }
 
   return (
-    <div className="dynamic-scrollbar flex max-h-[60vh] min-h-0 flex-col gap-2 overflow-y-auto pr-1">
+    <div className="dynamic-scrollbar flex max-h-[max(240px,calc(100dvh-380px))] min-h-0 flex-col gap-2 overflow-y-auto pr-1">
       {transactions.map((tr) => {
         const unit = getUnit(categories, tr.subcategoryId ?? tr.categoryId);
         const parent = unit ? getCategory(categories, unit.categoryId) : undefined;

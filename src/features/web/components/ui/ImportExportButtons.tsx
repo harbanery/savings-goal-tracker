@@ -154,11 +154,7 @@ export default function ImportExportButtons({
       trigger={["click"]}
     >
       <Tooltip title={t("io.importTooltip")}>
-        <Button
-          shape="round"
-          icon={<SwapOutlined />}
-          loading={importing}
-        >
+        <Button icon={<SwapOutlined />} loading={importing}>
           {t("io.menu")}
         </Button>
       </Tooltip>

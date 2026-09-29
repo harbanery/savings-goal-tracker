@@ -101,8 +101,6 @@ export default function ReportsView({
 
   return (
     <div className="mx-auto w-full max-w-350">
-      <Title level={4}>{t("menu.reports")}</Title>
-
       {/* Baris navigasi siklus */}
       <div className="mb-4 flex flex-wrap items-center gap-2">
         <Space size="small">
@@ -135,7 +133,6 @@ export default function ReportsView({
           {!isCurrentCycle && (
             <Button
               size="small"
-              shape="round"
               onClick={() =>
                 setCycle(getCurrentCycle(settings.cycleStartDay))
               }

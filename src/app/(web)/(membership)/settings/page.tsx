@@ -2,10 +2,7 @@ import type { Metadata } from "next";
 import SettingsSection from "./section/SettingsSection";
 import { getCurrentUser } from "@/lib/auth";
 import { ensureUserDefaults } from "@/services/user";
-import {
-  getUserCategories,
-  getUserSettings,
-} from "@/services/transaction";
+import { getUserSettings } from "@/services/transaction";
 
 export const dynamic = "force-dynamic";
 
@@ -18,10 +15,7 @@ export default async function SettingsPage() {
   if (!user) return null;
   await ensureUserDefaults(user.id);
 
-  const [categories, settings] = await Promise.all([
-    getUserCategories(user.id),
-    getUserSettings(user.id),
-  ]);
+  const settings = await getUserSettings(user.id);
 
-  return <SettingsSection initialSettings={settings} initialCategories={categories} />;
+  return <SettingsSection initialSettings={settings} />;
 }

@@ -138,6 +138,14 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
           algorithm: isDark ? theme.darkAlgorithm : theme.defaultAlgorithm,
           token: {
             colorPrimary: "#4f46e5",
+            /*
+             * Kanvas layout antd disamakan dengan variabel Tailwind
+             * `--background` di src/assets/global/index.css
+             * (terang: #f5f5f7, gelap: #0a0a0b) sehingga permukaan
+             * halaman kedua sistem tema selalu selaras. Container/elevated
+             * tetap diturunkan algoritma antd (kontras dengan kanvas).
+             */
+            colorBgLayout: isDark ? "#0a0a0b" : "#f5f5f7",
             // Gelapkan teks sekunder pada mode terang agar rasio kontras warna
             // memenuhi WCAG AA (>= 4.5:1) untuk Statistic title & Typography.
             ...(isDark ? {} : { colorTextSecondary: "#595959" }),

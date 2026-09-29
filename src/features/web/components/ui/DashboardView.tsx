@@ -170,7 +170,6 @@ export default function DashboardView({
           </Tooltip>
           {!isCurrentCycle && (
             <Button
-              shape="round"
               onClick={() => setCycle(getCurrentCycle(settings.cycleStartDay))}
             >
               {t("app.currentCycle")}
@@ -179,7 +178,6 @@ export default function DashboardView({
         </Space>
         <Button
           type="primary"
-          shape="round"
           icon={<PlusOutlined />}
           onClick={() => {
             setEditingId(null);

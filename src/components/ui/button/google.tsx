@@ -50,7 +50,6 @@ export default function GoogleButton({ enabled, redirectTo = "/" }: Props) {
     <Button
       type="default"
       size="large"
-      shape="round"
       block
       disabled={!enabled}
       icon={<GoogleIcon />}

@@ -1,6 +1,7 @@
 import {
-  BarChartOutlined,
+  AppstoreOutlined,
   DashboardOutlined,
+  FileTextOutlined,
   SettingOutlined,
   TransactionOutlined,
 } from "@ant-design/icons";
@@ -18,6 +19,7 @@ export interface MenuItem {
 export const menuConfig: MenuItem[] = [
   { key: "dashboard", link: "/", icon: <DashboardOutlined />, labelKey: "menu.dashboard" },
   { key: "transactions", link: "/transactions", icon: <TransactionOutlined />, labelKey: "menu.transactions" },
-  { key: "reports", link: "/reports", icon: <BarChartOutlined />, labelKey: "menu.reports" },
+  { key: "categories", link: "/categories", icon: <AppstoreOutlined />, labelKey: "menu.categories" },
+  { key: "reports", link: "/reports", icon: <FileTextOutlined />, labelKey: "menu.reports" },
   { key: "settings", link: "/settings", icon: <SettingOutlined />, labelKey: "menu.settings" },
 ];

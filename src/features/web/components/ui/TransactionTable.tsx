@@ -37,6 +37,16 @@ import TransactionCardList from "./TransactionCardList";
 
 const { Text } = Typography;
 
+/**
+ * Tinggi area scroll body tabel: h-screen (100dvh) dikurangi tinggi
+ * komponen lain di sekitarnya — header/navbar (~57px), footer (~80px),
+ * padding konten (32px), baris toolbar siklus + tombol (~48px + 24px
+ * margin), card head (~57px), table header (~39px), pagination (~40px),
+ * dan sisa border — dengan batas minimum agar tetap usable di layar
+ * pendek.
+ */
+const TABLE_SCROLL_Y = "max(240px, calc(100dvh - 380px))";
+
 interface Props {
   transactions: Transaction[];
   categories: BudgetCategory[];
@@ -265,13 +275,11 @@ export default function TransactionTable({
         prefix={<SearchOutlined className="text-zinc-400" />}
         placeholder={t("table.searchPlaceholder")}
         allowClear
-        size="small"
         value={searchText}
         onChange={(e) => setSearchText(e.target.value)}
-        style={{ maxWidth: 200 }}
+        style={{ maxWidth: 220 }}
       />
       <Select
-        size="small"
         value={filterType}
         onChange={(v) => setFilterType(v as TransactionType | "ALL")}
         options={typeFilterOptions}
@@ -279,7 +287,6 @@ export default function TransactionTable({
         aria-label={t("table.colType")}
       />
       <Select
-        size="small"
         value={filterUnit ?? undefined}
         onChange={(v) => setFilterUnit(v ?? null)}
         options={unitFilterOptions}
@@ -287,7 +294,7 @@ export default function TransactionTable({
         allowClear
         showSearch
         optionFilterProp="label"
-        style={{ minWidth: 150 }}
+        style={{ minWidth: 160 }}
         aria-label={t("table.colSubcategory")}
       />
     </div>
@@ -313,7 +320,7 @@ export default function TransactionTable({
               cancelText={t("common.cancel")}
               onConfirm={handleBulkDelete}
             >
-              <Button size="small" shape="round" danger icon={<DeleteOutlined />}>
+              <Button size="small" danger icon={<DeleteOutlined />}>
                 <span className="hidden md:inline">{t("common.delete")}</span>
               </Button>
             </Popconfirm>
@@ -341,7 +348,7 @@ export default function TransactionTable({
               dataSource={dataSource}
               pagination={{ pageSize: 10, size: "small" }}
               size="small"
-              scroll={{ x: 700 }}
+              scroll={{ x: 700, y: TABLE_SCROLL_Y }}
             />
           </div>
           {/* Kartu untuk mobile */}

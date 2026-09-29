@@ -24,7 +24,7 @@ import TransactionFormModal from "./TransactionFormModal";
 import TransactionTable from "./TransactionTable";
 import ImportExportButtons from "./ImportExportButtons";
 
-const { Text, Title } = Typography;
+const { Text } = Typography;
 
 interface Props {
   initialTransactions: Transaction[];
@@ -108,9 +108,7 @@ export default function TransactionsView({
   );
 
   return (
-    <div className="mx-auto w-full max-w-350">
-      <Title level={4}>{t("menu.transactions")}</Title>
-
+    <div className="mx-auto flex w-full max-w-350 flex-col">
       {/* Baris navigasi siklus + tombol tambah */}
       <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
         <Space size="small">
@@ -142,8 +140,6 @@ export default function TransactionsView({
           </Tooltip>
           {!isCurrentCycle && (
             <Button
-              size="small"
-              shape="round"
               onClick={() =>
                 setCycle(getCurrentCycle(settings.cycleStartDay))
               }
@@ -160,7 +156,6 @@ export default function TransactionsView({
           />
           <Button
             type="primary"
-            shape="round"
             icon={<PlusOutlined />}
             onClick={() => {
               setEditingId(null);

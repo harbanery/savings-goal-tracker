@@ -7,7 +7,13 @@ import { SESSION_COOKIE } from "@/utils/config/variables";
  * di route handler / server component via getCurrentUser().
  */
 
-const PRIVATE_PAGES = ["/", "/transactions", "/reports", "/settings"];
+const PRIVATE_PAGES = [
+  "/",
+  "/transactions",
+  "/categories",
+  "/reports",
+  "/settings",
+];
 const PRIVATE_API_PREFIXES = ["/api/web/push"];
 
 function hasSession(request: NextRequest): boolean {

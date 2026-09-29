@@ -212,7 +212,6 @@ export default function NotificationTest() {
               <Tooltip title={t(btn.tooltipKey)} key={btn.key}>
                 <Button
                   size="small"
-                  shape="round"
                   icon={<Icon />}
                   loading={loading[btn.key]}
                   onClick={() => callDev(btn.key, btn.path)}
@@ -228,7 +227,6 @@ export default function NotificationTest() {
           <Button
             type="text"
             size="small"
-            shape="round"
             onClick={() => setVisible(false)}
             className="text-xs opacity-50"
           >

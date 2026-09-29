@@ -106,6 +106,7 @@ export default function TransactionFormModal({
       onCancel={onClose}
       title={isEdit ? t("form.editTitle") : t("form.addTitle")}
       width={{ xs: "92%", sm: 520 }}
+      centered
       destroyOnHidden
       footer={null}
     >
@@ -352,10 +353,8 @@ function TransactionForm({
       </Form.Item>
 
       <div className="mt-2 flex justify-end gap-2">
-        <Button shape="round" onClick={onClosed}>
-          {t("common.cancel")}
-        </Button>
-        <Button type="primary" shape="round" htmlType="submit" loading={saving}>
+        <Button onClick={onClosed}>{t("common.cancel")}</Button>
+        <Button type="primary" htmlType="submit" loading={saving}>
           {isEdit ? t("form.saveChanges") : t("form.addTitle")}
         </Button>
       </div>

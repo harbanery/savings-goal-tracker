@@ -191,6 +191,7 @@ const id: TranslationDict = {
   // Menu / Navigasi
   "menu.dashboard": "Dashboard",
   "menu.transactions": "Transaksi",
+  "menu.categories": "Kategori",
   "menu.reports": "Laporan",
   "menu.settings": "Pengaturan",
   "menu.open": "Buka menu",
@@ -430,6 +431,7 @@ const en: TranslationDict = {
   // Menu / Navigation
   "menu.dashboard": "Dashboard",
   "menu.transactions": "Transactions",
+  "menu.categories": "Categories",
   "menu.reports": "Reports",
   "menu.settings": "Settings",
   "menu.open": "Open menu",

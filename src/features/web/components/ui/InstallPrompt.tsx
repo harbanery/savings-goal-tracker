@@ -135,16 +135,11 @@ export default function InstallPrompt() {
           </div>
         </div>
         <div className="mt-3 flex justify-end gap-2">
-          <Button size="small" shape="round" onClick={handleLater}>
+          <Button size="small" onClick={handleLater}>
             {t("pwa.laterBtn")}
           </Button>
           {deferred && (
-            <Button
-              type="primary"
-              size="small"
-              shape="round"
-              onClick={handleInstall}
-            >
+            <Button type="primary" size="small" onClick={handleInstall}>
               {t("pwa.installBtn")}
             </Button>
           )}

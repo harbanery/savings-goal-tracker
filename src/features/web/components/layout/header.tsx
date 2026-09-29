@@ -105,7 +105,7 @@ export default function HeaderLayout({
         <Dropdown menu={userMenu} placement="bottomRight">
           <Button
             type="text"
-            shape="round"
+            shape={isMobile ? "circle" : "default"}
             className="flex items-center gap-2"
             icon={
               user?.avatar ? (
