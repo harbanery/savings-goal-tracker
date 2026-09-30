@@ -1,20 +1,19 @@
-import WalletsView from "@/features/web/components/ui/finance/WalletsView";
+import NeedsView from "@/features/web/components/ui/finance/NeedsView";
 import type { BudgetCategory } from "@/features/web/types";
 import { getUserCategories } from "@/services/transaction";
 import { getCurrentUser } from "@/lib/auth";
 import { ensureUserDefaults } from "@/services/user";
 
 /**
- * Feature module halaman Keuangan: tabel wadah per jenis dompet
- * (bank/e-wallet/cash bawaan). Subkategori wadah ada di halaman Kebutuhan;
- * Budget & Target halaman terpisah.
+ * Feature module halaman Kebutuhan: seluruh subkategori wadah — CRUD
+ * subkategori (dipindahkan dari halaman Keuangan/Dompet).
  */
-export default async function FinanceSection() {
+export default async function NeedsSection() {
   const user = await getCurrentUser();
   if (!user) return null;
   await ensureUserDefaults(user.id);
 
   const categories: BudgetCategory[] = await getUserCategories(user.id);
 
-  return <WalletsView initialCategories={categories} />;
+  return <NeedsView initialCategories={categories} />;
 }

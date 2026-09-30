@@ -5,8 +5,12 @@
 /** Jenis transaksi keuangan. */
 export type TransactionType = "EXPENSE" | "INCOME" | "TRANSFER";
 
-/** Jenis dompet/wadah: rekening bank atau dompet digital (e-wallet). */
-export type WalletType = "BANK" | "E_WALLET";
+/**
+ * Jenis dompet/wadah: rekening bank, dompet digital (e-wallet), atau uang
+ * tunai (CASH — wadah bawaan "Cash", satu per user, tidak bisa ditambah/
+ * dihapus lewat UI).
+ */
+export type WalletType = "BANK" | "E_WALLET" | "CASH";
 
 /** Subkategori/unit pencatatan dalam satu kategori/wadah. */
 export interface BudgetSubcategory {

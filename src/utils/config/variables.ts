@@ -31,6 +31,12 @@ export const GOOGLE_IS_CONFIGURED: boolean =
 // ---------------------------------------------------------------------------
 export const SESSION_COOKIE = "sgt_session";
 export const OAUTH_STATE_COOKIE = "sgt_oauth_state";
+/**
+ * Cookie tema (light/dark). localStorage tidak bisa dibaca server, jadi
+ * tema juga dipersist ke cookie agar SSR antd menghasilkan style tema
+ * yang benar (tidak ada flash putih saat dark mode).
+ */
+export const THEME_COOKIE = "sgt_theme";
 /** Masa berlaku sesi login (jam). */
 export const SESSION_TTL_HOURS = 720; // 30 hari — login awet untuk app harian
 export const MAX_SESSIONS_PER_USER = 5;

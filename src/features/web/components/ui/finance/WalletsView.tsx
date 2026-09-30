@@ -5,6 +5,7 @@ import {
   CheckOutlined,
   CloseOutlined,
   DeleteOutlined,
+  DollarOutlined,
   EditOutlined,
   PlusOutlined,
   WalletOutlined,
@@ -22,7 +23,6 @@ import {
   Popconfirm,
   Segmented,
   Select,
-  Space,
   Table,
   Tag,
   Tooltip,
@@ -34,12 +34,9 @@ import { useLocale } from "@/components/i18n/LocaleProvider";
 import type { BudgetCategory, WalletType } from "@/features/web/types";
 import {
   createCategoryAction,
-  createSubcategoryAction,
   deleteCategoryAction,
-  deleteSubcategoryAction,
   getFinanceBundleAction,
   updateCategoryAction,
-  updateSubcategoryAction,
 } from "@/utils/server/actions";
 import { formatIDR } from "@/utils/helpers";
 
@@ -67,18 +64,13 @@ interface CategoryFormValues {
   walletType: WalletType;
 }
 
-interface SubFormValues {
-  name: string;
-  categoryId?: string;
-}
-
 interface CategoryRow {
   key: string;
   category: BudgetCategory;
 }
 
-/** Opsi jenis dompet (dipakai di form & filter). */
-function useWalletTypeOptions() {
+/** Opsi jenis dompet yang bisa DIBUAT user (Cash bawaan, bukan dibuat). */
+function useCreatableWalletTypeOptions() {
   const { t } = useLocale();
   return [
     { value: "BANK", label: t("finance.walletBank"), icon: <BankOutlined /> },
@@ -91,33 +83,25 @@ function useWalletTypeOptions() {
 }
 
 /**
- * Halaman Keuangan (Dompet): tabel wadah (CRUD penuh, dikelompokkan per
- * jenis bank/e-wallet) dan tabel subkategori — dikelompokkan per wadah
- * lewat expanded row (baris wadah tanpa aksi edit/hapus).
- * Budget & Target ada di halaman masing-masing.
+ * Halaman Keuangan: tabel wadah (CRUD penuh) dengan segmented filter per
+ * jenis dompet (Semua / Bank / E-Wallet / Cash). Wadah "Cash" (CASH) adalah
+ * wadah bawaan — tampil tanpa aksi edit/hapus.
+ * Subkategori wadah ada di halaman Kebutuhan; Budget & Target halaman sendiri.
  */
 export default function WalletsView({ initialCategories }: Props) {
   const { t, locale } = useLocale();
   const { message } = App.useApp();
-  const walletTypeOptions = useWalletTypeOptions();
+  const creatableTypes = useCreatableWalletTypeOptions();
 
   const [categories, setCategories] = useState(initialCategories);
   const [reloadKey, setReloadKey] = useState(0);
-  const [wadahFilter, setWadahFilter] = useState<string | null>(null);
   const [typeFilter, setTypeFilter] = useState<WalletType | "ALL">("ALL");
 
   const [categoryForm] = Form.useForm<CategoryFormValues>();
-  const [subForm] = Form.useForm<SubFormValues>();
 
   const [catModalOpen, setCatModalOpen] = useState(false);
   const [editingCat, setEditingCat] = useState<BudgetCategory | null>(null);
   const [catSaving, setCatSaving] = useState(false);
-
-  const [subModalOpen, setSubModalOpen] = useState(false);
-  const [editingSub, setEditingSub] = useState<
-    BudgetCategory["subcategories"][number] | null
-  >(null);
-  const [subSaving, setSubSaving] = useState(false);
 
   const refresh = useCallback(async () => {
     try {
@@ -167,40 +151,7 @@ export default function WalletsView({ initialCategories }: Props) {
     }
   }
 
-  async function handleSubSubmit(values: SubFormValues) {
-    setSubSaving(true);
-    try {
-      if (editingSub) {
-        await updateSubcategoryAction(editingSub.id, values.name);
-      } else if (values.categoryId) {
-        await createSubcategoryAction(values.categoryId, values.name);
-      }
-      message.success(t("settings.saved"));
-      setSubModalOpen(false);
-      setEditingSub(null);
-      setReloadKey((k) => k + 1);
-    } catch (err) {
-      message.error(
-        err instanceof Error ? err.message : t("settings.saveFailed"),
-      );
-    } finally {
-      setSubSaving(false);
-    }
-  }
-
-  async function handleDeleteSub(subId: string) {
-    try {
-      await deleteSubcategoryAction(subId);
-      message.success(t("settings.saved"));
-      setReloadKey((k) => k + 1);
-    } catch (err) {
-      message.error(
-        err instanceof Error ? err.message : t("settings.saveFailed"),
-      );
-    }
-  }
-
-  /** Baris tabel wadah (difilter per jenis dompet). */
+  /** Baris tabel wadah (difilter per jenis dompet lewat segmented). */
   const typeFiltered = categories.filter(
     (c) => typeFilter === "ALL" || c.walletType === typeFilter,
   );
@@ -209,27 +160,19 @@ export default function WalletsView({ initialCategories }: Props) {
     category: c,
   }));
 
-  /**
-   * Baris tabel subkategori: dikelompokkan per wadah (seperti desain awal,
-   * via expanded row). Bisa difilter per wadah lewat Select.
-   */
-  const filteredCategories = wadahFilter
-    ? categories.filter((c) => c.id === wadahFilter)
-    : categories;
-
-  const subDataSource: CategoryRow[] = filteredCategories.map((c) => ({
-    key: c.id,
-    category: c,
-  }));
-
-  const totalFilteredSubs = filteredCategories.reduce(
-    (n, c) => n + c.subcategories.length,
-    0,
-  );
-
-  /** Tag jenis dompet (Bank / E-Wallet). */
+  /** Tag jenis dompet (Bank / E-Wallet / Cash). */
   function renderWalletType(type: WalletType) {
-    const opt = walletTypeOptions.find((o) => o.value === type);
+    if (type === "CASH") {
+      return (
+        <Tag>
+          <span className="flex items-center gap-1">
+            <DollarOutlined />
+            {t("finance.walletCash")}
+          </span>
+        </Tag>
+      );
+    }
+    const opt = creatableTypes.find((o) => o.value === type);
     return (
       <Tag>
         <span className="flex items-center gap-1">
@@ -281,263 +224,119 @@ export default function WalletsView({ initialCategories }: Props) {
       key: "action",
       width: 90,
       align: "center",
-      render: (_: unknown, { category }: CategoryRow) => (
-        <div className="flex justify-center gap-1">
-          <Button
-            type="text"
-            shape="circle"
-            size="small"
-            icon={<EditOutlined />}
-            onClick={() => {
-              setEditingCat(category);
-              categoryForm.setFieldsValue({
-                name: category.name,
-                color: category.color,
-                allocation: category.allocation,
-                walletType: category.walletType,
-              });
-              setCatModalOpen(true);
-            }}
-            aria-label={t("settings.editCategory")}
-          />
-          <Popconfirm
-            title={t("settings.deleteCategoryConfirm")}
-            okText={t("common.delete")}
-            okButtonProps={{ danger: true }}
-            cancelText={t("common.cancel")}
-            onConfirm={() => void handleDeleteCategory(category)}
-          >
+      render: (_: unknown, { category }: CategoryRow) =>
+        category.walletType === "CASH" ? (
+          // Wadah Cash bawaan: tanpa aksi edit/hapus.
+          <Tooltip title={t("finance.walletCashBuiltIn")}>
+            <Tag style={{ margin: 0 }}>{t("finance.walletCashBuiltInTag")}</Tag>
+          </Tooltip>
+        ) : (
+          <div className="flex justify-center gap-1">
             <Button
               type="text"
               shape="circle"
               size="small"
-              danger
-              icon={<DeleteOutlined />}
-              aria-label={t("common.delete")}
+              icon={<EditOutlined />}
+              onClick={() => {
+                setEditingCat(category);
+                categoryForm.setFieldsValue({
+                  name: category.name,
+                  color: category.color,
+                  allocation: category.allocation,
+                  walletType: category.walletType,
+                });
+                setCatModalOpen(true);
+              }}
+              aria-label={t("settings.editCategory")}
             />
-          </Popconfirm>
-        </div>
-      ),
-    },
-  ];
-
-  /**
-   * Kolom tabel subkategori: barisnya wadah (tanpa aksi edit/hapus —
-   * CRUD wadah ada di tabel wadah). Subkategori muncul saat row di-expand.
-   * Jenis dompet hanya ada di tabel wadah (tidak diulang di sini).
-   */
-  const subColumns: ColumnsType<CategoryRow> = [
-    {
-      title: t("settings.categoryName"),
-      key: "name",
-      render: (_: unknown, { category }: CategoryRow) => (
-        <div className="flex items-center gap-2">
-          <span
-            style={{
-              display: "inline-block",
-              width: 10,
-              height: 10,
-              borderRadius: "50%",
-              background: category.color,
-              flexShrink: 0,
-            }}
-          />
-          <Text strong>{category.name}</Text>
-        </div>
-      ),
-    },
-    {
-      title: t("categories.subTitle"),
-      key: "count",
-      width: 140,
-      align: "right",
-      render: (_: unknown, { category }: CategoryRow) => (
-        <Text type="secondary">
-          {t("categories.subCount", { n: category.subcategories.length })}
-        </Text>
-      ),
+            <Popconfirm
+              title={t("settings.deleteCategoryConfirm")}
+              okText={t("common.delete")}
+              okButtonProps={{ danger: true }}
+              cancelText={t("common.cancel")}
+              onConfirm={() => void handleDeleteCategory(category)}
+            >
+              <Button
+                type="text"
+                shape="circle"
+                size="small"
+                danger
+                icon={<DeleteOutlined />}
+                aria-label={t("common.delete")}
+              />
+            </Popconfirm>
+          </div>
+        ),
     },
   ];
 
   return (
     <div className="w-full">
-      {/* Tabel subkategori sengaja lebih lebar (3/5) dari tabel wadah (2/5) */}
-      <div className="grid grid-cols-1 gap-4 xl:grid-cols-5">
-        {/* Tabel wadah */}
-        <div className="xl:col-span-2">
-          <Card
-            variant="borderless"
-            className="shadow-sm h-full"
-            title={<Text strong>{t("categories.wadahTitle")}</Text>}
-            extra={
-              <Space size="small" wrap>
-                <Segmented
-                  size="small"
-                  value={typeFilter}
-                  onChange={(v) => setTypeFilter(v as WalletType | "ALL")}
-                  options={[
-                    { value: "ALL", label: t("table.filterAll") },
-                    ...walletTypeOptions.map((o) => ({
-                      value: o.value,
-                      label: (
-                        <span className="flex items-center gap-1">
-                          {o.icon}
-                          <span className="hidden sm:inline">{o.label}</span>
-                        </span>
-                      ),
-                    })),
-                  ]}
-                  aria-label={t("finance.walletType")}
-                />
-                <Button
-                  type="primary"
-                  icon={<PlusOutlined />}
-                  onClick={() => {
-                    setEditingCat(null);
-                    categoryForm.resetFields();
-                    setCatModalOpen(true);
-                  }}
-                >
-                  {t("settings.addCategory")}
-                </Button>
-              </Space>
-            }
-            styles={{ body: { padding: 0 } }}
-          >
-            {categories.length === 0 ? (
-              <div className="flex items-center justify-center py-12">
-                <Empty description={t("settings.categoriesEmpty")} />
-              </div>
-            ) : (
-              <Table
-                columns={categoryColumns}
-                dataSource={categoryDataSource}
-                size="small"
-                pagination={false}
-              />
-            )}
-          </Card>
-        </div>
-
-        {/* Tabel subkategori: dikelompokkan per wadah via expanded row,
-            baris wadah tanpa aksi (CRUD wadah ada di tabel sebelah). */}
-        <div className="xl:col-span-3">
-          <Card
-            variant="borderless"
-            className="shadow-sm h-full"
-            title={<Text strong>{t("categories.subTitle")}</Text>}
-            extra={
-              <Space size="small" wrap>
-                <Select
-                  value={wadahFilter ?? undefined}
-                  onChange={(v) => setWadahFilter(v ?? null)}
-                  placeholder={t("categories.filterWadahPlaceholder")}
-                  allowClear
-                  showSearch
-                  optionFilterProp="label"
-                  options={categories.map((c) => ({
-                    value: c.id,
-                    label: c.name,
-                  }))}
-                  style={{ minWidth: 150 }}
-                  aria-label={t("categories.filterWadah")}
-                />
-                <Button
-                  type="primary"
-                  icon={<PlusOutlined />}
-                  disabled={categories.length === 0}
-                  onClick={() => {
-                    setEditingSub(null);
-                    subForm.resetFields();
-                    // Pra-pilih wadah yang sedang difilter bila ada.
-                    if (wadahFilter) {
-                      subForm.setFieldValue("categoryId", wadahFilter);
-                    }
-                    setSubModalOpen(true);
-                  }}
-                >
-                  {t("settings.addSubcategory")}
-                </Button>
-              </Space>
-            }
-            styles={{ body: { padding: 0 } }}
-          >
-            {categories.length === 0 ? (
-              <div className="flex items-center justify-center py-12">
-                <Empty description={t("settings.categoriesEmpty")} />
-              </div>
-            ) : totalFilteredSubs === 0 ? (
-              <div className="flex items-center justify-center py-12">
-                <Empty description={t("categories.subEmpty")} />
-              </div>
-            ) : (
-              /* key mengikuti filter agar tabel remount dan semua baris
-                 wadah ter-expand ulang (perilaku defaultExpandAllRows). */
-              <Table
-                key={wadahFilter ?? "all"}
-                columns={subColumns}
-                dataSource={subDataSource}
-                size="small"
-                pagination={false}
-                expandable={{
-                  defaultExpandAllRows: true,
-                  expandRowByClick: true,
-                  rowExpandable: ({ category }) =>
-                    category.subcategories.length > 0,
-                  expandedRowRender: ({ category }: CategoryRow) => (
-                    <div className="space-y-1">
-                      {category.subcategories.map((sub) => (
-                        <div
-                          key={sub.id}
-                          className="flex items-center justify-between gap-2"
-                        >
-                          <Text type="secondary" style={{ fontSize: 12 }}>
-                            • {sub.name}
-                          </Text>
-                          <Space size={0}>
-                            <Tooltip title={t("settings.editSubcategory")}>
-                              <Button
-                                type="text"
-                                shape="circle"
-                                size="small"
-                                icon={<EditOutlined />}
-                                onClick={() => {
-                                  setEditingSub(sub);
-                                  subForm.setFieldsValue({ name: sub.name });
-                                  setSubModalOpen(true);
-                                }}
-                                aria-label={t("settings.editSubcategory")}
-                              />
-                            </Tooltip>
-                            <Popconfirm
-                              title={t("settings.deleteSubConfirm")}
-                              okText={t("common.delete")}
-                              okButtonProps={{ danger: true }}
-                              cancelText={t("common.cancel")}
-                              onConfirm={() => void handleDeleteSub(sub.id)}
-                            >
-                              <Button
-                                type="text"
-                                shape="circle"
-                                size="small"
-                                danger
-                                icon={<DeleteOutlined />}
-                                aria-label={t("common.delete")}
-                              />
-                            </Popconfirm>
-                          </Space>
-                        </div>
-                      ))}
-                    </div>
-                  ),
-                }}
-              />
-            )}
-          </Card>
-        </div>
+      {/* Toolbar di luar table: segmented jenis dompet + tombol tambah wadah */}
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+        <Segmented
+          value={typeFilter}
+          onChange={(v) => setTypeFilter(v as WalletType | "ALL")}
+          options={[
+            { value: "ALL", label: t("table.filterAll") },
+            ...creatableTypes.map((o) => ({
+              value: o.value,
+              label: (
+                <span className="flex items-center gap-1">
+                  {o.icon}
+                  <span className="hidden sm:inline">{o.label}</span>
+                </span>
+              ),
+            })),
+            {
+              value: "CASH",
+              label: (
+                <span className="flex items-center gap-1">
+                  <DollarOutlined />
+                  <span className="hidden sm:inline">
+                    {t("finance.walletCash")}
+                  </span>
+                </span>
+              ),
+            },
+          ]}
+          aria-label={t("finance.walletType")}
+        />
+        <Button
+          type="primary"
+          icon={<PlusOutlined />}
+          onClick={() => {
+            setEditingCat(null);
+            categoryForm.resetFields();
+            setCatModalOpen(true);
+          }}
+        >
+          {t("settings.addCategory")}
+        </Button>
       </div>
 
-      {/* Modal wadah */}
+      {/* Tabel wadah (hanya wadah — subkategori ada di halaman Kebutuhan) */}
+      <Card
+        variant="borderless"
+        className="shadow-sm"
+        title={<Text strong>{t("categories.wadahTitle")}</Text>}
+        styles={{ body: { padding: 0 } }}
+      >
+        {typeFiltered.length === 0 ? (
+          <div className="flex items-center justify-center py-12">
+            <Empty description={t("settings.categoriesEmpty")} />
+          </div>
+        ) : (
+          <Table
+            columns={categoryColumns}
+            dataSource={categoryDataSource}
+            size="small"
+            pagination={false}
+          />
+        )}
+      </Card>
+
+      {/* Modal wadah (hanya Bank / E-Wallet — Cash bawaan) */}
       <Modal
         open={catModalOpen}
         title={
@@ -575,7 +374,8 @@ export default function WalletsView({ initialCategories }: Props) {
             rules={[{ required: true }]}
           >
             <Select
-              options={walletTypeOptions.map((o) => ({
+              disabled={editingCat !== null}
+              options={creatableTypes.map((o) => ({
                 value: o.value,
                 label: (
                   <span className="flex items-center gap-2">
@@ -635,56 +435,6 @@ export default function WalletsView({ initialCategories }: Props) {
               loading={catSaving}
               icon={<CheckOutlined />}
             >
-              {t("settings.save")}
-            </Button>
-          </div>
-        </Form>
-      </Modal>
-
-      {/* Modal subkategori */}
-      <Modal
-        open={subModalOpen}
-        title={
-          editingSub
-            ? t("settings.editSubcategory")
-            : t("settings.addSubcategory")
-        }
-        onCancel={() => setSubModalOpen(false)}
-        footer={null}
-        destroyOnHidden
-        centered
-        width={{ xs: "92%", sm: 420 }}
-      >
-        <Form form={subForm} layout="vertical" onFinish={handleSubSubmit}>
-          {!editingSub && (
-            <Form.Item
-              name="categoryId"
-              label={t("categories.wadahTitle")}
-              rules={[{ required: true }]}
-            >
-              <Select
-                placeholder={t("form.subcategoryPlaceholder")}
-                showSearch
-                optionFilterProp="label"
-                options={categories.map((c) => ({
-                  value: c.id,
-                  label: c.name,
-                }))}
-              />
-            </Form.Item>
-          )}
-          <Form.Item
-            name="name"
-            label={t("settings.subcategoryName")}
-            rules={[{ required: true }]}
-          >
-            <Input maxLength={50} />
-          </Form.Item>
-          <div className="mt-2 flex justify-end gap-2">
-            <Button onClick={() => setSubModalOpen(false)}>
-              {t("common.cancel")}
-            </Button>
-            <Button type="primary" htmlType="submit" loading={subSaving}>
               {t("settings.save")}
             </Button>
           </div>

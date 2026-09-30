@@ -12,10 +12,12 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-/// Jenis dompet/wadah: rekening bank atau dompet digital (e-wallet).
+/// Jenis dompet/wadah: rekening bank, dompet digital (e-wallet), atau
+/// uang tunai (CASH — wadah bawaan, satu per user, tidak bisa dihapus).
 enum WalletType {
   BANK
   E_WALLET
+  CASH
 
   @@map("wallet_type")
 }

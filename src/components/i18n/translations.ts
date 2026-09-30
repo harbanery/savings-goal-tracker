@@ -187,10 +187,12 @@ const id: TranslationDict = {
   "dev.skipped": "Notifikasi dilewati — kondisi tidak terpenuhi.",
   "dev.pushFailed": "Gagal mengirim notifikasi.",
 
-  // Menu / Navigasi (Keuangan = Dompet, Budget, Target — halaman terpisah)
+  // Menu / Navigasi (Keuangan = wadah, Kebutuhan = subkategori wadah,
+  // Budget, Target — halaman terpisah)
   "menu.dashboard": "Dashboard",
   "menu.transactions": "Transaksi",
-  "menu.wallets": "Dompet",
+  "menu.finance": "Keuangan",
+  "menu.needs": "Kebutuhan",
   "menu.budget": "Budget",
   "menu.target": "Target",
   "menu.reports": "Laporan",
@@ -264,10 +266,14 @@ const id: TranslationDict = {
   "categories.filterWadahPlaceholder": "Semua Wadah",
   "categories.subCount": "{n} subkategori",
 
-  // Keuangan: halaman Dompet / Budget / Target
+  // Keuangan: halaman wadah / Budget / Target
   "finance.walletType": "Jenis Dompet",
   "finance.walletBank": "Bank",
   "finance.walletEwallet": "E-Wallet",
+  "finance.walletCash": "Cash",
+  "finance.walletCashBuiltIn":
+    "Wadah cash bawaan — tidak bisa diubah atau dihapus.",
+  "finance.walletCashBuiltInTag": "Bawaan",
   "finance.budgetIncome": "Pemasukan Siklus Ini",
   "finance.budgetProtected": "Tabungan Dilindungi",
   "finance.budgetAllocatable": "Bisa Dialokasikan",
@@ -311,6 +317,13 @@ const id: TranslationDict = {
   "transactions.recurringToggle": "Aktifkan/nonaktifkan aturan",
   "transactions.deleteRecurringConfirm":
     "Hapus aturan berulang ini? Transaksi yang sudah tercatat tetap ada.",
+  "transactions.viewAria": "Pilih tampilan tabel transaksi",
+
+  // Kebutuhan: subkategori wadah (dipindah dari halaman Keuangan)
+  "needs.title": "Kebutuhan",
+  "needs.subcategories": "Subkategori",
+  "needs.subEmptyInline": "Belum ada subkategori",
+  "needs.subCount": "{n} subkategori total",
 };
 
 const en: TranslationDict = {
@@ -477,10 +490,12 @@ const en: TranslationDict = {
   "dev.skipped": "Notification skipped — condition not met.",
   "dev.pushFailed": "Failed to send notification.",
 
-  // Menu / Navigation (Finance = Wallets, Budget, Target — separate pages)
+  // Menu / Navigation (Finance = envelopes, Needs = envelope subcategories,
+  // Budget, Target — separate pages)
   "menu.dashboard": "Dashboard",
   "menu.transactions": "Transactions",
-  "menu.wallets": "Wallets",
+  "menu.finance": "Finance",
+  "menu.needs": "Needs",
   "menu.budget": "Budget",
   "menu.target": "Target",
   "menu.reports": "Reports",
@@ -559,6 +574,10 @@ const en: TranslationDict = {
   "finance.walletType": "Wallet Type",
   "finance.walletBank": "Bank",
   "finance.walletEwallet": "E-Wallet",
+  "finance.walletCash": "Cash",
+  "finance.walletCashBuiltIn":
+    "Built-in cash wallet — cannot be edited or deleted.",
+  "finance.walletCashBuiltInTag": "Built-in",
   "finance.budgetIncome": "Income This Cycle",
   "finance.budgetProtected": "Protected Savings",
   "finance.budgetAllocatable": "Available to Allocate",
@@ -602,6 +621,13 @@ const en: TranslationDict = {
   "transactions.recurringToggle": "Enable/disable the rule",
   "transactions.deleteRecurringConfirm":
     "Delete this recurring rule? Already-recorded transactions remain.",
+  "transactions.viewAria": "Select transaction table view",
+
+  // Needs: envelope subcategories (moved from the Finance page)
+  "needs.title": "Needs",
+  "needs.subcategories": "Subcategories",
+  "needs.subEmptyInline": "No subcategories yet",
+  "needs.subCount": "{n} subcategories total",
 };
 
 export const TRANSLATIONS: Record<Locale, TranslationDict> = { id, en };

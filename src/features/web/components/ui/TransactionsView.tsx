@@ -6,6 +6,7 @@ import {
   Card,
   Empty,
   Popconfirm,
+  Segmented,
   Space,
   Switch,
   Tag,
@@ -45,11 +46,15 @@ interface Props {
   categories: BudgetCategory[];
 }
 
+/** Mode tampilan tabel (segmented di kiri tombol import). */
+type TableViewMode = "transactions" | "recurring";
+
 /**
  * Halaman Transaksi (generate_web.md): seluruh catatan transaksi siklus —
  * semua jenis (pemasukan/pengeluaran/transfer), pencarian, filter,
- * import/export, CRUD, dan daftar transaksi berulang. Navigasi siklus
- * ada di navbar (DatePicker month).
+ * import/export, CRUD, dan daftar transaksi berulang. Segmented di kiri
+ * tombol import mengganti tampilan tabel transaksi ↔ tabel transaksi
+ * berulang. Navigasi siklus ada di navbar (DatePicker month).
  */
 export default function TransactionsView({
   initialTransactions,
@@ -60,6 +65,7 @@ export default function TransactionsView({
   const [formOpen, setFormOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [rules, setRules] = useState<RecurringRule[]>([]);
+  const [viewMode, setViewMode] = useState<TableViewMode>("transactions");
 
   /** Siklus aktif global (dipilih lewat DatePicker month di navbar). */
   const { cycle } = useCycle();
@@ -158,9 +164,19 @@ export default function TransactionsView({
 
   return (
     <div className="mx-auto flex w-full max-w-350 flex-col">
-      {/* Navigasi siklus ada di navbar (DatePicker month); sisakan aksi transaksi */}
+      {/* Navigasi siklus ada di navbar (DatePicker month). Segmented di kiri
+          tombol import mengganti tabel transaksi ↔ tabel transaksi berulang. */}
       <div className="mb-4 flex flex-wrap items-center justify-end gap-2">
         <Space size="small" wrap>
+          <Segmented
+            value={viewMode}
+            onChange={(v) => setViewMode(v as TableViewMode)}
+            options={[
+              { value: "transactions", label: t("menu.transactions") },
+              { value: "recurring", label: t("transactions.recurringTitle") },
+            ]}
+            aria-label={t("transactions.viewAria")}
+          />
           <ImportExportButtons
             transactions={transactions}
             categories={categories}
@@ -179,25 +195,27 @@ export default function TransactionsView({
         </Space>
       </div>
 
-      <TransactionTable
-        transactions={transactions}
-        categories={categories}
-        onEdit={(transaction) => {
-          setEditingId(transaction.id);
-          setFormOpen(true);
-        }}
-        onDelete={handleDelete}
-        onDeleteBulk={handleDeleteBulk}
-      />
+      {viewMode === "transactions" && (
+        <TransactionTable
+          transactions={transactions}
+          categories={categories}
+          onEdit={(transaction) => {
+            setEditingId(transaction.id);
+            setFormOpen(true);
+          }}
+          onDelete={handleDelete}
+          onDeleteBulk={handleDeleteBulk}
+        />
+      )}
 
       {/* Aturan transaksi berulang (materialisasi otomatis per bulan) */}
-      <Card
-        variant="borderless"
-        className="shadow-sm"
-        style={{ marginTop: 16 }}
-        title={<Text strong>{t("transactions.recurringTitle")}</Text>}
-        styles={{ body: { padding: rules.length === 0 ? 0 : 16 } }}
-      >
+      {viewMode === "recurring" && (
+        <Card
+          variant="borderless"
+          className="shadow-sm"
+          title={<Text strong>{t("transactions.recurringTitle")}</Text>}
+          styles={{ body: { padding: rules.length === 0 ? 0 : 16 } }}
+        >
         {rules.length === 0 ? (
           <div className="flex items-center justify-center py-8">
             <Empty description={t("transactions.recurringEmpty")} />
@@ -265,7 +283,8 @@ export default function TransactionsView({
             })}
           </div>
         )}
-      </Card>
+        </Card>
+      )}
 
       <TransactionFormModal
         open={formOpen}

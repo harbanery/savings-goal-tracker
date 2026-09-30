@@ -11,6 +11,7 @@ const PRIVATE_PAGES = [
   "/",
   "/transactions",
   "/finance",
+  "/needs",
   "/budget",
   "/target",
   "/reports",

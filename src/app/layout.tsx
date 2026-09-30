@@ -1,6 +1,7 @@
 import "@/assets/global/index.css";
 import { AntdRegistry } from "@ant-design/nextjs-registry";
 import type { Metadata, Viewport } from "next";
+import { cookies } from "next/headers";
 import { ThemeProvider } from "@/components/ui/theme/ThemeProvider";
 import { LocaleProvider } from "@/components/i18n/LocaleProvider";
 import InstallPrompt from "@/features/web/components/ui/InstallPrompt";
@@ -12,6 +13,7 @@ import {
   META_APP,
   META_DESCRIPTION,
   META_TITLE,
+  THEME_COOKIE,
 } from "@/utils/config/variables";
 import { neueHaasDisplay } from "@/utils/fonts/next-local";
 
@@ -106,11 +108,17 @@ export const viewport: Viewport = {
   ],
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  // Tema dari cookie agar SSR antd menghasilkan style tema yang benar
+  // (dark mode tidak flash putih). localStorage tidak bisa dibaca server.
+  const cookieStore = await cookies();
+  const cookieTheme = cookieStore.get(THEME_COOKIE)?.value;
+  const initialMode = cookieTheme === "dark" ? "dark" : "light";
+
   return (
     <html
       lang="id"
@@ -120,15 +128,16 @@ export default function RootLayout({
       <body className="min-h-full flex flex-col">
         {/* Set class `dark` sebelum hidrasi agar tidak ada flash tema terang
             (FOUC) bagi pengguna dark mode. Harus sinkron dengan STORAGE_KEY
-            dan logika preferensi sistem di ThemeProvider. */}
+            dan logika preferensi sistem di ThemeProvider. Cookie `sgt_theme`
+            ikut ditulis agar SSR berikutnya memakai tema yang sama. */}
         <script
           dangerouslySetInnerHTML={{
-            __html: `(function(){try{var s=localStorage.getItem("savings-goal-tracker:theme");var d=s==="dark"||((s!=="light")&&window.matchMedia("(prefers-color-scheme: dark)").matches);var r=document.documentElement;if(d){r.classList.add("dark");r.style.colorScheme="dark";}else{r.style.colorScheme="light";}}catch(e){}})();`,
+            __html: `(function(){try{var s=localStorage.getItem("savings-goal-tracker:theme");var d=s==="dark"||((s!=="light")&&window.matchMedia("(prefers-color-scheme: dark)").matches);var r=document.documentElement;if(d){r.classList.add("dark");r.style.colorScheme="dark";}else{r.style.colorScheme="light";}document.cookie="sgt_theme="+(d?"dark":"light")+"; path=/; max-age=31536000; samesite=lax";}catch(e){}})();`,
           }}
         />
         <AntdRegistry>
           <LocaleProvider>
-            <ThemeProvider>
+            <ThemeProvider initialMode={initialMode}>
               {children}
               <InstallPrompt />
               <NotificationTest />

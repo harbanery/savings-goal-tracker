@@ -14,6 +14,7 @@ import {
   type ReactNode,
 } from "react";
 import { useLocale } from "@/components/i18n/LocaleProvider";
+import { THEME_COOKIE } from "@/utils/config/variables";
 
 type ThemeMode = "light" | "dark";
 
@@ -34,7 +35,11 @@ const ThemeContext = createContext<ThemeContextValue>({
 
 const STORAGE_KEY = "savings-goal-tracker:theme";
 
-// --- Module-level store agar server dan render awal client selalu sama ---
+// --- Module-level store ---
+// `clientMode` hanya dimutasi lewat applyMode (effect/handler), tidak pernah
+// saat render. Sebelum hidrasi selesai, render memakai `initialMode` (cookie,
+// dibaca server) sehingga HTML SSR dan hidrasi pertama identik — style antd
+// dari server sudah bertema benar (tidak ada flash putih saat dark mode).
 let clientMode: ThemeMode = "light";
 let clientHydrated = false;
 const listeners = new Set<() => void>();
@@ -56,12 +61,18 @@ function getHydratedSnapshot(): boolean {
   return clientHydrated;
 }
 
-function getServerSnapshot(): ThemeMode {
-  return "light";
-}
-
-function getServerHydrated(): boolean {
-  return false;
+/** Persist tema ke localStorage + cookie (cookie dibaca SSR). */
+function persistMode(next: ThemeMode): void {
+  try {
+    localStorage.setItem(STORAGE_KEY, next);
+  } catch {
+    // ignore
+  }
+  try {
+    document.cookie = `${THEME_COOKIE}=${next}; path=/; max-age=31536000; samesite=lax`;
+  } catch {
+    // ignore
+  }
 }
 
 function readPersistedMode(): ThemeMode {
@@ -78,11 +89,7 @@ function readPersistedMode(): ThemeMode {
 
 function applyMode(next: ThemeMode): void {
   clientMode = next;
-  try {
-    localStorage.setItem(STORAGE_KEY, next);
-  } catch {
-    // ignore
-  }
+  persistMode(next);
   const root = document.documentElement;
   if (next === "dark") root.classList.add("dark");
   else root.classList.remove("dark");
@@ -94,17 +101,38 @@ function applyMode(next: ThemeMode): void {
 
 /**
  * Provider tema aplikasi.
- * - Mengelola state light/dark (persist ke localStorage, default preferensi sistem).
+ * - Mengelola state light/dark (persist ke localStorage + cookie, default
+ *   preferensi sistem).
+ * - `initialMode` dibaca dari cookie THEME_COOKIE di server layout dan
+ *   dipakai untuk render SSR + hidrasi pertama — style antd dari server
+ *   sudah bertema benar sehingga tidak ada flash putih saat dark mode.
  * - Mengeset class `dark` pada <html> agar Tailwind dark: variant aktif.
  * - Menyuplai antd ConfigProvider dengan algoritma tema yang sesuai.
  */
-export function ThemeProvider({ children }: { children: ReactNode }) {
-  const mode = useSyncExternalStore(subscribe, getModeSnapshot, getServerSnapshot);
+export function ThemeProvider({
+  children,
+  initialMode = "light",
+}: {
+  children: ReactNode;
+  /** Tema awal dari cookie (SSR) — fallback "light". */
+  initialMode?: ThemeMode;
+}) {
+  // Seed store sekali sebelum snapshot pertama dibaca, agar hidrasi client
+  // identik dengan HTML server (yang dirender memakai initialMode).
+  const getServerMode = useCallback(() => initialMode, [initialMode]);
+  const storedMode = useSyncExternalStore(
+    subscribe,
+    getModeSnapshot,
+    getServerMode,
+  );
   const hydrated = useSyncExternalStore(
     subscribe,
     getHydratedSnapshot,
-    getServerHydrated,
+    () => false,
   );
+  // Sebelum hidrasi selesai, pakai tema cookie (sama dengan SSR); setelahnya
+  // pakai store (sumber kebenaran di klien).
+  const mode: ThemeMode = hydrated ? storedMode : initialMode;
   const { locale } = useLocale();
 
   useEffect(() => {
@@ -114,7 +142,8 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     // Sinkron dengan script pre-hydration di root layout (sudah menset
     // class & colorScheme sebelum paint); applyMode memastikan state
-    // internal + DOM konsisten setelah hidrasi.
+    // internal + DOM konsisten setelah hidrasi (localStorage tetap sumber
+    // kebenaran di klien — bila beda dari cookie, tema digeser di sini).
     applyMode(readPersistedMode());
     clientHydrated = true;
     emit();

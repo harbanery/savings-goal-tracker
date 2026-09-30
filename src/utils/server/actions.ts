@@ -159,6 +159,12 @@ export async function getFinanceBundleAction(): Promise<{
   return { categories, settings };
 }
 
+/** Kategori saja (halaman Kebutuhan — refresh daftar wadah & subkategori). */
+export async function getUserCategoriesAction(): Promise<BudgetCategory[]> {
+  const userId = await requireUserId();
+  return getUserCategories(userId);
+}
+
 /**
  * Buat transaksi baru.
  * - `options.force`: lewati proteksi tabungan (konfirmasi "terpaksa").
@@ -337,6 +343,7 @@ export async function updateSettingsAction(data: {
   revalidatePath("/");
   revalidatePath("/budget");
   revalidatePath("/finance");
+  revalidatePath("/needs");
   return settings;
 }
 
@@ -358,6 +365,7 @@ export async function createCategoryAction(data: {
   revalidatePath("/");
   revalidatePath("/budget");
   revalidatePath("/finance");
+  revalidatePath("/needs");
   return category;
 }
 
@@ -377,6 +385,7 @@ export async function updateCategoryAction(
   revalidatePath("/");
   revalidatePath("/budget");
   revalidatePath("/finance");
+  revalidatePath("/needs");
 }
 
 export async function deleteCategoryAction(categoryId: string): Promise<void> {
@@ -386,6 +395,7 @@ export async function deleteCategoryAction(categoryId: string): Promise<void> {
   revalidatePath("/");
   revalidatePath("/budget");
   revalidatePath("/finance");
+  revalidatePath("/needs");
 }
 
 export async function createSubcategoryAction(
@@ -400,6 +410,7 @@ export async function createSubcategoryAction(
   revalidatePath("/");
   revalidatePath("/budget");
   revalidatePath("/finance");
+  revalidatePath("/needs");
 }
 
 export async function deleteSubcategoryAction(
@@ -411,6 +422,7 @@ export async function deleteSubcategoryAction(
   revalidatePath("/");
   revalidatePath("/budget");
   revalidatePath("/finance");
+  revalidatePath("/needs");
 }
 
 export async function updateSubcategoryAction(
@@ -425,6 +437,7 @@ export async function updateSubcategoryAction(
   revalidatePath("/");
   revalidatePath("/budget");
   revalidatePath("/finance");
+  revalidatePath("/needs");
 }
 
 // ---------------------------------------------------------------------------

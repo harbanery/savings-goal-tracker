@@ -1,6 +1,7 @@
 import {
   AccountBookOutlined,
   AimOutlined,
+  AppstoreOutlined,
   DashboardOutlined,
   FileTextOutlined,
   TransactionOutlined,
@@ -17,12 +18,14 @@ export interface MenuItem {
 }
 
 /** Menu samping aplikasi — struktur mengikuti generate_web.md.
- *  Keuangan terbagi tiga halaman: Dompet (/finance), Budget (/budget),
- *  Target (/target) — Budget & Target di luar /finance. */
+ *  Keuangan terbagi: Keuangan/wadah (/finance), Kebutuhan/subkategori
+ *  (/needs), Budget (/budget), Target (/target) — Budget & Target di luar
+ *  /finance. */
 export const menuConfig: MenuItem[] = [
   { key: "dashboard", link: "/", icon: <DashboardOutlined />, labelKey: "menu.dashboard" },
   { key: "transactions", link: "/transactions", icon: <TransactionOutlined />, labelKey: "menu.transactions" },
-  { key: "finance", link: "/finance", icon: <WalletOutlined />, labelKey: "menu.wallets" },
+  { key: "finance", link: "/finance", icon: <WalletOutlined />, labelKey: "menu.finance" },
+  { key: "needs", link: "/needs", icon: <AppstoreOutlined />, labelKey: "menu.needs" },
   { key: "budget", link: "/budget", icon: <AccountBookOutlined />, labelKey: "menu.budget" },
   { key: "target", link: "/target", icon: <AimOutlined />, labelKey: "menu.target" },
   { key: "reports", link: "/reports", icon: <FileTextOutlined />, labelKey: "menu.reports" },

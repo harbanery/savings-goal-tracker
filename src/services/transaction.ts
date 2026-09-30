@@ -304,6 +304,10 @@ export async function createCategory(
     walletType?: WalletType;
   },
 ): Promise<BudgetCategory> {
+  // Wadah CASH bawaan tidak boleh dibuat manual (dibuat otomatis per user).
+  if (data.walletType && data.walletType !== "BANK" && data.walletType !== "E_WALLET") {
+    throw new Error("Jenis dompet tidak valid.");
+  }
   const count = await prisma.category.count({ where: { userId } });
   const row = await withRetry(() =>
     prisma.category.create({
@@ -338,7 +342,15 @@ export async function updateCategory(
     walletType?: WalletType;
   },
 ): Promise<void> {
-  await assertCategoryOwned(userId, categoryId);
+  const existing = await prisma.category.findFirst({
+    where: { id: categoryId, userId },
+    select: { id: true, walletType: true },
+  });
+  if (!existing) throw new Error("Kategori tidak ditemukan.");
+  // Wadah "Cash" (CASH) adalah wadah bawaan — tidak bisa diubah.
+  if (existing.walletType === "CASH") {
+    throw new Error("Wadah Cash bawaan tidak bisa diubah.");
+  }
   const patch: Prisma.CategoryUpdateInput = {};
   if (data.name !== undefined) patch.name = data.name;
   if (data.color !== undefined) patch.color = data.color;
@@ -361,7 +373,15 @@ export async function updateCategory(
 
 /** Hapus kategori — ditolak bila masih dipakai transaksi/aturan berulang. */
 export async function deleteCategory(userId: string, categoryId: string): Promise<void> {
-  await assertCategoryOwned(userId, categoryId);
+  const existing = await prisma.category.findFirst({
+    where: { id: categoryId, userId },
+    select: { id: true, walletType: true },
+  });
+  if (!existing) throw new Error("Kategori tidak ditemukan.");
+  // Wadah "Cash" (CASH) adalah wadah bawaan — tidak bisa dihapus.
+  if (existing.walletType === "CASH") {
+    throw new Error("Wadah Cash bawaan tidak bisa dihapus.");
+  }
   const used = await prisma.transaction.count({
     where: {
       userId,
