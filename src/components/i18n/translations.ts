@@ -85,8 +85,8 @@ const id: TranslationDict = {
   "form.saveChanges": "Simpan Perubahan",
 
   // Breakdown
-  "breakdown.title": "Alokasi Wadah",
-  "breakdown.noAllocation": "(tanpa alokasi)",
+  "breakdown.title": "Batas Wadah",
+  "breakdown.noAllocation": "(tanpa batas)",
   "breakdown.purchases": "{n}x pembelian",
   "breakdown.over": "Lebih ",
   "breakdown.remaining": "Sisa ",
@@ -253,7 +253,9 @@ const id: TranslationDict = {
   "settings.categoryName": "Nama Wadah",
   "settings.categoryColor": "Warna",
   "settings.colorPresets": "Warna Standar",
-  "settings.allocation": "Alokasi",
+  "settings.allocation": "Batas",
+  "finance.limitHint":
+    "Batas pengeluaran/transfer keluar per siklus untuk wadah ini. 0 = tanpa batas; wadah Cash tidak dibatasi.",
   "settings.addSubcategory": "Tambah Subkategori",
   "settings.editSubcategory": "Edit Subkategori",
   "settings.subcategoryName": "Nama Subkategori",
@@ -310,6 +312,9 @@ const id: TranslationDict = {
   "form.protectionDesc":
     "Pengeluaran akan menjadi {projected}, melebihi batas alokasi {limit} dan menyentuh tabungan yang Anda lindungi. Lanjutkan terpaksa?",
   "form.protectionConfirm": "Lanjutkan Terpaksa",
+  "form.walletLimitTitle": "Melebihi Batas Wadah",
+  "form.walletLimitDesc":
+    "Total keluar dari wadah {wallet} akan menjadi {projected}, melebihi batas {limit}. Naikkan batas wadah di halaman Keuangan atau pilih wadah lain.",
   "transactions.recurringTitle": "Transaksi Berulang",
   "transactions.recurringEvery": "tiap tanggal {n}",
   "transactions.recurringEmpty": "Belum ada transaksi berulang.",
@@ -393,8 +398,8 @@ const en: TranslationDict = {
   "form.notePlaceholder": "Additional note...",
   "form.saveChanges": "Save Changes",
 
-  "breakdown.title": "Envelope Allocation",
-  "breakdown.noAllocation": "(no allocation)",
+  "breakdown.title": "Envelope Limits",
+  "breakdown.noAllocation": "(no limit)",
   "breakdown.purchases": "{n}x purchases",
   "breakdown.over": "Over ",
   "breakdown.remaining": "Left ",
@@ -556,7 +561,9 @@ const en: TranslationDict = {
   "settings.categoryName": "Envelope Name",
   "settings.categoryColor": "Color",
   "settings.colorPresets": "Preset Colors",
-  "settings.allocation": "Allocation",
+  "settings.allocation": "Limit",
+  "finance.limitHint":
+    "Spending/transfer-out limit per cycle for this envelope. 0 = unlimited; the Cash envelope is unlimited.",
   "settings.addSubcategory": "Add Subcategory",
   "settings.editSubcategory": "Edit Subcategory",
   "settings.subcategoryName": "Subcategory Name",
@@ -614,6 +621,9 @@ const en: TranslationDict = {
   "form.protectionDesc":
     "Spending will reach {projected}, exceeding the {limit} allocation limit and touching your protected savings. Force continue?",
   "form.protectionConfirm": "Force Continue",
+  "form.walletLimitTitle": "Envelope Limit Exceeded",
+  "form.walletLimitDesc":
+    "Total outflow from {wallet} will reach {projected}, exceeding its {limit} limit. Raise the envelope limit on the Finance page or pick another envelope.",
   "transactions.recurringTitle": "Recurring Transactions",
   "transactions.recurringEvery": "every day {n}",
   "transactions.recurringEmpty": "No recurring transactions yet.",

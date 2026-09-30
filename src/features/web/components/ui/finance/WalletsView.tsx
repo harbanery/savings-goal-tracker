@@ -95,7 +95,7 @@ export default function WalletsView({ initialCategories }: Props) {
 
   const [categories, setCategories] = useState(initialCategories);
   const [reloadKey, setReloadKey] = useState(0);
-  const [typeFilter, setTypeFilter] = useState<WalletType | "ALL">("ALL");
+  const [typeFilter, setTypeFilter] = useState<WalletType>("CASH");
 
   const [categoryForm] = Form.useForm<CategoryFormValues>();
 
@@ -152,9 +152,7 @@ export default function WalletsView({ initialCategories }: Props) {
   }
 
   /** Baris tabel wadah (difilter per jenis dompet lewat segmented). */
-  const typeFiltered = categories.filter(
-    (c) => typeFilter === "ALL" || c.walletType === typeFilter,
-  );
+  const typeFiltered = categories.filter((c) => c.walletType === typeFilter);
   const categoryDataSource: CategoryRow[] = typeFiltered.map((c) => ({
     key: c.id,
     category: c,
@@ -272,13 +270,13 @@ export default function WalletsView({ initialCategories }: Props) {
 
   return (
     <div className="w-full">
-      {/* Toolbar di luar table: segmented jenis dompet + tombol tambah wadah */}
+      {/* Toolbar di luar table: segmented jenis dompet + tombol tambah wadah.
+          Tanpa opsi "Semua" — hanya Bank / E-Wallet / Cash (default Cash). */}
       <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
         <Segmented
           value={typeFilter}
-          onChange={(v) => setTypeFilter(v as WalletType | "ALL")}
+          onChange={(v) => setTypeFilter(v as WalletType)}
           options={[
-            { value: "ALL", label: t("table.filterAll") },
             ...creatableTypes.map((o) => ({
               value: o.value,
               label: (
@@ -315,12 +313,13 @@ export default function WalletsView({ initialCategories }: Props) {
         </Button>
       </div>
 
-      {/* Tabel wadah (hanya wadah — subkategori ada di halaman Kebutuhan) */}
+      {/* Tabel wadah (hanya wadah — subkategori ada di halaman Kebutuhan).
+          Body diberi padding agar tabel tidak menempel tepi card. */}
       <Card
         variant="borderless"
         className="shadow-sm"
         title={<Text strong>{t("categories.wadahTitle")}</Text>}
-        styles={{ body: { padding: 0 } }}
+        styles={{ body: { padding: 16 } }}
       >
         {typeFiltered.length === 0 ? (
           <div className="flex items-center justify-center py-12">
@@ -404,6 +403,7 @@ export default function WalletsView({ initialCategories }: Props) {
           <Form.Item
             name="allocation"
             label={t("settings.allocation")}
+            extra={t("finance.limitHint")}
             rules={[{ required: true }]}
           >
             <InputNumber<number>

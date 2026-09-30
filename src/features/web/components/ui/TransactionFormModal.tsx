@@ -27,7 +27,10 @@ import {
   getParentCategoryId,
   getUnit,
 } from "@/features/web/utils/categories";
-import { parseSavingsProtectionError } from "@/features/web/utils/finance";
+import {
+  parseSavingsProtectionError,
+  parseWalletLimitError,
+} from "@/features/web/utils/finance";
 import type {
   BudgetCategory,
   Transaction,
@@ -200,6 +203,7 @@ function TransactionForm({
     } catch (err) {
       const messageText = err instanceof Error ? err.message : String(err);
       const protection = parseSavingsProtectionError(messageText);
+      const walletLimit = parseWalletLimitError(messageText);
       if (protection && !force) {
         // Pengeluaran menyentuh tabungan dilindungi (Budget) — minta
         // konfirmasi "terpaksa" sebelum menyimpan.
@@ -213,6 +217,17 @@ function TransactionForm({
           okButtonProps: { danger: true },
           cancelText: t("common.cancel"),
           onOk: () => handleFinish(values, true),
+        });
+      } else if (walletLimit) {
+        // Batas wadah (alokasi) terlampaui — TIDAK bisa dipaksa lewat;
+        // user harus menaikkan batas wadah di halaman Keuangan.
+        modal.error({
+          title: t("form.walletLimitTitle"),
+          content: t("form.walletLimitDesc", {
+            wallet: walletLimit.walletName,
+            projected: formatIDR(walletLimit.projected, locale),
+            limit: formatIDR(walletLimit.limit, locale),
+          }),
         });
       } else {
         console.error("[TransactionFormModal] gagal menyimpan:", err);

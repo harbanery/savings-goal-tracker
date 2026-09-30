@@ -276,7 +276,7 @@ export default function NeedsView({ initialCategories }: Props) {
             {t("needs.subCount", { n: totalSubs })}
           </Text>
         }
-        styles={{ body: { padding: 0 } }}
+        styles={{ body: { padding: 16 } }}
       >
         {categories.length === 0 ? (
           <div className="flex items-center justify-center py-12">

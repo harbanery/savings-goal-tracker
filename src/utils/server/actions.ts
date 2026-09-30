@@ -30,6 +30,7 @@ import {
 import {
   addTargetFunds,
   assertSavingsProtection,
+  assertWalletLimit,
   createTarget,
   deleteTarget,
   getBudgetOverview,
@@ -189,6 +190,17 @@ export async function createTransactionAction(
   // dilindungi tanpa konfirmasi terpaksa dari user.
   await assertSavingsProtection(userId, date, input.amount, options?.force ?? false);
 
+  // Batas wadah (insight DROID.md): pengeluaran/transfer keluar tidak boleh
+  // melebihi alokasi (batas) wadah per siklus — cash & pemasukan bebas.
+  if (input.type !== "INCOME") {
+    await assertWalletLimit(
+      userId,
+      input.categoryId,
+      date,
+      Math.round(input.amount),
+    );
+  }
+
   const subcategoryId = isUuid(input.subcategoryId ?? "")
     ? input.subcategoryId
     : null;
@@ -248,6 +260,21 @@ export async function updateTransactionAction(
     newExpense - oldExpense,
     force ?? false,
   );
+
+  // Batas wadah: delta keluar (EXPENSE/TRANSFER) terhadap wadah tujuan —
+  // nilai lama hanya dihitung bila outflow dari wadah yang sama.
+  if (input.type !== "INCOME") {
+    const oldOutflowSameCategory =
+      old.categoryId === input.categoryId && old.type !== "INCOME"
+        ? old.amount
+        : 0;
+    await assertWalletLimit(
+      userId,
+      input.categoryId,
+      date,
+      Math.round(input.amount - oldOutflowSameCategory),
+    );
+  }
 
   await updateTransaction(userId, id, {
     type: input.type,

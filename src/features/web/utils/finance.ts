@@ -31,6 +31,37 @@ export function parseSavingsProtectionError(
   return { limit: limitNum, projected: projectedNum };
 }
 
+/**
+ * Kode error batas wadah (insight DROID.md): alokasi wadah = batas
+ * pengeluaran/transfer keluar per siklus. Server melempar error berformat
+ * `WALLET_LIMIT|<namaWadah>|<batas>|<proyeksi>`; client mem-parsing-nya
+ * untuk menampilkan pesan (batas wadah TIDAK bisa dilewati — beda dengan
+ * proteksi tabungan yang bisa dipaksa).
+ */
+export const WALLET_LIMIT_CODE = "WALLET_LIMIT";
+
+/** Hasil parsing error batas wadah. */
+export interface WalletLimitInfo {
+  /** Nama wadah yang mentok batas. */
+  walletName: string;
+  /** Batas (alokasi) wadah per siklus. */
+  limit: number;
+  /** Proyeksi total keluar wadah bila transaksi disimpan. */
+  projected: number;
+}
+
+/** Parse pesan error batas wadah; null bila bukan error tersebut. */
+export function parseWalletLimitError(message: string): WalletLimitInfo | null {
+  if (!message.startsWith(WALLET_LIMIT_CODE + "|")) return null;
+  const [, walletName, limit, projected] = message.split("|");
+  const limitNum = Number(limit);
+  const projectedNum = Number(projected);
+  if (!Number.isFinite(limitNum) || !Number.isFinite(projectedNum)) {
+    return null;
+  }
+  return { walletName, limit: limitNum, projected: projectedNum };
+}
+
 /** Banyak hari dalam sebuah bulan (month 0-based). */
 export function daysInMonth(year: number, monthIndex: number): number {
   return new Date(year, monthIndex + 1, 0).getDate();

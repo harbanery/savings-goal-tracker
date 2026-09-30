@@ -45,7 +45,7 @@ const { Text } = Typography;
  * dan sisa border — dengan batas minimum agar tetap usable di layar
  * pendek.
  */
-const TABLE_SCROLL_Y = "max(240px, calc(100dvh - 300px))";
+const TABLE_SCROLL_Y = "max(240px, calc(100dvh - 320px))";
 
 interface Props {
   transactions: Transaction[];
@@ -350,7 +350,7 @@ export default function TransactionTable({
         ) : null
       }
       style={{ marginBottom: 24 }}
-      styles={{ body: { padding: 0 } }}
+      styles={{ body: { padding: 16 } }}
     >
       {transactions.length === 0 ? (
         <div
