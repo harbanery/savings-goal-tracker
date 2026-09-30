@@ -23,12 +23,10 @@ import {
   Popconfirm,
   Segmented,
   Select,
-  Table,
   Tag,
   Tooltip,
   Typography,
 } from "antd";
-import type { ColumnsType } from "antd/es/table";
 import { useCallback, useEffect, useState } from "react";
 import { useLocale } from "@/components/i18n/LocaleProvider";
 import type { BudgetCategory, WalletType } from "@/features/web/types";
@@ -62,11 +60,6 @@ interface CategoryFormValues {
   color: string;
   allocation: number;
   walletType: WalletType;
-}
-
-interface CategoryRow {
-  key: string;
-  category: BudgetCategory;
 }
 
 /** Opsi jenis dompet yang bisa DIBUAT user (Cash bawaan, bukan dibuat). */
@@ -151,12 +144,8 @@ export default function WalletsView({ initialCategories }: Props) {
     }
   }
 
-  /** Baris tabel wadah (difilter per jenis dompet lewat segmented). */
+  /** Wadah yang tampil (difilter per jenis dompet lewat segmented). */
   const typeFiltered = categories.filter((c) => c.walletType === typeFilter);
-  const categoryDataSource: CategoryRow[] = typeFiltered.map((c) => ({
-    key: c.id,
-    category: c,
-  }));
 
   /** Tag jenis dompet (Bank / E-Wallet / Cash). */
   function renderWalletType(type: WalletType) {
@@ -181,92 +170,20 @@ export default function WalletsView({ initialCategories }: Props) {
     );
   }
 
-  const categoryColumns: ColumnsType<CategoryRow> = [
-    {
-      title: t("settings.categoryName"),
-      key: "name",
-      render: (_: unknown, { category }: CategoryRow) => (
-        <div className="flex items-center gap-2">
-          <span
-            style={{
-              display: "inline-block",
-              width: 10,
-              height: 10,
-              borderRadius: "50%",
-              background: category.color,
-              flexShrink: 0,
-            }}
-          />
-          <Text strong>{category.name}</Text>
-        </div>
-      ),
-    },
-    {
-      title: t("finance.walletType"),
-      key: "walletType",
-      width: 130,
-      render: (_: unknown, { category }: CategoryRow) =>
-        renderWalletType(category.walletType),
-    },
-    {
-      title: t("settings.allocation"),
-      key: "allocation",
-      width: 140,
-      align: "right",
-      render: (_: unknown, { category }: CategoryRow) => (
-        <Text>{formatIDR(category.allocation, locale)}</Text>
-      ),
-    },
-    {
-      title: t("table.colAction"),
-      key: "action",
-      width: 90,
-      align: "center",
-      render: (_: unknown, { category }: CategoryRow) =>
-        category.walletType === "CASH" ? (
-          // Wadah Cash bawaan: tanpa aksi edit/hapus.
-          <Tooltip title={t("finance.walletCashBuiltIn")}>
-            <Tag style={{ margin: 0 }}>{t("finance.walletCashBuiltInTag")}</Tag>
-          </Tooltip>
-        ) : (
-          <div className="flex justify-center gap-1">
-            <Button
-              type="text"
-              shape="circle"
-              size="small"
-              icon={<EditOutlined />}
-              onClick={() => {
-                setEditingCat(category);
-                categoryForm.setFieldsValue({
-                  name: category.name,
-                  color: category.color,
-                  allocation: category.allocation,
-                  walletType: category.walletType,
-                });
-                setCatModalOpen(true);
-              }}
-              aria-label={t("settings.editCategory")}
-            />
-            <Popconfirm
-              title={t("settings.deleteCategoryConfirm")}
-              okText={t("common.delete")}
-              okButtonProps={{ danger: true }}
-              cancelText={t("common.cancel")}
-              onConfirm={() => void handleDeleteCategory(category)}
-            >
-              <Button
-                type="text"
-                shape="circle"
-                size="small"
-                danger
-                icon={<DeleteOutlined />}
-                aria-label={t("common.delete")}
-              />
-            </Popconfirm>
-          </div>
-        ),
-    },
-  ];
+  /** Label batas wadah (Cash / batas 0 = tanpa batas). */
+  function renderLimit(category: BudgetCategory) {
+    if (category.walletType === "CASH" || category.allocation <= 0) {
+      return (
+        <Text type="secondary">{t("finance.noLimit")}</Text>
+      );
+    }
+    return (
+      <Text>
+        {t("settings.allocation")}:{" "}
+        {formatIDR(category.allocation, locale)}
+      </Text>
+    );
+  }
 
   return (
     <div className="w-full">
@@ -313,27 +230,94 @@ export default function WalletsView({ initialCategories }: Props) {
         </Button>
       </div>
 
-      {/* Tabel wadah (hanya wadah — subkategori ada di halaman Kebutuhan).
-          Body diberi padding agar tabel tidak menempel tepi card. */}
-      <Card
-        variant="borderless"
-        className="shadow-sm"
-        title={<Text strong>{t("categories.wadahTitle")}</Text>}
-        styles={{ body: { padding: 16 } }}
-      >
-        {typeFiltered.length === 0 ? (
+      {/* Daftar wadah sebagai grid card (bukan table) — subkategori ada di
+          halaman Kebutuhan. */}
+      {typeFiltered.length === 0 ? (
+        <Card variant="borderless" className="shadow-sm">
           <div className="flex items-center justify-center py-12">
             <Empty description={t("settings.categoriesEmpty")} />
           </div>
-        ) : (
-          <Table
-            columns={categoryColumns}
-            dataSource={categoryDataSource}
-            size="small"
-            pagination={false}
-          />
-        )}
-      </Card>
+        </Card>
+      ) : (
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          {typeFiltered.map((category) => (
+            <Card
+              key={category.id}
+              variant="borderless"
+              className="shadow-sm"
+              size="small"
+              title={
+                <span className="flex min-w-0 items-center gap-2">
+                  <span
+                    style={{
+                      display: "inline-block",
+                      width: 10,
+                      height: 10,
+                      borderRadius: "50%",
+                      background: category.color,
+                      flexShrink: 0,
+                    }}
+                  />
+                  <Text strong ellipsis className="max-w-40">
+                    {category.name}
+                  </Text>
+                </span>
+              }
+              extra={
+                category.walletType === "CASH" ? (
+                  // Wadah Cash bawaan: tanpa aksi edit/hapus.
+                  <Tooltip title={t("finance.walletCashBuiltIn")}>
+                    <Tag style={{ margin: 0 }}>
+                      {t("finance.walletCashBuiltInTag")}
+                    </Tag>
+                  </Tooltip>
+                ) : (
+                  <div className="flex gap-1">
+                    <Button
+                      type="text"
+                      shape="circle"
+                      size="small"
+                      icon={<EditOutlined />}
+                      onClick={() => {
+                        setEditingCat(category);
+                        categoryForm.setFieldsValue({
+                          name: category.name,
+                          color: category.color,
+                          allocation: category.allocation,
+                          walletType: category.walletType,
+                        });
+                        setCatModalOpen(true);
+                      }}
+                      aria-label={t("settings.editCategory")}
+                    />
+                    <Popconfirm
+                      title={t("settings.deleteCategoryConfirm")}
+                      okText={t("common.delete")}
+                      okButtonProps={{ danger: true }}
+                      cancelText={t("common.cancel")}
+                      onConfirm={() => void handleDeleteCategory(category)}
+                    >
+                      <Button
+                        type="text"
+                        shape="circle"
+                        size="small"
+                        danger
+                        icon={<DeleteOutlined />}
+                        aria-label={t("common.delete")}
+                      />
+                    </Popconfirm>
+                  </div>
+                )
+              }
+            >
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                {renderWalletType(category.walletType)}
+                {renderLimit(category)}
+              </div>
+            </Card>
+          ))}
+        </div>
+      )}
 
       {/* Modal wadah (hanya Bank / E-Wallet — Cash bawaan) */}
       <Modal

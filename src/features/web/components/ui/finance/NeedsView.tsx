@@ -12,6 +12,7 @@ import {
   App,
   Button,
   Card,
+  Collapse,
   Empty,
   Form,
   Input,
@@ -19,11 +20,9 @@ import {
   Popconfirm,
   Select,
   Space,
-  Table,
-  Tag,
+  Tooltip,
   Typography,
 } from "antd";
-import type { ColumnsType } from "antd/es/table";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useLocale } from "@/components/i18n/LocaleProvider";
 import type { BudgetCategory } from "@/features/web/types";
@@ -45,11 +44,6 @@ interface SubFormValues {
   name?: string;
 }
 
-interface CategoryRow {
-  key: string;
-  category: BudgetCategory;
-}
-
 /** Baris subkategori (diflatten dari seluruh wadah). */
 interface SubRow {
   key: string;
@@ -61,9 +55,9 @@ interface SubRow {
 }
 
 /**
- * Halaman Kebutuhan: seluruh subkategori wadah dalam satu tabel —
- * CRUD subkategori (dipindahkan dari halaman Keuangan/Dompet).
- * Filter wadah opsional via Select.
+ * Halaman Kebutuhan: subkategori wadah dikelompokkan per wadah dalam
+ * Collapse (bukan table) — CRUD subkategori (dipindahkan dari halaman
+ * Keuangan/Dompet). Filter wadah opsional via Select.
  */
 export default function NeedsView({ initialCategories }: Props) {
   const { t } = useLocale();
@@ -92,19 +86,12 @@ export default function NeedsView({ initialCategories }: Props) {
   }, [reloadKey, refresh]);
   /* eslint-enable react-hooks/set-state-in-effect */
 
-  /** Wadah dengan subkategori (grup tampilan tabel). */
+  /** Wadah yang tampil (difilter via Select). */
   const groupedCategories = useMemo(
     () =>
-      wadahFilter
-        ? categories.filter((c) => c.id === wadahFilter)
-        : categories,
+      wadahFilter ? categories.filter((c) => c.id === wadahFilter) : categories,
     [categories, wadahFilter],
   );
-
-  const dataSource: CategoryRow[] = groupedCategories.map((c) => ({
-    key: c.id,
-    category: c,
-  }));
 
   const totalSubs = groupedCategories.reduce(
     (n, c) => n + c.subcategories.length,
@@ -144,95 +131,9 @@ export default function NeedsView({ initialCategories }: Props) {
     }
   }
 
-  const columns: ColumnsType<CategoryRow> = [
-    {
-      title: t("settings.categoryName"),
-      key: "name",
-      render: (_: unknown, { category }: CategoryRow) => (
-        <div className="flex items-center gap-2">
-          <span
-            style={{
-              display: "inline-block",
-              width: 10,
-              height: 10,
-              borderRadius: "50%",
-              background: category.color,
-              flexShrink: 0,
-            }}
-          />
-          <Text strong>{category.name}</Text>
-        </div>
-      ),
-    },
-    {
-      title: t("needs.subcategories"),
-      key: "subs",
-      render: (_: unknown, { category }: CategoryRow) => {
-        if (category.subcategories.length === 0) {
-          return <Text type="secondary">{t("needs.subEmptyInline")}</Text>;
-        }
-        return (
-          <Space size={[4, 4]} wrap>
-            {category.subcategories.map((sub) => (
-              <Tag
-                key={sub.id}
-                style={{ margin: 0 }}
-                closable
-                closeIcon={
-                  <Popconfirm
-                    title={t("settings.deleteSubConfirm")}
-                    okText={t("common.delete")}
-                    okButtonProps={{ danger: true }}
-                    cancelText={t("common.cancel")}
-                    onConfirm={() =>
-                      void handleDeleteSub({
-                        key: sub.id,
-                        subId: sub.id,
-                        name: sub.name,
-                        categoryId: category.id,
-                        categoryName: category.name,
-                        categoryColor: category.color,
-                      })
-                    }
-                  >
-                    <DeleteOutlined />
-                  </Popconfirm>
-                }
-              >
-                <button
-                  type="button"
-                  className="flex cursor-pointer items-center gap-1 bg-transparent"
-                  onClick={() => {
-                    setEditingSub({
-                      key: sub.id,
-                      subId: sub.id,
-                      name: sub.name,
-                      categoryId: category.id,
-                      categoryName: category.name,
-                      categoryColor: category.color,
-                    });
-                    subForm.setFieldsValue({
-                      categoryId: category.id,
-                      name: sub.name,
-                    });
-                    setSubModalOpen(true);
-                  }}
-                  aria-label={`${t("settings.editSubcategory")}: ${sub.name}`}
-                >
-                  <EditOutlined style={{ fontSize: 10 }} />
-                  {sub.name}
-                </button>
-              </Tag>
-            ))}
-          </Space>
-        );
-      },
-    },
-  ];
-
   return (
     <div className="w-full">
-      {/* Toolbar di luar table: filter wadah + tombol tambah subkategori */}
+      {/* Toolbar di luar daftar: filter wadah + tombol tambah subkategori */}
       <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
         <Select
           value={wadahFilter ?? undefined}
@@ -283,11 +184,100 @@ export default function NeedsView({ initialCategories }: Props) {
             <Empty description={t("settings.categoriesEmpty")} />
           </div>
         ) : (
-          <Table
-            columns={columns}
-            dataSource={dataSource}
-            size="small"
-            pagination={false}
+          <Collapse
+            defaultActiveKey={groupedCategories.map((c) => c.id)}
+            items={groupedCategories.map((category) => ({
+              key: category.id,
+              label: (
+                <span className="flex items-center gap-2">
+                  <span
+                    style={{
+                      display: "inline-block",
+                      width: 10,
+                      height: 10,
+                      borderRadius: "50%",
+                      background: category.color,
+                      flexShrink: 0,
+                    }}
+                  />
+                  <Text strong>{category.name}</Text>
+                  {category.subcategories.length > 0 && (
+                    <Text type="secondary" style={{ fontSize: 12 }}>
+                      {t("needs.subCount", {
+                        n: category.subcategories.length,
+                      })}
+                    </Text>
+                  )}
+                </span>
+              ),
+              showArrow: false,
+              children:
+                category.subcategories.length === 0 ? (
+                  <Text type="secondary">{t("needs.subEmptyInline")}</Text>
+                ) : (
+                  <div className="flex flex-col gap-2">
+                    {category.subcategories.map((sub) => (
+                      <div
+                        key={sub.id}
+                        className="flex items-center justify-between gap-2 rounded-lg bg-black/[0.02] px-3 py-2 dark:bg-white/[0.04]"
+                      >
+                        <Text>{sub.name}</Text>
+                        <Space size={0}>
+                          <Tooltip title={t("settings.editSubcategory")}>
+                            <Button
+                              type="text"
+                              shape="circle"
+                              size="small"
+                              icon={<EditOutlined />}
+                              onClick={() => {
+                                setEditingSub({
+                                  key: sub.id,
+                                  subId: sub.id,
+                                  name: sub.name,
+                                  categoryId: category.id,
+                                  categoryName: category.name,
+                                  categoryColor: category.color,
+                                });
+                                subForm.setFieldsValue({
+                                  categoryId: category.id,
+                                  name: sub.name,
+                                });
+                                setSubModalOpen(true);
+                              }}
+                              aria-label={`${t("settings.editSubcategory")}: ${sub.name}`}
+                            />
+                          </Tooltip>
+                          <Popconfirm
+                            title={t("settings.deleteSubConfirm")}
+                            okText={t("common.delete")}
+                            okButtonProps={{ danger: true }}
+                            cancelText={t("common.cancel")}
+                            onConfirm={() =>
+                              void handleDeleteSub({
+                                key: sub.id,
+                                subId: sub.id,
+                                name: sub.name,
+                                categoryId: category.id,
+                                categoryName: category.name,
+                                categoryColor: category.color,
+                              })
+                            }
+                          >
+                            <Button
+                              type="text"
+                              shape="circle"
+                              size="small"
+                              danger
+                              icon={<DeleteOutlined />}
+                              aria-label={`${t("common.delete")}: ${sub.name}`}
+                            />
+                          </Popconfirm>
+                        </Space>
+                      </div>
+                    ))}
+                  </div>
+                ),
+            }))}
           />
         )}
       </Card>

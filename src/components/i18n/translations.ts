@@ -276,6 +276,7 @@ const id: TranslationDict = {
   "finance.walletCashBuiltIn":
     "Wadah cash bawaan — tidak bisa diubah atau dihapus.",
   "finance.walletCashBuiltInTag": "Bawaan",
+  "finance.noLimit": "Tanpa Batas",
   "finance.budgetIncome": "Pemasukan Siklus Ini",
   "finance.budgetProtected": "Tabungan Dilindungi",
   "finance.budgetAllocatable": "Bisa Dialokasikan",
@@ -585,6 +586,7 @@ const en: TranslationDict = {
   "finance.walletCashBuiltIn":
     "Built-in cash wallet — cannot be edited or deleted.",
   "finance.walletCashBuiltInTag": "Built-in",
+  "finance.noLimit": "No Limit",
   "finance.budgetIncome": "Income This Cycle",
   "finance.budgetProtected": "Protected Savings",
   "finance.budgetAllocatable": "Available to Allocate",

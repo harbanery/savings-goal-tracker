@@ -164,19 +164,20 @@ export default function TransactionsView({
 
   return (
     <div className="mx-auto flex w-full max-w-350 flex-col">
-      {/* Navigasi siklus ada di navbar (DatePicker month). Segmented di kiri
-          tombol import mengganti tabel transaksi ↔ tabel transaksi berulang. */}
-      <div className="mb-4 flex flex-wrap items-center justify-end gap-2">
+      {/* Navigasi siklus ada di navbar (DatePicker month). Segmented pemilih
+          tabel transaksi ↔ transaksi berulang ada di UJUNG KIRI toolbar;
+          aksi import & tambah transaksi di kanan. */}
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+        <Segmented
+          value={viewMode}
+          onChange={(v) => setViewMode(v as TableViewMode)}
+          options={[
+            { value: "transactions", label: t("menu.transactions") },
+            { value: "recurring", label: t("transactions.recurringTitle") },
+          ]}
+          aria-label={t("transactions.viewAria")}
+        />
         <Space size="small" wrap>
-          <Segmented
-            value={viewMode}
-            onChange={(v) => setViewMode(v as TableViewMode)}
-            options={[
-              { value: "transactions", label: t("menu.transactions") },
-              { value: "recurring", label: t("transactions.recurringTitle") },
-            ]}
-            aria-label={t("transactions.viewAria")}
-          />
           <ImportExportButtons
             transactions={transactions}
             categories={categories}
