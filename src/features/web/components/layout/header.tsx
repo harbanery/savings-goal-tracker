@@ -86,6 +86,9 @@ export default function HeaderLayout({
         height: "auto",
         lineHeight: "normal",
         backgroundColor: token.colorBgContainer,
+        // antd Layout.Header meng-hardcode warna teks terang-mode; samakan
+        // dengan token agar teks header ikut dark mode.
+        color: token.colorText,
         borderBottom: `1px solid ${token.colorBorderSecondary}`,
       }}
     >
@@ -103,10 +106,12 @@ export default function HeaderLayout({
       </div>
 
       <Space size="middle" wrap={false}>
-        {/* Pemilih siklus bulanan (menggantikan baris navigasi per halaman) */}
+        {/* Pemilih siklus bulanan (menggantikan baris navigasi per halaman).
+            Format "MMMM YYYY" + locale dayjs → "Oktober 2026" / "October 2026". */}
         <DatePicker
           picker="month"
           allowClear={false}
+          format="MMMM YYYY"
           value={dayjs().year(cycle.year).month(cycle.monthIndex)}
           onChange={(date) => {
             if (date) {

@@ -14,22 +14,20 @@ import {
  */
 
 /**
- * Pastikan user punya settings default (idempoten).
- * Dipanggil setelah register Google pertama kali.
+ * Pastikan user punya settings default (idempoten & aman race-condition).
+ * Dipanggil setelah register Google pertama kali — layout dan page bisa
+ * memanggilnya bersamaan, jadi wajib upsert (bukan find-then-create).
  */
 export async function ensureUserDefaults(userId: string): Promise<void> {
-  const existingSettings = await prisma.userSettings.findUnique({
+  await prisma.userSettings.upsert({
     where: { userId },
+    update: {},
+    create: {
+      userId,
+      cycleStartDay: DEFAULT_CYCLE_START_DAY,
+      savingsInitial: DEFAULT_SAVINGS_INITIAL,
+    },
   });
-  if (!existingSettings) {
-    await prisma.userSettings.create({
-      data: {
-        userId,
-        cycleStartDay: DEFAULT_CYCLE_START_DAY,
-        savingsInitial: DEFAULT_SAVINGS_INITIAL,
-      },
-    });
-  }
 }
 
 /** Identitas user + settings untuk API session. */

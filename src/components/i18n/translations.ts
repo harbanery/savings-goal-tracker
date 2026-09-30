@@ -187,10 +187,10 @@ const id: TranslationDict = {
   "dev.skipped": "Notifikasi dilewati — kondisi tidak terpenuhi.",
   "dev.pushFailed": "Gagal mengirim notifikasi.",
 
-  // Menu / Navigasi
+  // Menu / Navigasi (Keuangan = Dompet, Budget, Target — halaman terpisah)
   "menu.dashboard": "Dashboard",
   "menu.transactions": "Transaksi",
-  "menu.finance": "Keuangan",
+  "menu.wallets": "Dompet",
   "menu.budget": "Budget",
   "menu.target": "Target",
   "menu.reports": "Laporan",
@@ -477,10 +477,10 @@ const en: TranslationDict = {
   "dev.skipped": "Notification skipped — condition not met.",
   "dev.pushFailed": "Failed to send notification.",
 
-  // Menu / Navigation
+  // Menu / Navigation (Finance = Wallets, Budget, Target — separate pages)
   "menu.dashboard": "Dashboard",
   "menu.transactions": "Transactions",
-  "menu.finance": "Finance",
+  "menu.wallets": "Wallets",
   "menu.budget": "Budget",
   "menu.target": "Target",
   "menu.reports": "Reports",

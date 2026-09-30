@@ -340,8 +340,10 @@ export default function TransactionTable({
               cancelText={t("common.cancel")}
               onConfirm={handleBulkDelete}
             >
+              {/* Tombol bertulisan (ikon + teks) → shape default, teks selalu
+                  tampil agar tidak berubah jadi tombol ikon tanpa circle. */}
               <Button size="small" danger icon={<DeleteOutlined />}>
-                <span className="hidden md:inline">{t("common.delete")}</span>
+                {t("common.delete")}
               </Button>
             </Popconfirm>
           </Space>

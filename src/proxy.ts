@@ -11,8 +11,8 @@ const PRIVATE_PAGES = [
   "/",
   "/transactions",
   "/finance",
-  "/finance/budget",
-  "/finance/target",
+  "/budget",
+  "/target",
   "/reports",
 ];
 const PRIVATE_API_PREFIXES = ["/api/web/push"];
