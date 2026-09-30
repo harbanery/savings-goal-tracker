@@ -23,7 +23,7 @@ import {
   Tooltip,
   Typography,
 } from "antd";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useLocale } from "@/components/i18n/LocaleProvider";
 import type { BudgetCategory } from "@/features/web/types";
 import {
@@ -57,14 +57,13 @@ interface SubRow {
 /**
  * Halaman Kebutuhan: subkategori wadah dikelompokkan per wadah dalam
  * Collapse (bukan table) — CRUD subkategori (dipindahkan dari halaman
- * Keuangan/Dompet). Filter wadah opsional via Select.
+ * Keuangan/Dompet). Semua wadah tampil sekaligus (tanpa filter).
  */
 export default function NeedsView({ initialCategories }: Props) {
   const { t } = useLocale();
   const { message } = App.useApp();
 
   const [categories, setCategories] = useState(initialCategories);
-  const [wadahFilter, setWadahFilter] = useState<string | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
 
   const [subForm] = Form.useForm<SubFormValues>();
@@ -86,12 +85,8 @@ export default function NeedsView({ initialCategories }: Props) {
   }, [reloadKey, refresh]);
   /* eslint-enable react-hooks/set-state-in-effect */
 
-  /** Wadah yang tampil (difilter via Select). */
-  const groupedCategories = useMemo(
-    () =>
-      wadahFilter ? categories.filter((c) => c.id === wadahFilter) : categories,
-    [categories, wadahFilter],
-  );
+  /** Semua wadah tampil sekaligus (tanpa filter). */
+  const groupedCategories = categories;
 
   const totalSubs = groupedCategories.reduce(
     (n, c) => n + c.subcategories.length,
@@ -133,19 +128,9 @@ export default function NeedsView({ initialCategories }: Props) {
 
   return (
     <div className="w-full">
-      {/* Toolbar di luar daftar: filter wadah + tombol tambah subkategori */}
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
-        <Select
-          value={wadahFilter ?? undefined}
-          onChange={(v) => setWadahFilter(v ?? null)}
-          placeholder={t("categories.filterWadahPlaceholder")}
-          allowClear
-          showSearch
-          optionFilterProp="label"
-          options={categories.map((c) => ({ value: c.id, label: c.name }))}
-          style={{ minWidth: 180 }}
-          aria-label={t("categories.filterWadah")}
-        />
+      {/* Toolbar di luar daftar: tombol tambah subkategori (semua wadah
+          tampil tanpa filter). */}
+      <div className="mb-4 flex flex-wrap items-center justify-end gap-2">
         <Button
           type="primary"
           icon={<PlusOutlined />}
@@ -153,9 +138,6 @@ export default function NeedsView({ initialCategories }: Props) {
           onClick={() => {
             setEditingSub(null);
             subForm.resetFields();
-            if (wadahFilter) {
-              subForm.setFieldValue("categoryId", wadahFilter);
-            }
             setSubModalOpen(true);
           }}
         >

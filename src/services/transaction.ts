@@ -344,14 +344,15 @@ export async function updateCategory(
 ): Promise<void> {
   const existing = await prisma.category.findFirst({
     where: { id: categoryId, userId },
-    select: { id: true, walletType: true },
+    select: { id: true, name: true, walletType: true },
   });
   if (!existing) throw new Error("Kategori tidak ditemukan.");
   // Wadah "Cash" (CASH) adalah wadah bawaan — nama & jenisnya terkunci;
   // hanya warna dan batas (alokasi) yang bisa diubah (batas Cash ikut
-  // berlaku untuk pengeluaran).
+  // berlaku untuk pengeluaran). Nama yang sama (idempoten) dibiarkan.
   if (existing.walletType === "CASH") {
-    if (data.name !== undefined || data.walletType !== undefined) {
+    const renaming = data.name !== undefined && data.name !== existing.name;
+    if (renaming || data.walletType !== undefined) {
       throw new Error(
         "Wadah Cash bawaan tidak bisa diubah nama/jenisnya — hanya batas dan warna.",
       );

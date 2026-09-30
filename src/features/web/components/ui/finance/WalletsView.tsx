@@ -21,7 +21,6 @@ import {
   InputNumber,
   Modal,
   Popconfirm,
-  Segmented,
   Select,
   Tag,
   Tooltip,
@@ -57,7 +56,7 @@ const PRESET_COLORS = [
 
 interface CategoryFormValues {
   name: string;
-  color: string;
+  color: string | { toHexString(): string };
   allocation: number;
   walletType: WalletType;
 }
@@ -76,9 +75,9 @@ function useCreatableWalletTypeOptions() {
 }
 
 /**
- * Halaman Keuangan: tabel wadah (CRUD penuh) dengan segmented filter per
- * jenis dompet (Semua / Bank / E-Wallet / Cash). Wadah "Cash" (CASH) adalah
- * wadah bawaan — tampil tanpa aksi edit/hapus.
+ * Halaman Keuangan: daftar wadah sebagai grid card (semua jenis dompet
+ * sekaligus — tanpa filter). Wadah "Cash" (CASH) adalah wadah bawaan:
+ * hanya batas & warnanya yang bisa diubah, tidak bisa dihapus.
  * Subkategori wadah ada di halaman Kebutuhan; Budget & Target halaman sendiri.
  */
 export default function WalletsView({ initialCategories }: Props) {
@@ -88,7 +87,6 @@ export default function WalletsView({ initialCategories }: Props) {
 
   const [categories, setCategories] = useState(initialCategories);
   const [reloadKey, setReloadKey] = useState(0);
-  const [typeFilter, setTypeFilter] = useState<WalletType>("CASH");
 
   const [categoryForm] = Form.useForm<CategoryFormValues>();
 
@@ -111,13 +109,32 @@ export default function WalletsView({ initialCategories }: Props) {
   }, [reloadKey, refresh]);
   /* eslint-enable react-hooks/set-state-in-effect */
 
+  /** antd ColorPicker menyimpan objek Color di form — server action butuh
+   *  string hex biasa (objek class tidak bisa diserialisasi ke server). */
+  function toHexColor(color: CategoryFormValues["color"]): string {
+    if (typeof color === "string") return color;
+    return color?.toHexString?.() ?? "#6366f1";
+  }
+
   async function handleCategorySubmit(values: CategoryFormValues) {
     setCatSaving(true);
     try {
+      // Wadah Cash bawaan: nama & jenis terkunci — kirim hanya batas & warna.
+      const isCash = editingCat?.walletType === "CASH";
+      const payload = {
+        name: isCash ? undefined : values.name,
+        color: toHexColor(values.color),
+        allocation: values.allocation,
+        walletType: isCash ? undefined : values.walletType,
+      };
       if (editingCat) {
-        await updateCategoryAction(editingCat.id, values);
+        await updateCategoryAction(editingCat.id, payload);
       } else {
-        await createCategoryAction(values);
+        await createCategoryAction({
+          ...payload,
+          name: values.name,
+          walletType: values.walletType,
+        });
       }
       message.success(t("settings.saved"));
       setCatModalOpen(false);
@@ -144,8 +161,8 @@ export default function WalletsView({ initialCategories }: Props) {
     }
   }
 
-  /** Wadah yang tampil (difilter per jenis dompet lewat segmented). */
-  const typeFiltered = categories.filter((c) => c.walletType === typeFilter);
+  /** Semua wadah tampil sekaligus (tanpa filter jenis dompet). */
+  const visibleCategories = categories;
 
   /** Tag jenis dompet (Bank / E-Wallet / Cash). */
   function renderWalletType(type: WalletType) {
@@ -186,36 +203,9 @@ export default function WalletsView({ initialCategories }: Props) {
 
   return (
     <div className="w-full">
-      {/* Toolbar di luar table: segmented jenis dompet + tombol tambah wadah.
-          Tanpa opsi "Semua" — hanya Bank / E-Wallet / Cash (default Cash). */}
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
-        <Segmented
-          value={typeFilter}
-          onChange={(v) => setTypeFilter(v as WalletType)}
-          options={[
-            ...creatableTypes.map((o) => ({
-              value: o.value,
-              label: (
-                <span className="flex items-center gap-1">
-                  {o.icon}
-                  <span className="hidden sm:inline">{o.label}</span>
-                </span>
-              ),
-            })),
-            {
-              value: "CASH",
-              label: (
-                <span className="flex items-center gap-1">
-                  <DollarOutlined />
-                  <span className="hidden sm:inline">
-                    {t("finance.walletCash")}
-                  </span>
-                </span>
-              ),
-            },
-          ]}
-          aria-label={t("finance.walletType")}
-        />
+      {/* Toolbar: tombol tambah wadah (semua jenis dompet tampil tanpa
+          filter). */}
+      <div className="mb-4 flex flex-wrap items-center justify-end gap-2">
         <Button
           type="primary"
           icon={<PlusOutlined />}
@@ -231,7 +221,7 @@ export default function WalletsView({ initialCategories }: Props) {
 
       {/* Daftar wadah sebagai grid card (bukan table) — subkategori ada di
           halaman Kebutuhan. */}
-      {typeFiltered.length === 0 ? (
+      {visibleCategories.length === 0 ? (
         <Card variant="borderless" className="shadow-sm">
           <div className="flex items-center justify-center py-12">
             <Empty description={t("settings.categoriesEmpty")} />
@@ -239,7 +229,7 @@ export default function WalletsView({ initialCategories }: Props) {
         </Card>
       ) : (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
-          {typeFiltered.map((category) => (
+          {visibleCategories.map((category) => (
             <Card
               key={category.id}
               variant="borderless"
