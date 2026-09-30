@@ -170,12 +170,11 @@ export default function WalletsView({ initialCategories }: Props) {
     );
   }
 
-  /** Label batas wadah (Cash / batas 0 = tanpa batas). */
+  /** Label batas wadah (batas 0 = tanpa batas). Cash ikut dibatasi bila
+      batasnya diatur — batas hanya berlaku untuk pengeluaran. */
   function renderLimit(category: BudgetCategory) {
-    if (category.walletType === "CASH" || category.allocation <= 0) {
-      return (
-        <Text type="secondary">{t("finance.noLimit")}</Text>
-      );
+    if (category.allocation <= 0) {
+      return <Text type="secondary">{t("finance.noLimit")}</Text>;
     }
     return (
       <Text>
@@ -265,12 +264,32 @@ export default function WalletsView({ initialCategories }: Props) {
               }
               extra={
                 category.walletType === "CASH" ? (
-                  // Wadah Cash bawaan: tanpa aksi edit/hapus.
-                  <Tooltip title={t("finance.walletCashBuiltIn")}>
-                    <Tag style={{ margin: 0 }}>
-                      {t("finance.walletCashBuiltInTag")}
-                    </Tag>
-                  </Tooltip>
+                  // Wadah Cash bawaan: hanya batas & warna yang bisa
+                  // diubah (nama/jenis terkunci), tidak bisa dihapus.
+                  <div className="flex items-center gap-1">
+                    <Tooltip title={t("finance.walletCashBuiltIn")}>
+                      <Tag style={{ margin: 0 }}>
+                        {t("finance.walletCashBuiltInTag")}
+                      </Tag>
+                    </Tooltip>
+                    <Button
+                      type="text"
+                      shape="circle"
+                      size="small"
+                      icon={<EditOutlined />}
+                      onClick={() => {
+                        setEditingCat(category);
+                        categoryForm.setFieldsValue({
+                          name: category.name,
+                          color: category.color,
+                          allocation: category.allocation,
+                          walletType: category.walletType,
+                        });
+                        setCatModalOpen(true);
+                      }}
+                      aria-label={t("settings.editCategory")}
+                    />
+                  </div>
                 ) : (
                   <div className="flex gap-1">
                     <Button
@@ -349,7 +368,7 @@ export default function WalletsView({ initialCategories }: Props) {
             label={t("settings.categoryName")}
             rules={[{ required: true }]}
           >
-            <Input maxLength={50} />
+            <Input maxLength={50} disabled={editingCat?.walletType === "CASH"} />
           </Form.Item>
           <Form.Item
             name="walletType"

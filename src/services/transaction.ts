@@ -347,9 +347,15 @@ export async function updateCategory(
     select: { id: true, walletType: true },
   });
   if (!existing) throw new Error("Kategori tidak ditemukan.");
-  // Wadah "Cash" (CASH) adalah wadah bawaan — tidak bisa diubah.
+  // Wadah "Cash" (CASH) adalah wadah bawaan — nama & jenisnya terkunci;
+  // hanya warna dan batas (alokasi) yang bisa diubah (batas Cash ikut
+  // berlaku untuk pengeluaran).
   if (existing.walletType === "CASH") {
-    throw new Error("Wadah Cash bawaan tidak bisa diubah.");
+    if (data.name !== undefined || data.walletType !== undefined) {
+      throw new Error(
+        "Wadah Cash bawaan tidak bisa diubah nama/jenisnya — hanya batas dan warna.",
+      );
+    }
   }
   const patch: Prisma.CategoryUpdateInput = {};
   if (data.name !== undefined) patch.name = data.name;

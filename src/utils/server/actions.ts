@@ -190,9 +190,9 @@ export async function createTransactionAction(
   // dilindungi tanpa konfirmasi terpaksa dari user.
   await assertSavingsProtection(userId, date, input.amount, options?.force ?? false);
 
-  // Batas wadah (insight DROID.md): pengeluaran/transfer keluar tidak boleh
-  // melebihi alokasi (batas) wadah per siklus — cash & pemasukan bebas.
-  if (input.type !== "INCOME") {
+  // Batas wadah (insight DROID.md): hanya PENGELUARAN yang dibatasi —
+  // pemasukan (INCOME) dan transfer (TRANSFER) bebas melewati batas.
+  if (input.type === "EXPENSE") {
     await assertWalletLimit(
       userId,
       input.categoryId,
@@ -261,18 +261,18 @@ export async function updateTransactionAction(
     force ?? false,
   );
 
-  // Batas wadah: delta keluar (EXPENSE/TRANSFER) terhadap wadah tujuan —
-  // nilai lama hanya dihitung bila outflow dari wadah yang sama.
-  if (input.type !== "INCOME") {
-    const oldOutflowSameCategory =
-      old.categoryId === input.categoryId && old.type !== "INCOME"
+  // Batas wadah: hanya EXPENSE yang dihitung — nilai lama pun hanya bila
+  // pengeluaran dari wadah yang sama (edit tidak boleh "membebaskan" batas).
+  if (input.type === "EXPENSE") {
+    const oldExpenseSameCategory =
+      old.categoryId === input.categoryId && old.type === "EXPENSE"
         ? old.amount
         : 0;
     await assertWalletLimit(
       userId,
       input.categoryId,
       date,
-      Math.round(input.amount - oldOutflowSameCategory),
+      Math.round(input.amount - oldExpenseSameCategory),
     );
   }
 

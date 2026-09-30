@@ -208,29 +208,30 @@ export async function assertSavingsProtection(
 }
 
 /**
- * Batas wadah (insight DROID.md): alokasi wadah = batas pengeluaran +
- * transfer keluar per siklus. Wadah CASH (dan wadah tanpa alokasi) tidak
- * dibatasi; pemasukan tidak pernah dibatasi. Lempar error berkode
- * WALLET_LIMIT bila proyeksi keluar wadah melebihi batas — berbeda dari
- * proteksi tabungan, batas wadah TIDAK bisa dilewati (tanpa opsi paksa).
+ * Batas wadah (insight DROID.md): alokasi wadah = batas PENGELUARAN per
+ * siklus — hanya EXPENSE yang dihitung; pemasukan (INCOME) dan transfer
+ * (TRANSFER) tidak dibatasi. Wadah tanpa alokasi (0) tidak dibatasi.
+ * Lempar error berkode WALLET_LIMIT bila proyeksi pengeluaran wadah
+ * melebihi batas — berbeda dari proteksi tabungan, batas wadah TIDAK bisa
+ * dilewati (tanpa opsi paksa).
  *
- * @param additionalOutflow tambahan keluar (EXPENSE/TRANSFER) wadah terkait
- *                          (sudah dikurangi nilai lama untuk kasus edit).
+ * @param additionalExpense tambahan pengeluaran (EXPENSE) wadah terkait
+ *                         (sudah dikurangi nilai lama untuk kasus edit).
  */
 export async function assertWalletLimit(
   userId: string,
   categoryId: string,
   date: Date,
-  additionalOutflow: number,
+  additionalExpense: number,
 ): Promise<void> {
-  if (additionalOutflow <= 0) return;
+  if (additionalExpense <= 0) return;
   const category = await prisma.category.findFirst({
     where: { id: categoryId, userId },
-    select: { name: true, walletType: true, allocation: true },
+    select: { name: true, allocation: true },
   });
   if (!category) throw new Error("Wadah tidak ditemukan.");
-  // Cash tidak ada batasnya; wadah tanpa alokasi (0) juga tidak dibatasi.
-  if (category.walletType === "CASH") return;
+  // Wadah tanpa alokasi (0) tidak dibatasi — Cash pun ikut dibatasi
+  // bila batasnya diatur.
   const limit = Number(category.allocation);
   if (limit <= 0) return;
 
@@ -240,21 +241,21 @@ export async function assertWalletLimit(
   });
   const cycle = getCycleForDate(date, settings?.cycleStartDay ?? 25);
 
-  // Outflow wadah = pengeluaran (EXPENSE) + transfer keluar (TRANSFER) dari
-  // wadah tersebut dalam siklus — pemasukan (INCOME) tidak dihitung.
+  // Batas hanya untuk pengeluaran (EXPENSE) — pemasukan (INCOME) dan
+  // transfer (TRANSFER) tidak dihitung.
   const agg = await withRetry(() =>
     prisma.transaction.aggregate({
       where: {
         userId,
         categoryId,
-        type: { in: ["EXPENSE", "TRANSFER"] },
+        type: "EXPENSE",
         date: { gte: cycle.startDate, lte: cycle.endDate },
       },
       _sum: { amount: true },
     }),
   );
   const current = Number(agg._sum.amount ?? 0);
-  const projected = current + additionalOutflow;
+  const projected = current + additionalExpense;
   if (projected > limit) {
     throw new Error(
       `${WALLET_LIMIT_CODE}|${category.name}|${Math.round(limit)}|${Math.round(projected)}`,

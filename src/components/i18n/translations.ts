@@ -255,7 +255,7 @@ const id: TranslationDict = {
   "settings.colorPresets": "Warna Standar",
   "settings.allocation": "Batas",
   "finance.limitHint":
-    "Batas pengeluaran/transfer keluar per siklus untuk wadah ini. 0 = tanpa batas; wadah Cash tidak dibatasi.",
+    "Batas pengeluaran per siklus untuk wadah ini — pemasukan & transfer tidak dibatasi. 0 = tanpa batas.",
   "settings.addSubcategory": "Tambah Subkategori",
   "settings.editSubcategory": "Edit Subkategori",
   "settings.subcategoryName": "Nama Subkategori",
@@ -274,7 +274,7 @@ const id: TranslationDict = {
   "finance.walletEwallet": "E-Wallet",
   "finance.walletCash": "Cash",
   "finance.walletCashBuiltIn":
-    "Wadah cash bawaan — tidak bisa diubah atau dihapus.",
+    "Wadah cash bawaan — hanya batas & warnanya yang bisa diubah; tidak bisa dihapus.",
   "finance.walletCashBuiltInTag": "Bawaan",
   "finance.noLimit": "Tanpa Batas",
   "finance.budgetIncome": "Pemasukan Siklus Ini",
@@ -315,7 +315,7 @@ const id: TranslationDict = {
   "form.protectionConfirm": "Lanjutkan Terpaksa",
   "form.walletLimitTitle": "Melebihi Batas Wadah",
   "form.walletLimitDesc":
-    "Total keluar dari wadah {wallet} akan menjadi {projected}, melebihi batas {limit}. Naikkan batas wadah di halaman Keuangan atau pilih wadah lain.",
+    "Total pengeluaran dari wadah {wallet} akan menjadi {projected}, melebihi batas {limit}. Naikkan batas wadah di halaman Keuangan atau pilih wadah lain.",
   "transactions.recurringTitle": "Transaksi Berulang",
   "transactions.recurringEvery": "tiap tanggal {n}",
   "transactions.recurringEmpty": "Belum ada transaksi berulang.",
@@ -564,7 +564,7 @@ const en: TranslationDict = {
   "settings.colorPresets": "Preset Colors",
   "settings.allocation": "Limit",
   "finance.limitHint":
-    "Spending/transfer-out limit per cycle for this envelope. 0 = unlimited; the Cash envelope is unlimited.",
+    "Spending limit per cycle for this envelope — income & transfers are not limited. 0 = no limit.",
   "settings.addSubcategory": "Add Subcategory",
   "settings.editSubcategory": "Edit Subcategory",
   "settings.subcategoryName": "Subcategory Name",
@@ -584,7 +584,7 @@ const en: TranslationDict = {
   "finance.walletEwallet": "E-Wallet",
   "finance.walletCash": "Cash",
   "finance.walletCashBuiltIn":
-    "Built-in cash wallet — cannot be edited or deleted.",
+    "Built-in cash wallet — only its limit & color can be changed; it cannot be deleted.",
   "finance.walletCashBuiltInTag": "Built-in",
   "finance.noLimit": "No Limit",
   "finance.budgetIncome": "Income This Cycle",
@@ -625,7 +625,7 @@ const en: TranslationDict = {
   "form.protectionConfirm": "Force Continue",
   "form.walletLimitTitle": "Envelope Limit Exceeded",
   "form.walletLimitDesc":
-    "Total outflow from {wallet} will reach {projected}, exceeding its {limit} limit. Raise the envelope limit on the Finance page or pick another envelope.",
+    "Total spending from {wallet} will reach {projected}, exceeding its {limit} limit. Raise the envelope limit on the Finance page or pick another envelope.",
   "transactions.recurringTitle": "Recurring Transactions",
   "transactions.recurringEvery": "every day {n}",
   "transactions.recurringEmpty": "No recurring transactions yet.",
