@@ -92,8 +92,10 @@ function useCreatableWalletTypeOptions() {
  * Alokasi TIDAK bisa diedit per wadah (insight DROID.md) — dana wadah
  * murni lewat pemasukan/transfer; tiap card menampilkan progress dana
  * wadah (pemasukan + transfer masuk − pengeluaran − transfer keluar).
- * Di kanan tombol tambah wadah ada progress bar terpakai per wadah
- * terhadap budget yang bisa dialokasikan.
+ * Progress bar toolbar menampilkan BIAYA ALOKASI tiap wadah (pemasukan +
+ * transfer masuk − transfer keluar) terhadap budget yang bisa
+ * dialokasikan — transfer hanya memindahkan dana antar wadah sehingga
+ * total alokasi tidak berubah (bug DROID.md).
  * Subkategori wadah ada di halaman Kebutuhan; Budget & Target halaman sendiri.
  */
 export default function WalletsView({
@@ -216,30 +218,36 @@ export default function WalletsView({
   const visibleCategories = categories;
 
   /**
-   * Segmen terpakai per wadah (pengeluaran + transfer keluar) untuk
-   * progress bar budget yang bisa dialokasikan di toolbar.
+   * Segmen alokasi dana tiap wadah untuk progress bar budget yang bisa
+   * dialokasikan di toolbar: alokasi = pemasukan + transfer masuk −
+   * transfer keluar — transfer hanya memindahkan dana antar wadah, jadi
+   * total alokasi TIDAK bertambah saat transfer (bug DROID.md).
    */
-  const usedSegments = useMemo(() => {
+  const allocatedSegments = useMemo(() => {
     const segs = categories
       .map((c) => {
         const stat = statByCat.get(c.id);
-        const used = (stat?.spent ?? 0) + (stat?.transferOut ?? 0);
-        return { id: c.id, name: c.name, color: c.color, used };
+        const allocated =
+          (stat?.income ?? 0) +
+          (stat?.transferIn ?? 0) -
+          (stat?.transferOut ?? 0);
+        return { id: c.id, name: c.name, color: c.color, allocated };
       })
-      .filter((s) => s.used > 0)
-      .sort((a, b) => b.used - a.used);
-    const totalUsed = segs.reduce((n, s) => n + s.used, 0);
-    // Skala agar total segmen mentok di 100% bila terpakai melampaui budget.
+      .filter((s) => s.allocated > 0)
+      .sort((a, b) => b.allocated - a.allocated);
+    const totalAllocated = segs.reduce((n, s) => n + s.allocated, 0);
+    // Skala agar total segmen mentok di 100% bila alokasi melampaui budget.
     const scale =
-      totalUsed > 0 && allocatable > 0
-        ? Math.min(1, allocatable / totalUsed)
+      totalAllocated > 0 && allocatable > 0
+        ? Math.min(1, allocatable / totalAllocated)
         : 0;
     return {
       segments: segs.map((s) => ({
         ...s,
-        widthPct: allocatable > 0 ? (s.used * scale * 100) / allocatable : 0,
+        widthPct:
+          allocatable > 0 ? (s.allocated * scale * 100) / allocatable : 0,
       })),
-      totalUsed,
+      totalAllocated,
     };
   }, [categories, statByCat, allocatable]);
 
@@ -373,19 +381,19 @@ export default function WalletsView({
 
   return (
     <div className="w-full">
-      {/* Toolbar: tombol tambah wadah (semua jenis dompet tampil tanpa
-          filter) + progress bar terpakai per wadah terhadap budget yang
-          bisa dialokasikan (di sebelah kanan tombol). */}
+      {/* Toolbar: progress bar alokasi dana tiap wadah (bukan yang
+          terpakai) terhadap budget yang bisa dialokasikan + tombol
+          tambah wadah. */}
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <div
           className="flex flex-col gap-1 w-full max-w-xs sm:max-w-sm"
           aria-label={t("finance.budgetAllocatable")}
         >
           <div className="flex h-2 w-full overflow-hidden rounded-full bg-black/10 dark:bg-white/10">
-            {usedSegments.segments.map((s) => (
+            {allocatedSegments.segments.map((s) => (
               <Tooltip
                 key={s.id}
-                title={`${s.name}: ${formatIDR(s.used, locale)}`}
+                title={`${s.name}: ${formatIDR(s.allocated, locale)}`}
               >
                 <div
                   className="h-full min-w-0"
@@ -396,8 +404,8 @@ export default function WalletsView({
           </div>
           <div className="flex items-center justify-between gap-2">
             <Text style={{ fontSize: 11 }}>
-              {t("finance.budgetSpent")}:{" "}
-              {formatIDR(usedSegments.totalUsed, locale)}
+              {t("finance.allocationTotal")}:{" "}
+              {formatIDR(allocatedSegments.totalAllocated, locale)}
             </Text>
             <Text type="secondary" style={{ fontSize: 11 }}>
               {t("finance.budgetAllocatable")}: {formatIDR(allocatable, locale)}

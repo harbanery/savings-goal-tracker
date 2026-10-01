@@ -296,41 +296,69 @@ export async function assertWalletLimit(
   const cycle = getCycleForDate(date, settings?.cycleStartDay ?? 25);
 
   // Dana masuk wadah: pemasukan langsung + transfer dari wadah lain.
-  const inflowAgg = await withRetry(() =>
-    prisma.transaction.aggregate({
-      where: {
-        userId,
-        date: { gte: cycle.startDate, lte: cycle.endDate },
-        OR: [
-          { type: "INCOME", categoryId },
-          { type: "TRANSFER", toCategoryId: categoryId },
-        ],
-      },
-      _sum: { amount: true },
-    }),
-  );
-  // Dana keluar wadah: pengeluaran + transfer ke wadah lain.
-  const outflowAgg = await withRetry(() =>
-    prisma.transaction.aggregate({
-      where: {
-        userId,
-        date: { gte: cycle.startDate, lte: cycle.endDate },
-        OR: [
-          { type: "EXPENSE", categoryId },
-          { type: "TRANSFER", categoryId },
-        ],
-      },
-      _sum: { amount: true },
-    }),
-  );
+  const [incomeAgg, transferInAgg, expenseAgg, transferOutAgg] =
+    await Promise.all([
+      withRetry(() =>
+        prisma.transaction.aggregate({
+          where: {
+            userId,
+            type: "INCOME",
+            categoryId,
+            date: { gte: cycle.startDate, lte: cycle.endDate },
+          },
+          _sum: { amount: true },
+        }),
+      ),
+      withRetry(() =>
+        prisma.transaction.aggregate({
+          where: {
+            userId,
+            type: "TRANSFER",
+            toCategoryId: categoryId,
+            date: { gte: cycle.startDate, lte: cycle.endDate },
+          },
+          _sum: { amount: true },
+        }),
+      ),
+      withRetry(() =>
+        prisma.transaction.aggregate({
+          where: {
+            userId,
+            type: "EXPENSE",
+            categoryId,
+            date: { gte: cycle.startDate, lte: cycle.endDate },
+          },
+          _sum: { amount: true },
+        }),
+      ),
+      withRetry(() =>
+        prisma.transaction.aggregate({
+          where: {
+            userId,
+            type: "TRANSFER",
+            categoryId,
+            date: { gte: cycle.startDate, lte: cycle.endDate },
+          },
+          _sum: { amount: true },
+        }),
+      ),
+    ]);
 
-  const inflow = Number(inflowAgg._sum.amount ?? 0);
-  const outflow = Number(outflowAgg._sum.amount ?? 0);
-  const available = inflow - outflow;
-  const projected = outflow + additionalOutflow;
+  const income = Number(incomeAgg._sum.amount ?? 0);
+  const transferIn = Number(transferInAgg._sum.amount ?? 0);
+  const expense = Number(expenseAgg._sum.amount ?? 0);
+  const transferOut = Number(transferOutAgg._sum.amount ?? 0);
+
+  // Alokasi wadah = pemasukan + transfer masuk − transfer keluar; dana
+  // tersedia = alokasi − pengeluaran. Transfer hanya memindahkan dana
+  // antar wadah — alokasi wadah sumber turun, wadah tujuan naik, total
+  // TIDAK berubah (bug DROID.md: transfer membuat alokasi naik dua kali).
+  const allocated = income + transferIn - transferOut;
+  const available = allocated - expense;
+  const projected = expense + additionalOutflow;
   if (projected > available) {
     throw new Error(
-      `${WALLET_LIMIT_CODE}|${category.name}|${Math.round(available)}|${Math.round(projected)}`,
+      `${WALLET_LIMIT_CODE}|${category.name}|${Math.round(Math.max(0, available))}|${Math.round(projected)}`,
     );
   }
 }
