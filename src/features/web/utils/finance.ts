@@ -32,21 +32,22 @@ export function parseSavingsProtectionError(
 }
 
 /**
- * Kode error batas wadah (insight DROID.md): alokasi wadah = batas
- * pengeluaran/transfer keluar per siklus. Server melempar error berformat
- * `WALLET_LIMIT|<namaWadah>|<batas>|<proyeksi>`; client mem-parsing-nya
- * untuk menampilkan pesan (batas wadah TIDAK bisa dilewati — beda dengan
- * proteksi tabungan yang bisa dipaksa).
+ * Kode error batas alokasi wadah (insight DROID.md): dana tersedia wadah
+ * = alokasi + pemasukan + transfer masuk − pengeluaran − transfer keluar.
+ * Pengeluaran/transfer keluar tidak boleh melebihi dana tersedia. Server
+ * melempar error berformat `WALLET_LIMIT|<namaWadah>|<danaTersedia>|<proyeksiKeluar>`;
+ * client mem-parsing-nya untuk menampilkan pesan (batas wadah TIDAK bisa
+ * dilewati — beda dengan proteksi tabungan yang bisa dipaksa).
  */
 export const WALLET_LIMIT_CODE = "WALLET_LIMIT";
 
 /** Hasil parsing error batas wadah. */
 export interface WalletLimitInfo {
-  /** Nama wadah yang mentok batas. */
+  /** Nama wadah yang dananya tidak cukup. */
   walletName: string;
-  /** Batas (alokasi) wadah per siklus. */
+  /** Dana tersedia wadah (alokasi + masuk − keluar) per siklus. */
   limit: number;
-  /** Proyeksi total keluar wadah bila transaksi disimpan. */
+  /** Proyeksi total dana keluar wadah bila transaksi disimpan. */
   projected: number;
 }
 

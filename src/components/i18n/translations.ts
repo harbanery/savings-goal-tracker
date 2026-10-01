@@ -84,13 +84,6 @@ const id: TranslationDict = {
   "form.notePlaceholder": "Catatan tambahan...",
   "form.saveChanges": "Simpan Perubahan",
 
-  // Breakdown
-  "breakdown.title": "Batas Wadah",
-  "breakdown.noAllocation": "(tanpa batas)",
-  "breakdown.purchases": "{n}x pembelian",
-  "breakdown.over": "Lebih ",
-  "breakdown.remaining": "Sisa ",
-
   // Charts
   "chart.balanceTitle": "Saldo: Pengeluaran vs Sisa",
   "chart.spending": "Pengeluaran",
@@ -253,9 +246,9 @@ const id: TranslationDict = {
   "settings.categoryName": "Nama Wadah",
   "settings.categoryColor": "Warna",
   "settings.colorPresets": "Warna Standar",
-  "settings.allocation": "Batas",
+  "settings.allocation": "Alokasi",
   "finance.limitHint":
-    "Batas pengeluaran per siklus untuk wadah ini — pemasukan & transfer tidak dibatasi. 0 = tanpa batas.",
+    "Dana awal wadah per siklus. Pengeluaran/transfer keluar hanya boleh sebesar dana tersedia (alokasi + pemasukan + transfer masuk) — wadah tanpa alokasi & tanpa pemasukan tidak bisa mengeluarkan dana.",
   "settings.addSubcategory": "Tambah Subkategori",
   "settings.editSubcategory": "Edit Subkategori",
   "settings.subcategoryName": "Nama Subkategori",
@@ -274,7 +267,13 @@ const id: TranslationDict = {
   "finance.walletCashBuiltIn":
     "Wadah cash bawaan — hanya batas & warnanya yang bisa diubah; tidak bisa dihapus.",
   "finance.walletCashBuiltInTag": "Bawaan",
-  "finance.noLimit": "Tanpa Batas",
+  "finance.notAllocated": "Belum Dialokasikan",
+  "finance.notAllocatedHint":
+    "Wadah belum bisa pengeluaran/transfer. Isi alokasinya, catat pemasukan, atau terima transfer masuk terlebih dulu.",
+  "finance.walletFunds": "Dana",
+  "finance.walletUsed": "Terpakai",
+  "finance.walletRemainingLabel": "Sisa ",
+  "finance.walletOver": "Lebih ",
   "finance.budgetIncome": "Pemasukan Siklus Ini",
   "finance.budgetProtected": "Tabungan Dilindungi",
   "finance.budgetAllocatable": "Bisa Dialokasikan",
@@ -311,9 +310,9 @@ const id: TranslationDict = {
   "form.protectionDesc":
     "Pengeluaran akan menjadi {projected}, melebihi batas alokasi {limit} dan menyentuh tabungan yang Anda lindungi. Lanjutkan terpaksa?",
   "form.protectionConfirm": "Lanjutkan Terpaksa",
-  "form.walletLimitTitle": "Melebihi Batas Wadah",
+  "form.walletLimitTitle": "Dana Wadah Tidak Cukup",
   "form.walletLimitDesc":
-    "Total pengeluaran dari wadah {wallet} akan menjadi {projected}, melebihi batas {limit}. Naikkan batas wadah di halaman Keuangan atau pilih wadah lain.",
+    "Total pengeluaran/transfer dari wadah {wallet} akan menjadi {projected}, melebihi dana tersedia {limit}. Tambah alokasi wadah di halaman Keuangan, catat pemasukan, atau terima transfer masuk terlebih dulu.",
   "transactions.recurringTitle": "Transaksi Berulang",
   "transactions.recurringEvery": "tiap tanggal {n}",
   "transactions.recurringEmpty": "Belum ada transaksi berulang.",
@@ -396,12 +395,6 @@ const en: TranslationDict = {
   "form.note": "Note (optional)",
   "form.notePlaceholder": "Additional note...",
   "form.saveChanges": "Save Changes",
-
-  "breakdown.title": "Envelope Limits",
-  "breakdown.noAllocation": "(no limit)",
-  "breakdown.purchases": "{n}x purchases",
-  "breakdown.over": "Over ",
-  "breakdown.remaining": "Left ",
 
   "chart.balanceTitle": "Balance: Spending vs Remaining",
   "chart.spending": "Spending",
@@ -560,9 +553,9 @@ const en: TranslationDict = {
   "settings.categoryName": "Envelope Name",
   "settings.categoryColor": "Color",
   "settings.colorPresets": "Preset Colors",
-  "settings.allocation": "Limit",
+  "settings.allocation": "Allocation",
   "finance.limitHint":
-    "Spending limit per cycle for this envelope — income & transfers are not limited. 0 = no limit.",
+    "Starting funds for this envelope each cycle. Expenses/transfers out are limited to available funds (allocation + income + transfers in) — an envelope with no allocation and no income cannot spend at all.",
   "settings.addSubcategory": "Add Subcategory",
   "settings.editSubcategory": "Edit Subcategory",
   "settings.subcategoryName": "Subcategory Name",
@@ -582,7 +575,13 @@ const en: TranslationDict = {
   "finance.walletCashBuiltIn":
     "Built-in cash wallet — only its limit & color can be changed; it cannot be deleted.",
   "finance.walletCashBuiltInTag": "Built-in",
-  "finance.noLimit": "No Limit",
+  "finance.notAllocated": "Not Allocated",
+  "finance.notAllocatedHint":
+    "This envelope cannot spend or transfer yet. Set its allocation, record income, or receive an incoming transfer first.",
+  "finance.walletFunds": "Funds",
+  "finance.walletUsed": "Used",
+  "finance.walletRemainingLabel": "Left ",
+  "finance.walletOver": "Over ",
   "finance.budgetIncome": "Income This Cycle",
   "finance.budgetProtected": "Protected Savings",
   "finance.budgetAllocatable": "Available to Allocate",
@@ -619,9 +618,9 @@ const en: TranslationDict = {
   "form.protectionDesc":
     "Spending will reach {projected}, exceeding the {limit} allocation limit and touching your protected savings. Force continue?",
   "form.protectionConfirm": "Force Continue",
-  "form.walletLimitTitle": "Envelope Limit Exceeded",
+  "form.walletLimitTitle": "Insufficient Envelope Funds",
   "form.walletLimitDesc":
-    "Total spending from {wallet} will reach {projected}, exceeding its {limit} limit. Raise the envelope limit on the Finance page or pick another envelope.",
+    "Total spending/transfers from {wallet} will reach {projected}, exceeding its available funds of {limit}. Raise the envelope allocation on the Finance page, record income, or receive an incoming transfer first.",
   "transactions.recurringTitle": "Recurring Transactions",
   "transactions.recurringEvery": "every day {n}",
   "transactions.recurringEmpty": "No recurring transactions yet.",

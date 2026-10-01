@@ -3,18 +3,15 @@
 import { BulbOutlined } from "@ant-design/icons";
 import { Typography } from "antd";
 import dynamic from "next/dynamic";
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { useLocale } from "@/components/i18n/LocaleProvider";
 import { getCycleTransactionsAction } from "@/utils/server/actions";
-import { computeCycleStats } from "@/features/web/utils/stats";
 import type {
   BudgetCategory,
   Transaction,
-  UserSettings,
 } from "@/features/web/types";
 import { useCycle } from "@/features/web/hooks/cycle";
 import type { CycleInfo } from "@/features/web/utils/cycle";
-import CategoryBreakdown from "./CategoryBreakdown";
 
 const TopKeywordsInsights = dynamic(() => import("./TopKeywordsInsights"), {
   ssr: false,
@@ -48,18 +45,16 @@ function ReportSection({
 interface Props {
   initialTransactions: Transaction[];
   categories: BudgetCategory[];
-  settings: UserSettings;
 }
 
 /**
- * Halaman Laporan (generate_web.md): alokasi wadah + insight keyword.
- * Grafik historis (donut saldo, pie kategori, bar alokasi bulanan,
- * perbandingan & kumulatif tabungan) dipindah ke Dashboard.
+ * Halaman Laporan (generate_web.md): insight keyword transaksi.
+ * Batas wadah (progress bar + keterangan sisa) dipindah ke halaman
+ * Keuangan; grafik historis ada di Dashboard.
  */
 export default function ReportsView({
   initialTransactions,
   categories,
-  settings,
 }: Readonly<Props>) {
   const [transactions, setTransactions] =
     useState<Transaction[]>(initialTransactions);
@@ -68,11 +63,6 @@ export default function ReportsView({
   const { cycle } = useCycle();
 
   const { t } = useLocale();
-
-  const stats = useMemo(
-    () => computeCycleStats(transactions, categories, settings.savingsInitial),
-    [transactions, categories, settings.savingsInitial],
-  );
 
   const refreshCycle = useCallback(async (targetCycle: CycleInfo) => {
     try {
@@ -91,9 +81,6 @@ export default function ReportsView({
 
   return (
     <div className="mx-auto w-full max-w-350">
-      {/* Alokasi wadah (dipindah dari dashboard) */}
-      <CategoryBreakdown stats={stats} />
-
       <ReportSection icon={<BulbOutlined />} title={t("app.tabFacts")}>
         <TopKeywordsInsights
           transactions={transactions}

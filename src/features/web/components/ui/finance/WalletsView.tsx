@@ -21,26 +21,36 @@ import {
   InputNumber,
   Modal,
   Popconfirm,
+  Progress,
   Select,
   Tag,
   Tooltip,
   Typography,
 } from "antd";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useLocale } from "@/components/i18n/LocaleProvider";
-import type { BudgetCategory, WalletType } from "@/features/web/types";
+import type {
+  BudgetCategory,
+  Transaction,
+  WalletType,
+} from "@/features/web/types";
 import {
   createCategoryAction,
   deleteCategoryAction,
+  getCycleTransactionsAction,
   getFinanceBundleAction,
   updateCategoryAction,
 } from "@/utils/server/actions";
+import { useCycle } from "@/features/web/hooks/cycle";
+import type { CycleInfo } from "@/features/web/utils/cycle";
+import { computeCycleStats } from "@/features/web/utils/stats";
 import { formatIDR } from "@/utils/helpers";
 
 const { Text } = Typography;
 
 interface Props {
   initialCategories: BudgetCategory[];
+  initialTransactions: Transaction[];
 }
 
 const PRESET_COLORS = [
@@ -78,15 +88,26 @@ function useCreatableWalletTypeOptions() {
  * Halaman Keuangan: daftar wadah sebagai grid card (semua jenis dompet
  * sekaligus — tanpa filter). Wadah "Cash" (CASH) adalah wadah bawaan:
  * hanya batas & warnanya yang bisa diubah, tidak bisa dihapus.
+ * Setiap card menampilkan progress bar batas wadah + keterangan sisa
+ * (dipindah dari halaman Laporan) berdasarkan dana tersedia siklus aktif:
+ * alokasi + pemasukan + transfer masuk − pengeluaran − transfer keluar.
  * Subkategori wadah ada di halaman Kebutuhan; Budget & Target halaman sendiri.
  */
-export default function WalletsView({ initialCategories }: Props) {
+export default function WalletsView({
+  initialCategories,
+  initialTransactions,
+}: Props) {
   const { t, locale } = useLocale();
   const { message } = App.useApp();
   const creatableTypes = useCreatableWalletTypeOptions();
 
   const [categories, setCategories] = useState(initialCategories);
+  const [transactions, setTransactions] =
+    useState<Transaction[]>(initialTransactions);
   const [reloadKey, setReloadKey] = useState(0);
+
+  /** Siklus aktif global (dipilih lewat DatePicker month di navbar). */
+  const { cycle } = useCycle();
 
   const [categoryForm] = Form.useForm<CategoryFormValues>();
 
@@ -103,11 +124,30 @@ export default function WalletsView({ initialCategories }: Props) {
     }
   }, []);
 
+  const refreshCycle = useCallback(async (targetCycle: CycleInfo) => {
+    try {
+      setTransactions(await getCycleTransactionsAction(targetCycle));
+    } catch (err) {
+      console.error("[WalletsView] gagal memuat transaksi:", err);
+      setTransactions([]);
+    }
+  }, []);
+
   /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     if (reloadKey > 0) void refresh();
   }, [reloadKey, refresh]);
+
+  useEffect(() => {
+    refreshCycle(cycle).catch(() => {});
+  }, [cycle, refreshCycle]);
   /* eslint-enable react-hooks/set-state-in-effect */
+
+  /** Stat per wadah siklus aktif (dana masuk/keluar tiap wadah). */
+  const statByCat = useMemo(() => {
+    const stats = computeCycleStats(transactions, categories, 0);
+    return new Map(stats.categories.map((c) => [c.categoryId, c]));
+  }, [transactions, categories]);
 
   /** antd ColorPicker menyimpan objek Color di form — server action butuh
    *  string hex biasa (objek class tidak bisa diserialisasi ke server). */
@@ -187,17 +227,126 @@ export default function WalletsView({ initialCategories }: Props) {
     );
   }
 
-  /** Label batas wadah (batas 0 = tanpa batas). Cash ikut dibatasi bila
-      batasnya diatur — batas hanya berlaku untuk pengeluaran. */
-  function renderLimit(category: BudgetCategory) {
+  /** Label alokasi wadah (0 = belum dialokasikan — wadah belum bisa
+      mengeluarkan dana sampai menerima alokasi/pemasukan/transfer masuk). */
+  function renderAllocation(category: BudgetCategory) {
     if (category.allocation <= 0) {
-      return <Text type="secondary">{t("finance.noLimit")}</Text>;
+      return <Text type="secondary">{t("finance.notAllocated")}</Text>;
     }
     return (
       <Text>
         {t("settings.allocation")}:{" "}
         {formatIDR(category.allocation, locale)}
       </Text>
+    );
+  }
+
+  /**
+   * Progress bar batas wadah + keterangan sisa (dipindah dari halaman
+   * Laporan): dana = alokasi + pemasukan + transfer masuk; terpakai =
+   * pengeluaran + transfer keluar; sisa = dana − terpakai.
+   */
+  function renderWalletProgress(category: BudgetCategory) {
+    const stat = statByCat.get(category.id);
+    const income = stat?.income ?? 0;
+    const transferIn = stat?.transferIn ?? 0;
+    const used = (stat?.spent ?? 0) + (stat?.transferOut ?? 0);
+    const budget = category.allocation + income + transferIn;
+    const remaining = budget - used;
+    const overBudget = remaining < 0;
+    const percent =
+      budget > 0 ? Math.min(100, Math.round((used / budget) * 100)) : 0;
+
+    // Wadah tanpa dana sama sekali: belum bisa pengeluaran/transfer.
+    if (budget <= 0) {
+      return (
+        <Text
+          type="secondary"
+          style={{ fontSize: 12 }}
+          className="mt-2 block"
+        >
+          {t("finance.notAllocatedHint")}
+        </Text>
+      );
+    }
+
+    const subs = (stat?.subcategories ?? [])
+      .filter((s) => s.transactionCount > 0)
+      .sort((a, b) => b.spent - a.spent);
+
+    return (
+      <div className="mt-2">
+        <Progress
+          percent={percent}
+          size="small"
+          showInfo={false}
+          aria-label={category.name}
+          strokeColor={overBudget ? "#ef4444" : category.color}
+        />
+        <div className="flex items-center justify-between">
+          <Text style={{ fontSize: 12 }}>
+            {t("finance.walletUsed")}: {formatIDR(used, locale)}
+          </Text>
+          <Text type="secondary" style={{ fontSize: 11 }}>
+            / {t("finance.walletFunds")} {formatIDR(budget, locale)}
+          </Text>
+        </div>
+        <Text
+          style={{
+            fontSize: 12,
+            color: overBudget ? "#ef4444" : category.color,
+            fontWeight: 600,
+          }}
+        >
+          {overBudget
+            ? t("finance.walletOver")
+            : t("finance.walletRemainingLabel")}
+          {formatIDR(Math.abs(remaining), locale)}
+        </Text>
+
+        {/* Mutasi non-pengeluaran (income/transfer masuk) bila ada. */}
+        {(income > 0 || transferIn > 0) && (
+          <div className="mt-1 flex flex-wrap gap-x-2">
+            {income > 0 && (
+              <Text type="secondary" style={{ fontSize: 11 }}>
+                +{formatIDR(income, locale)}
+              </Text>
+            )}
+            {transferIn > 0 && (
+              <Text type="secondary" style={{ fontSize: 11 }}>
+                ⇄+{formatIDR(transferIn, locale)}
+              </Text>
+            )}
+          </div>
+        )}
+
+        {/* Rincian per subkategori (wadah tanpa subkategori menampilkan
+            total wadah saja). */}
+        {subs.length > 0 && (
+          <div className="mt-1.5 space-y-0.5 border-t border-zinc-100 pt-1.5 dark:border-zinc-700/60">
+            {subs.map((s) => (
+              <div
+                key={s.subcategoryId}
+                className="flex items-center justify-between gap-2"
+              >
+                <Text
+                  type="secondary"
+                  style={{ fontSize: 11 }}
+                  className="truncate"
+                >
+                  {s.name}
+                  <span className="ml-1 opacity-70">
+                    ({s.transactionCount}x · {s.share}%)
+                  </span>
+                </Text>
+                <Text style={{ fontSize: 11, flexShrink: 0 }}>
+                  {formatIDR(s.spent, locale)}
+                </Text>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
     );
   }
 
@@ -321,8 +470,9 @@ export default function WalletsView({ initialCategories }: Props) {
             >
               <div className="flex flex-wrap items-center justify-between gap-2">
                 {renderWalletType(category.walletType)}
-                {renderLimit(category)}
+                {renderAllocation(category)}
               </div>
+              {renderWalletProgress(category)}
             </Card>
           ))}
         </div>

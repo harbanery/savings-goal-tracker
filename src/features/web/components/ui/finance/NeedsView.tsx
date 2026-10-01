@@ -167,7 +167,11 @@ export default function NeedsView({ initialCategories }: Props) {
           </div>
         ) : (
           <Collapse
-            defaultActiveKey={groupedCategories.map((c) => c.id)}
+            // Hanya wadah yang punya subkategori yang terbuka & bisa
+            // di-collapse; wadah tanpa subkategori tidak bisa dibuka.
+            defaultActiveKey={groupedCategories
+              .filter((c) => c.subcategories.length > 0)
+              .map((c) => c.id)}
             items={groupedCategories.map((category) => ({
               key: category.id,
               label: (

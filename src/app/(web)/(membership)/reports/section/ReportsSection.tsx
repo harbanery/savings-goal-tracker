@@ -11,8 +11,8 @@ import { ensureUserDefaults } from "@/services/user";
 import { getCurrentCycle } from "@/features/web/utils/cycle";
 
 /**
- * Feature module halaman Laporan: alokasi wadah + insight keyword.
- * Grafik historis dipindah ke Dashboard.
+ * Feature module halaman Laporan: insight keyword. Batas wadah dipindah
+ * ke halaman Keuangan; grafik historis dipindah ke Dashboard.
  */
 export default async function ReportsSection() {
   const user = await getCurrentUser();
@@ -38,7 +38,6 @@ export default async function ReportsSection() {
     <ReportsView
       initialTransactions={initialTransactions}
       categories={categories}
-      settings={settings}
     />
   );
 }

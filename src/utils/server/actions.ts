@@ -190,9 +190,10 @@ export async function createTransactionAction(
   // dilindungi tanpa konfirmasi terpaksa dari user.
   await assertSavingsProtection(userId, date, input.amount, options?.force ?? false);
 
-  // Batas wadah (insight DROID.md): hanya PENGELUARAN yang dibatasi —
-  // pemasukan (INCOME) dan transfer (TRANSFER) bebas melewati batas.
-  if (input.type === "EXPENSE") {
+  // Batas alokasi wadah (insight DROID.md): PENGELUARAN dan TRANSFER keluar
+  // hanya boleh sebesar dana tersedia wadah (alokasi + pemasukan + transfer
+  // masuk). Pemasukan (INCOME) bebas — justru menambah dana tersedia.
+  if (input.type === "EXPENSE" || input.type === "TRANSFER") {
     await assertWalletLimit(
       userId,
       input.categoryId,
@@ -261,18 +262,19 @@ export async function updateTransactionAction(
     force ?? false,
   );
 
-  // Batas wadah: hanya EXPENSE yang dihitung — nilai lama pun hanya bila
-  // pengeluaran dari wadah yang sama (edit tidak boleh "membebaskan" batas).
-  if (input.type === "EXPENSE") {
-    const oldExpenseSameCategory =
-      old.categoryId === input.categoryId && old.type === "EXPENSE"
+  // Batas alokasi wadah: keluaran lama dari wadah yang sama dikreditkan
+  // balik (edit tidak boleh "membebaskan" batas dua kali).
+  if (input.type === "EXPENSE" || input.type === "TRANSFER") {
+    const oldOutflowSameWallet =
+      old.categoryId === input.categoryId &&
+      (old.type === "EXPENSE" || old.type === "TRANSFER")
         ? old.amount
         : 0;
     await assertWalletLimit(
       userId,
       input.categoryId,
       date,
-      Math.round(input.amount - oldExpenseSameCategory),
+      Math.round(input.amount - oldOutflowSameWallet),
     );
   }
 
@@ -329,6 +331,17 @@ export async function importTransactionsAction(
 
       const date = new Date(input.date);
       if (Number.isNaN(date.getTime())) throw new Error("Tanggal tidak valid.");
+
+      // Batas alokasi wadah berlaku juga untuk import CSV (aturan keras —
+      // baris yang melanggar dilaporkan per baris, baris lain tetap masuk).
+      if (input.type === "EXPENSE" || input.type === "TRANSFER") {
+        await assertWalletLimit(
+          userId,
+          input.categoryId,
+          date,
+          Math.round(input.amount),
+        );
+      }
 
       await createTransaction(userId, {
         type: input.type,

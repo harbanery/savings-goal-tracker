@@ -208,32 +208,33 @@ export async function assertSavingsProtection(
 }
 
 /**
- * Batas wadah (insight DROID.md): alokasi wadah = batas PENGELUARAN per
- * siklus — hanya EXPENSE yang dihitung; pemasukan (INCOME) dan transfer
- * (TRANSFER) tidak dibatasi. Wadah tanpa alokasi (0) tidak dibatasi.
- * Lempar error berkode WALLET_LIMIT bila proyeksi pengeluaran wadah
- * melebihi batas — berbeda dari proteksi tabungan, batas wadah TIDAK bisa
- * dilewati (tanpa opsi paksa).
+ * Batas alokasi wadah (insight DROID.md): dana tersedia wadah per siklus
+ * = alokasi + pemasukan (INCOME) + transfer masuk − pengeluaran (EXPENSE)
+ * − transfer keluar. Pengeluaran DAN transfer keluar hanya boleh sampai
+ * dana tersedia habis — wadah yang belum punya alokasi dan belum menerima
+ * pemasukan/transfer masuk tidak bisa mengeluarkan dana sama sekali
+ * (contoh: bank dapat gaji 10 juta → transfer 300 ribu ke Gopay → baru
+ * Gopay bisa pengeluaran/transfer kembali). Lempar error berkode
+ * WALLET_LIMIT bila proyeksi keluaran melebihi dana tersedia — berbeda
+ * dari proteksi tabungan, batas wadah TIDAK bisa dilewati (tanpa paksa).
  *
- * @param additionalExpense tambahan pengeluaran (EXPENSE) wadah terkait
- *                         (sudah dikurangi nilai lama untuk kasus edit).
+ * @param additionalOutflow tambahan dana keluar (EXPENSE/TRANSFER) dari
+ *                          wadah terkait (sudah dikurangi nilai lama untuk
+ *                          kasus edit).
  */
 export async function assertWalletLimit(
   userId: string,
   categoryId: string,
   date: Date,
-  additionalExpense: number,
+  additionalOutflow: number,
 ): Promise<void> {
-  if (additionalExpense <= 0) return;
+  if (additionalOutflow <= 0) return;
   const category = await prisma.category.findFirst({
     where: { id: categoryId, userId },
     select: { name: true, allocation: true },
   });
   if (!category) throw new Error("Wadah tidak ditemukan.");
-  // Wadah tanpa alokasi (0) tidak dibatasi — Cash pun ikut dibatasi
-  // bila batasnya diatur.
-  const limit = Number(category.allocation);
-  if (limit <= 0) return;
+  const allocation = Number(category.allocation);
 
   const settings = await prisma.userSettings.findUnique({
     where: { userId },
@@ -241,24 +242,42 @@ export async function assertWalletLimit(
   });
   const cycle = getCycleForDate(date, settings?.cycleStartDay ?? 25);
 
-  // Batas hanya untuk pengeluaran (EXPENSE) — pemasukan (INCOME) dan
-  // transfer (TRANSFER) tidak dihitung.
-  const agg = await withRetry(() =>
+  // Dana masuk wadah: pemasukan langsung + transfer dari wadah lain.
+  const inflowAgg = await withRetry(() =>
     prisma.transaction.aggregate({
       where: {
         userId,
-        categoryId,
-        type: "EXPENSE",
         date: { gte: cycle.startDate, lte: cycle.endDate },
+        OR: [
+          { type: "INCOME", categoryId },
+          { type: "TRANSFER", toCategoryId: categoryId },
+        ],
       },
       _sum: { amount: true },
     }),
   );
-  const current = Number(agg._sum.amount ?? 0);
-  const projected = current + additionalExpense;
-  if (projected > limit) {
+  // Dana keluar wadah: pengeluaran + transfer ke wadah lain.
+  const outflowAgg = await withRetry(() =>
+    prisma.transaction.aggregate({
+      where: {
+        userId,
+        date: { gte: cycle.startDate, lte: cycle.endDate },
+        OR: [
+          { type: "EXPENSE", categoryId },
+          { type: "TRANSFER", categoryId },
+        ],
+      },
+      _sum: { amount: true },
+    }),
+  );
+
+  const inflow = Number(inflowAgg._sum.amount ?? 0);
+  const outflow = Number(outflowAgg._sum.amount ?? 0);
+  const available = allocation + inflow - outflow;
+  const projected = outflow + additionalOutflow;
+  if (projected > available) {
     throw new Error(
-      `${WALLET_LIMIT_CODE}|${category.name}|${Math.round(limit)}|${Math.round(projected)}`,
+      `${WALLET_LIMIT_CODE}|${category.name}|${Math.round(available)}|${Math.round(projected)}`,
     );
   }
 }
