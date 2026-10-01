@@ -18,7 +18,6 @@ import {
   Empty,
   Form,
   Input,
-  InputNumber,
   Modal,
   Popconfirm,
   Progress,
@@ -37,6 +36,7 @@ import type {
 import {
   createCategoryAction,
   deleteCategoryAction,
+  getBudgetOverviewAction,
   getCycleTransactionsAction,
   getFinanceBundleAction,
   updateCategoryAction,
@@ -51,6 +51,8 @@ const { Text } = Typography;
 interface Props {
   initialCategories: BudgetCategory[];
   initialTransactions: Transaction[];
+  /** Budget yang bisa dialokasikan siklus awal. */
+  initialAllocatable: number;
 }
 
 const PRESET_COLORS = [
@@ -67,7 +69,6 @@ const PRESET_COLORS = [
 interface CategoryFormValues {
   name: string;
   color: string | { toHexString(): string };
-  allocation: number;
   walletType: WalletType;
 }
 
@@ -87,15 +88,18 @@ function useCreatableWalletTypeOptions() {
 /**
  * Halaman Keuangan: daftar wadah sebagai grid card (semua jenis dompet
  * sekaligus — tanpa filter). Wadah "Cash" (CASH) adalah wadah bawaan:
- * hanya batas & warnanya yang bisa diubah, tidak bisa dihapus.
- * Setiap card menampilkan progress bar batas wadah + keterangan sisa
- * (dipindah dari halaman Laporan) berdasarkan dana tersedia siklus aktif:
- * alokasi + pemasukan + transfer masuk − pengeluaran − transfer keluar.
+ * hanya warnanya yang bisa diubah, tidak bisa dihapus.
+ * Alokasi TIDAK bisa diedit per wadah (insight DROID.md) — dana wadah
+ * murni lewat pemasukan/transfer; tiap card menampilkan progress dana
+ * wadah (pemasukan + transfer masuk − pengeluaran − transfer keluar).
+ * Di kanan tombol tambah wadah ada progress bar terpakai per wadah
+ * terhadap budget yang bisa dialokasikan.
  * Subkategori wadah ada di halaman Kebutuhan; Budget & Target halaman sendiri.
  */
 export default function WalletsView({
   initialCategories,
   initialTransactions,
+  initialAllocatable,
 }: Props) {
   const { t, locale } = useLocale();
   const { message } = App.useApp();
@@ -104,6 +108,8 @@ export default function WalletsView({
   const [categories, setCategories] = useState(initialCategories);
   const [transactions, setTransactions] =
     useState<Transaction[]>(initialTransactions);
+  /** Budget yang bisa dialokasikan = saldo awal + pemasukan − tabungan dilindungi. */
+  const [allocatable, setAllocatable] = useState(initialAllocatable);
   const [reloadKey, setReloadKey] = useState(0);
 
   /** Siklus aktif global (dipilih lewat DatePicker month di navbar). */
@@ -126,9 +132,14 @@ export default function WalletsView({
 
   const refreshCycle = useCallback(async (targetCycle: CycleInfo) => {
     try {
-      setTransactions(await getCycleTransactionsAction(targetCycle));
+      const [fresh, overview] = await Promise.all([
+        getCycleTransactionsAction(targetCycle),
+        getBudgetOverviewAction(targetCycle),
+      ]);
+      setTransactions(fresh);
+      setAllocatable(overview.allocatable);
     } catch (err) {
-      console.error("[WalletsView] gagal memuat transaksi:", err);
+      console.error("[WalletsView] gagal memuat data siklus:", err);
       setTransactions([]);
     }
   }, []);
@@ -159,12 +170,12 @@ export default function WalletsView({
   async function handleCategorySubmit(values: CategoryFormValues) {
     setCatSaving(true);
     try {
-      // Wadah Cash bawaan: nama & jenis terkunci — kirim hanya batas & warna.
+      // Wadah Cash bawaan: nama & jenis terkunci — kirim hanya warna.
+      // (Alokasi tidak bisa diedit — dana wadah lewat pemasukan/transfer.)
       const isCash = editingCat?.walletType === "CASH";
       const payload = {
         name: isCash ? undefined : values.name,
         color: toHexColor(values.color),
-        allocation: values.allocation,
         walletType: isCash ? undefined : values.walletType,
       };
       if (editingCat) {
@@ -204,6 +215,34 @@ export default function WalletsView({
   /** Semua wadah tampil sekaligus (tanpa filter jenis dompet). */
   const visibleCategories = categories;
 
+  /**
+   * Segmen terpakai per wadah (pengeluaran + transfer keluar) untuk
+   * progress bar budget yang bisa dialokasikan di toolbar.
+   */
+  const usedSegments = useMemo(() => {
+    const segs = categories
+      .map((c) => {
+        const stat = statByCat.get(c.id);
+        const used = (stat?.spent ?? 0) + (stat?.transferOut ?? 0);
+        return { id: c.id, name: c.name, color: c.color, used };
+      })
+      .filter((s) => s.used > 0)
+      .sort((a, b) => b.used - a.used);
+    const totalUsed = segs.reduce((n, s) => n + s.used, 0);
+    // Skala agar total segmen mentok di 100% bila terpakai melampaui budget.
+    const scale =
+      totalUsed > 0 && allocatable > 0
+        ? Math.min(1, allocatable / totalUsed)
+        : 0;
+    return {
+      segments: segs.map((s) => ({
+        ...s,
+        widthPct: allocatable > 0 ? (s.used * scale * 100) / allocatable : 0,
+      })),
+      totalUsed,
+    };
+  }, [categories, statByCat, allocatable]);
+
   /** Tag jenis dompet (Bank / E-Wallet / Cash). */
   function renderWalletType(type: WalletType) {
     if (type === "CASH") {
@@ -227,23 +266,9 @@ export default function WalletsView({
     );
   }
 
-  /** Label alokasi wadah (0 = belum dialokasikan — wadah belum bisa
-      mengeluarkan dana sampai menerima alokasi/pemasukan/transfer masuk). */
-  function renderAllocation(category: BudgetCategory) {
-    if (category.allocation <= 0) {
-      return <Text type="secondary">{t("finance.notAllocated")}</Text>;
-    }
-    return (
-      <Text>
-        {t("settings.allocation")}:{" "}
-        {formatIDR(category.allocation, locale)}
-      </Text>
-    );
-  }
-
   /**
-   * Progress bar batas wadah + keterangan sisa (dipindah dari halaman
-   * Laporan): dana = alokasi + pemasukan + transfer masuk; terpakai =
+   * Progress dana wadah + keterangan sisa: dana = pemasukan + transfer
+   * masuk (alokasi tidak bisa diedit — insight DROID.md); terpakai =
    * pengeluaran + transfer keluar; sisa = dana − terpakai.
    */
   function renderWalletProgress(category: BudgetCategory) {
@@ -251,7 +276,7 @@ export default function WalletsView({
     const income = stat?.income ?? 0;
     const transferIn = stat?.transferIn ?? 0;
     const used = (stat?.spent ?? 0) + (stat?.transferOut ?? 0);
-    const budget = category.allocation + income + transferIn;
+    const budget = income + transferIn;
     const remaining = budget - used;
     const overBudget = remaining < 0;
     const percent =
@@ -260,11 +285,7 @@ export default function WalletsView({
     // Wadah tanpa dana sama sekali: belum bisa pengeluaran/transfer.
     if (budget <= 0) {
       return (
-        <Text
-          type="secondary"
-          style={{ fontSize: 12 }}
-          className="mt-2 block"
-        >
+        <Text type="secondary" style={{ fontSize: 12 }} className="mt-2 block">
           {t("finance.notAllocatedHint")}
         </Text>
       );
@@ -353,8 +374,37 @@ export default function WalletsView({
   return (
     <div className="w-full">
       {/* Toolbar: tombol tambah wadah (semua jenis dompet tampil tanpa
-          filter). */}
-      <div className="mb-4 flex flex-wrap items-center justify-end gap-2">
+          filter) + progress bar terpakai per wadah terhadap budget yang
+          bisa dialokasikan (di sebelah kanan tombol). */}
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <div
+          className="flex flex-col gap-1 w-full max-w-xs sm:max-w-sm"
+          aria-label={t("finance.budgetAllocatable")}
+        >
+          <div className="flex h-2 w-full overflow-hidden rounded-full bg-black/10 dark:bg-white/10">
+            {usedSegments.segments.map((s) => (
+              <Tooltip
+                key={s.id}
+                title={`${s.name}: ${formatIDR(s.used, locale)}`}
+              >
+                <div
+                  className="h-full min-w-0"
+                  style={{ width: `${s.widthPct}%`, background: s.color }}
+                />
+              </Tooltip>
+            ))}
+          </div>
+          <div className="flex items-center justify-between gap-2">
+            <Text style={{ fontSize: 11 }}>
+              {t("finance.budgetSpent")}:{" "}
+              {formatIDR(usedSegments.totalUsed, locale)}
+            </Text>
+            <Text type="secondary" style={{ fontSize: 11 }}>
+              {t("finance.budgetAllocatable")}: {formatIDR(allocatable, locale)}
+            </Text>
+          </div>
+        </div>
+
         <Button
           type="primary"
           icon={<PlusOutlined />}
@@ -403,32 +453,24 @@ export default function WalletsView({
               }
               extra={
                 category.walletType === "CASH" ? (
-                  // Wadah Cash bawaan: hanya batas & warna yang bisa
-                  // diubah (nama/jenis terkunci), tidak bisa dihapus.
-                  <div className="flex items-center gap-1">
-                    <Tooltip title={t("finance.walletCashBuiltIn")}>
-                      <Tag style={{ margin: 0 }}>
-                        {t("finance.walletCashBuiltInTag")}
-                      </Tag>
-                    </Tooltip>
-                    <Button
-                      type="text"
-                      shape="circle"
-                      size="small"
-                      icon={<EditOutlined />}
-                      onClick={() => {
-                        setEditingCat(category);
-                        categoryForm.setFieldsValue({
-                          name: category.name,
-                          color: category.color,
-                          allocation: category.allocation,
-                          walletType: category.walletType,
-                        });
-                        setCatModalOpen(true);
-                      }}
-                      aria-label={t("settings.editCategory")}
-                    />
-                  </div>
+                  // Wadah Cash bawaan: hanya warnanya yang bisa diubah
+                  // (nama/jenis terkunci), tidak bisa dihapus.
+                  <Button
+                    type="text"
+                    shape="circle"
+                    size="small"
+                    icon={<EditOutlined />}
+                    onClick={() => {
+                      setEditingCat(category);
+                      categoryForm.setFieldsValue({
+                        name: category.name,
+                        color: category.color,
+                        walletType: category.walletType,
+                      });
+                      setCatModalOpen(true);
+                    }}
+                    aria-label={t("settings.editCategory")}
+                  />
                 ) : (
                   <div className="flex gap-1">
                     <Button
@@ -441,7 +483,6 @@ export default function WalletsView({
                         categoryForm.setFieldsValue({
                           name: category.name,
                           color: category.color,
-                          allocation: category.allocation,
                           walletType: category.walletType,
                         });
                         setCatModalOpen(true);
@@ -470,7 +511,6 @@ export default function WalletsView({
             >
               <div className="flex flex-wrap items-center justify-between gap-2">
                 {renderWalletType(category.walletType)}
-                {renderAllocation(category)}
               </div>
               {renderWalletProgress(category)}
             </Card>
@@ -499,7 +539,6 @@ export default function WalletsView({
           onFinish={handleCategorySubmit}
           initialValues={{
             color: PRESET_COLORS[0],
-            allocation: 0,
             walletType: "E_WALLET",
           }}
         >
@@ -508,7 +547,10 @@ export default function WalletsView({
             label={t("settings.categoryName")}
             rules={[{ required: true }]}
           >
-            <Input maxLength={50} disabled={editingCat?.walletType === "CASH"} />
+            <Input
+              maxLength={50}
+              disabled={editingCat?.walletType === "CASH"}
+            />
           </Form.Item>
           <Form.Item
             name="walletType"
@@ -541,25 +583,6 @@ export default function WalletsView({
                 },
               ]}
               showText
-            />
-          </Form.Item>
-          <Form.Item
-            name="allocation"
-            label={t("settings.allocation")}
-            extra={t("finance.limitHint")}
-            rules={[{ required: true }]}
-          >
-            <InputNumber<number>
-              style={{ width: "100%" }}
-              addonBefore="Rp"
-              min={0}
-              step={50000}
-              formatter={(v) =>
-                v === undefined || v === null
-                  ? ""
-                  : `${v}`.replace(/\B(?=(\d{3})+(?!\d))/g, ".")
-              }
-              parser={(v) => Number((v ?? "").replace(/\D/g, "") || 0)}
             />
           </Form.Item>
           <div className="mt-2 flex justify-end gap-2">

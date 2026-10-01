@@ -10,36 +10,102 @@ import {
 
 /**
  * Data-access layer menu Keuangan: ringkasan Budget per siklus (proteksi
- * tabungan) dan CRUD Target tabungan.
+ * tabungan), CRUD Target tabungan, dan batas alokasi wadah.
  */
 
-type TargetRecord = Prisma.SavingsTargetGetPayload<object>;
-
-/** Ubah record DB menjadi SavingsTarget UI. */
-export function toTarget(t: TargetRecord): SavingsTarget {
-  return {
-    id: t.id,
-    name: t.name,
-    targetAmount: Number(t.targetAmount),
-    savedAmount: Number(t.savedAmount),
-    deadline: t.deadline ? t.deadline.toISOString() : null,
-    note: t.note,
-  };
+/**
+ * Tabungan bersih seluruh siklus (semua waktu) dari kumpulan wadah.
+ * Kosong = semua wadah (transfer antar wadah saling menghapus).
+ * Rumus: pemasukan + transfer masuk − pengeluaran − transfer keluar.
+ */
+async function computeSaved(
+  userId: string,
+  categoryIds: string[],
+): Promise<number> {
+  const scoped = categoryIds.length > 0;
+  const field = (col: "categoryId" | "toCategoryId") =>
+    scoped ? { [col]: { in: categoryIds } } : {};
+  const [incomeAgg, expenseAgg, transferInAgg, transferOutAgg] =
+    await Promise.all([
+      withRetry(() =>
+        prisma.transaction.aggregate({
+          where: { userId, type: "INCOME", ...field("categoryId") },
+          _sum: { amount: true },
+        }),
+      ),
+      withRetry(() =>
+        prisma.transaction.aggregate({
+          where: { userId, type: "EXPENSE", ...field("categoryId") },
+          _sum: { amount: true },
+        }),
+      ),
+      withRetry(() =>
+        prisma.transaction.aggregate({
+          where: { userId, type: "TRANSFER", ...field("toCategoryId") },
+          _sum: { amount: true },
+        }),
+      ),
+      withRetry(() =>
+        prisma.transaction.aggregate({
+          where: { userId, type: "TRANSFER", ...field("categoryId") },
+          _sum: { amount: true },
+        }),
+      ),
+    ]);
+  return (
+    Number(incomeAgg._sum.amount ?? 0) +
+    Number(transferInAgg._sum.amount ?? 0) -
+    Number(expenseAgg._sum.amount ?? 0) -
+    Number(transferOutAgg._sum.amount ?? 0)
+  );
 }
 
-export async function getTargets(userId: string): Promise<SavingsTarget[]> {
+/** Pastikan semua wadah milik user; kembalikan id unik. */
+async function assertCategoriesOwned(
+  userId: string,
+  categoryIds: string[],
+): Promise<string[]> {
+  const unique = [...new Set(categoryIds)];
+  if (unique.length > 0) {
+    const owned = await prisma.category.findMany({
+      where: { userId, id: { in: unique } },
+      select: { id: true },
+    });
+    if (owned.length !== unique.length) {
+      throw new Error("Wadah tidak ditemukan.");
+    }
+  }
+  return unique;
+}
+
+/** Target + dana terkumpul otomatis (tabungan bersih seluruh siklus). */
+export async function getTargets(
+  userId: string,
+): Promise<SavingsTarget[]> {
   const rows = await withRetry(() =>
     prisma.savingsTarget.findMany({
       where: { userId },
       orderBy: { createdAt: "asc" },
     }),
   );
-  return rows.map(toTarget);
+  return Promise.all(
+    rows.map(async (t) => ({
+      id: t.id,
+      name: t.name,
+      targetAmount: Number(t.targetAmount),
+      saved: await computeSaved(userId, t.categoryIds),
+      categoryIds: t.categoryIds,
+      deadline: t.deadline ? t.deadline.toISOString() : null,
+      note: t.note,
+    })),
+  );
 }
 
 export interface TargetInput {
   name: string;
   targetAmount: number;
+  /** Wadah sumber dana: kosong = semua wadah. */
+  categoryIds?: string[];
   deadline?: Date | null;
   note?: string;
 }
@@ -59,18 +125,28 @@ export async function createTarget(
   data: TargetInput,
 ): Promise<SavingsTarget> {
   validateTargetInput(data);
+  const categoryIds = await assertCategoriesOwned(userId, data.categoryIds ?? []);
   const row = await withRetry(() =>
     prisma.savingsTarget.create({
       data: {
         userId,
         name: data.name.trim().slice(0, 100),
         targetAmount: new Prisma.Decimal(Math.round(data.targetAmount)),
+        categoryIds,
         deadline: data.deadline ?? null,
         note: (data.note ?? "").trim().slice(0, 500),
       },
     }),
   );
-  return toTarget(row);
+  return {
+    id: row.id,
+    name: row.name,
+    targetAmount: Number(row.targetAmount),
+    saved: await computeSaved(userId, row.categoryIds),
+    categoryIds: row.categoryIds,
+    deadline: row.deadline ? row.deadline.toISOString() : null,
+    note: row.note,
+  };
 }
 
 export async function updateTarget(
@@ -84,43 +160,19 @@ export async function updateTarget(
   });
   if (!existing) throw new Error("Target tidak ditemukan.");
   validateTargetInput(data);
+  const categoryIds = await assertCategoriesOwned(userId, data.categoryIds ?? []);
   await withRetry(() =>
     prisma.savingsTarget.update({
       where: { id },
       data: {
         name: data.name.trim().slice(0, 100),
         targetAmount: new Prisma.Decimal(Math.round(data.targetAmount)),
+        categoryIds,
         deadline: data.deadline ?? null,
         note: (data.note ?? "").trim().slice(0, 500),
       },
     }),
   );
-}
-
-/** Tambah dana terkumpul pada target (mis. setoran tabungan manual). */
-export async function addTargetFunds(
-  userId: string,
-  id: string,
-  amount: number,
-): Promise<SavingsTarget> {
-  if (!Number.isFinite(amount) || amount <= 0) {
-    throw new Error("Nominal dana harus lebih dari 0.");
-  }
-  const existing = await prisma.savingsTarget.findFirst({
-    where: { id, userId },
-    select: { id: true, savedAmount: true },
-  });
-  if (!existing) throw new Error("Target tidak ditemukan.");
-  const row = await withRetry(() =>
-    prisma.savingsTarget.update({
-      where: { id },
-      data: {
-        savedAmount:
-          new Prisma.Decimal(existing.savedAmount).plus(Math.round(amount)),
-      },
-    }),
-  );
-  return toTarget(row);
 }
 
 export async function deleteTarget(userId: string, id: string): Promise<void> {
@@ -177,8 +229,11 @@ export async function getBudgetOverview(
 }
 
 /**
- * Proteksi tabungan (menu Budget): lempar error berkode SAVINGS_PROTECTION
- * bila proyeksi pengeluaran siklus melebihi batas alokasi. Client menangkap
+ * Proteksi tabungan (menu Budget): batas pengeluaran SELALU mengikuti
+ * budget yang bisa dialokasikan (saldo awal + pemasukan − tabungan
+ * dilindungi) — lempar error berkode SAVINGS_PROTECTION bila proyeksi
+ * pengeluaran siklus melebihi batas tersebut (insight DROID.md: batas
+ * tetap mengikuti budget yang bisa dialokasikan). Client menangkap
  * error ini dan menawarkan konfirmasi "terpaksa" (force).
  *
  * @param additionalExpense tambahan pengeluaran terhadap total siklus saat ini
@@ -194,8 +249,6 @@ export async function assertSavingsProtection(
   const settings = await prisma.userSettings.findUnique({
     where: { userId },
   });
-  const protectedSavings = Number(settings?.protectedSavings ?? 0);
-  if (protectedSavings <= 0) return;
 
   const cycle = getCycleForDate(date, settings?.cycleStartDay ?? 25);
   const overview = await getBudgetOverview(userId, cycle);
@@ -208,15 +261,16 @@ export async function assertSavingsProtection(
 }
 
 /**
- * Batas alokasi wadah (insight DROID.md): dana tersedia wadah per siklus
- * = alokasi + pemasukan (INCOME) + transfer masuk − pengeluaran (EXPENSE)
- * − transfer keluar. Pengeluaran DAN transfer keluar hanya boleh sampai
- * dana tersedia habis — wadah yang belum punya alokasi dan belum menerima
- * pemasukan/transfer masuk tidak bisa mengeluarkan dana sama sekali
- * (contoh: bank dapat gaji 10 juta → transfer 300 ribu ke Gopay → baru
- * Gopay bisa pengeluaran/transfer kembali). Lempar error berkode
- * WALLET_LIMIT bila proyeksi keluaran melebihi dana tersedia — berbeda
- * dari proteksi tabungan, batas wadah TIDAK bisa dilewati (tanpa paksa).
+ * Batas alokasi wadah (insight DROID.md): dana wadah per siklus = pemasukan
+ * (INCOME) + transfer masuk − pengeluaran (EXPENSE) − transfer keluar.
+ * ALOKASI TIDAK BISA DIEDIT di tiap wadah — dana harus masuk lewat
+ * pemasukan atau transfer (contoh: bank dapat gaji 10 juta → transfer
+ * 300 ribu ke Gopay → baru Gopay bisa pengeluaran/transfer kembali).
+ * Wadah yang belum menerima pemasukan/transfer masuk tidak bisa
+ * mengeluarkan dana sama sekali — inilah batas yang menjamin pengeluaran
+ * tidak melebihi dana yang tersedia. Lempar error berkode WALLET_LIMIT
+ * bila proyeksi keluaran melebihi dana tersedia — berbeda dari proteksi
+ * tabungan, batas wadah TIDAK bisa dilewati (tanpa paksa).
  *
  * @param additionalOutflow tambahan dana keluar (EXPENSE/TRANSFER) dari
  *                          wadah terkait (sudah dikurangi nilai lama untuk
@@ -231,10 +285,9 @@ export async function assertWalletLimit(
   if (additionalOutflow <= 0) return;
   const category = await prisma.category.findFirst({
     where: { id: categoryId, userId },
-    select: { name: true, allocation: true },
+    select: { name: true },
   });
   if (!category) throw new Error("Wadah tidak ditemukan.");
-  const allocation = Number(category.allocation);
 
   const settings = await prisma.userSettings.findUnique({
     where: { userId },
@@ -273,7 +326,7 @@ export async function assertWalletLimit(
 
   const inflow = Number(inflowAgg._sum.amount ?? 0);
   const outflow = Number(outflowAgg._sum.amount ?? 0);
-  const available = allocation + inflow - outflow;
+  const available = inflow - outflow;
   const projected = outflow + additionalOutflow;
   if (projected > available) {
     throw new Error(

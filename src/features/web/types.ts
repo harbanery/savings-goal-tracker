@@ -105,8 +105,14 @@ export interface SavingsTarget {
   name: string;
   /** Nilai target (rupiah). */
   targetAmount: number;
-  /** Dana yang sudah terkumpul. */
-  savedAmount: number;
+  /**
+   * Dana terkumpul — dihitung otomatis dari tabungan bersih seluruh
+   * siklus pada wadah terpilih (pemasukan + transfer masuk − pengeluaran
+   * − transfer keluar), tidak lagi ditambah manual.
+   */
+  saved: number;
+  /** Wadah sumber dana: kosong = semua wadah; berisi = wadah terpilih. */
+  categoryIds: string[];
   /** ISO date batas waktu (opsional). */
   deadline: string | null;
   note: string;

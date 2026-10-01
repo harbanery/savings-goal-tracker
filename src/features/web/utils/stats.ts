@@ -27,7 +27,6 @@ export interface CategoryStat {
   categoryId: string;
   name: string;
   color: string;
-  allocation: number;
   /** Total pengeluaran (EXPENSE keluar) dari wadah ini. */
   spent: number;
   /** Total pemasukan (INCOME masuk) ke wadah ini. */
@@ -36,9 +35,10 @@ export interface CategoryStat {
   transferIn: number;
   /** Transfer keluar dari wadah ini. */
   transferOut: number;
-  /** Sisa alokasi efektif: allocation + income + transferIn - spent - transferOut. */
+  /** Dana tersedia = pemasukan + transfer masuk − pengeluaran − transfer keluar
+   *  (alokasi tidak bisa diedit per wadah — dana murni lewat transaksi). */
   remaining: number;
-  /** Persentase alokasi terpakai (0-100). */
+  /** Persentase dana terpakai (0-100). */
   percent: number;
   transactionCount: number;
   subcategories: SubcategoryStat[];
@@ -53,7 +53,8 @@ export interface CycleStats {
   totalSpent: number;
   /** Saldo bersih = savingsInitial + totalIncome - totalSpent. */
   netSavings: number;
-  /** Limit pengeluaran = total alokasi wadah. */
+  /** Limit pengeluaran = budget yang bisa dialokasikan
+   *  (saldo awal + pemasukan − tabungan dilindungi). */
   spendingLimit: number;
   /** Sisa dari limit pengeluaran (bisa minus). */
   limitRemaining: number;
@@ -61,8 +62,6 @@ export interface CycleStats {
   limitPercent: number;
   /** Apakah sudah melebihi limit? */
   overLimit: boolean;
-  /** Total alokasi wadah. */
-  totalAllocation: number;
   /** Jumlah transaksi. */
   transactionCount: number;
   /** Breakdown per kategori. */
@@ -74,9 +73,8 @@ export function computeCycleStats(
   transactions: Transaction[],
   categories: BudgetCategory[],
   savingsInitial: number,
+  protectedSavings = 0,
 ): CycleStats {
-  const totalAllocation = categories.reduce((acc, c) => acc + c.allocation, 0);
-
   // Inisialisasi stat per kategori + per subkategori.
   const catMap = new Map<string, CategoryStat>();
   const subMap = new Map<string, Map<string, SubcategoryStat>>();
@@ -85,12 +83,11 @@ export function computeCycleStats(
       categoryId: c.id,
       name: c.name,
       color: c.color,
-      allocation: c.allocation,
       spent: 0,
       income: 0,
       transferIn: 0,
       transferOut: 0,
-      remaining: c.allocation,
+      remaining: 0,
       percent: 0,
       transactionCount: 0,
       subcategories: [],
@@ -154,10 +151,11 @@ export function computeCycleStats(
   // Finalisasi stat per kategori + share subkategori.
   const catStats = categories.map((c) => {
     const stat = catMap.get(c.id)!;
-    stat.remaining =
-      c.allocation + stat.income + stat.transferIn - stat.spent - stat.transferOut;
+    const budget = stat.income + stat.transferIn;
+    const used = stat.spent + stat.transferOut;
+    stat.remaining = budget - used;
     stat.percent =
-      c.allocation > 0 ? Math.round((stat.spent / c.allocation) * 100) : 0;
+      budget > 0 ? Math.min(100, Math.round((used / budget) * 100)) : 0;
     stat.subcategories = [...(subMap.get(c.id)?.values() ?? [])].map((s) => ({
       ...s,
       share: stat.spent > 0 ? Math.round((s.spent / stat.spent) * 100) : 0,
@@ -166,10 +164,13 @@ export function computeCycleStats(
   });
 
   const netSavings = savingsInitial + totalIncome - totalSpent;
-  const limitRemaining = totalAllocation - totalSpent;
+  // Limit pengeluaran mengikuti budget yang bisa dialokasikan (insight
+  // DROID.md): saldo awal + pemasukan − tabungan dilindungi.
+  const spendingLimit = savingsInitial + totalIncome - protectedSavings;
+  const limitRemaining = spendingLimit - totalSpent;
   const limitPercent =
-    totalAllocation > 0
-      ? Math.min(100, Math.round((totalSpent / totalAllocation) * 100))
+    spendingLimit > 0
+      ? Math.min(100, Math.round((totalSpent / spendingLimit) * 100))
       : 0;
 
   return {
@@ -177,11 +178,10 @@ export function computeCycleStats(
     totalIncome,
     totalSpent,
     netSavings,
-    spendingLimit: totalAllocation,
+    spendingLimit,
     limitRemaining,
     limitPercent,
-    overLimit: totalSpent > totalAllocation,
-    totalAllocation,
+    overLimit: totalSpent > spendingLimit,
     transactionCount: transactions.length,
     categories: catStats,
   };

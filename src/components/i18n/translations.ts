@@ -212,8 +212,8 @@ const id: TranslationDict = {
   "form.typeExpense": "Pengeluaran",
   "form.typeIncome": "Pemasukan",
   "form.typeTransfer": "Transfer",
-  "form.fromUnit": "Dari Wadah / Subkategori",
-  "form.toUnit": "Ke Wadah / Subkategori",
+  "form.fromUnit": "Dari Wadah",
+  "form.toUnit": "Ke Wadah",
   "form.toCategory": "Ke Wadah Tujuan",
   "form.toCategoryRequired": "Wadah tujuan wajib dipilih",
   "form.toCategoryPlaceholder": "Pilih wadah tujuan",
@@ -246,9 +246,6 @@ const id: TranslationDict = {
   "settings.categoryName": "Nama Wadah",
   "settings.categoryColor": "Warna",
   "settings.colorPresets": "Warna Standar",
-  "settings.allocation": "Alokasi",
-  "finance.limitHint":
-    "Dana awal wadah per siklus. Pengeluaran/transfer keluar hanya boleh sebesar dana tersedia (alokasi + pemasukan + transfer masuk) — wadah tanpa alokasi & tanpa pemasukan tidak bisa mengeluarkan dana.",
   "settings.addSubcategory": "Tambah Subkategori",
   "settings.editSubcategory": "Edit Subkategori",
   "settings.subcategoryName": "Nama Subkategori",
@@ -264,12 +261,8 @@ const id: TranslationDict = {
   "finance.walletBank": "Bank",
   "finance.walletEwallet": "E-Wallet",
   "finance.walletCash": "Cash",
-  "finance.walletCashBuiltIn":
-    "Wadah cash bawaan — hanya batas & warnanya yang bisa diubah; tidak bisa dihapus.",
-  "finance.walletCashBuiltInTag": "Bawaan",
-  "finance.notAllocated": "Belum Dialokasikan",
   "finance.notAllocatedHint":
-    "Wadah belum bisa pengeluaran/transfer. Isi alokasinya, catat pemasukan, atau terima transfer masuk terlebih dulu.",
+    "Wadah belum bisa pengeluaran/transfer. Catat pemasukan atau terima transfer masuk terlebih dulu — alokasi tidak bisa diisi manual.",
   "finance.walletFunds": "Dana",
   "finance.walletUsed": "Terpakai",
   "finance.walletRemainingLabel": "Sisa ",
@@ -293,8 +286,14 @@ const id: TranslationDict = {
   "finance.targetDeadlineLabel": "Batas Waktu",
   "finance.targetDeadline": "Batas Waktu (opsional)",
   "finance.targetNote": "Catatan (opsional)",
-  "finance.addTargetFunds": "Tambah Dana",
-  "finance.addFundsTitle": "Tambah Dana Target",
+  "finance.targetScope": "Sumber Dana",
+  "finance.targetScopeAll": "Semua Wadah",
+  "finance.targetScopeCustom": "Wadah Tertentu",
+  "finance.targetScopeCount": "{n} wadah",
+  "finance.targetScopeHint":
+    "Dana terkumpul dihitung otomatis dari tabungan bersih seluruh siklus pada wadah terpilih (pemasukan + transfer masuk − pengeluaran − transfer keluar).",
+  "finance.targetAutoHint":
+    "Dana terkumpul dihitung otomatis dari tabungan seluruh siklus — tanpa tambah dana manual.",
   "finance.deleteTargetConfirm": "Hapus target ini?",
   "finance.targetsEmpty":
     "Belum ada target. Buat target pertama Anda, mis. beli HP atau tabungan 1 tahun.",
@@ -312,7 +311,7 @@ const id: TranslationDict = {
   "form.protectionConfirm": "Lanjutkan Terpaksa",
   "form.walletLimitTitle": "Dana Wadah Tidak Cukup",
   "form.walletLimitDesc":
-    "Total pengeluaran/transfer dari wadah {wallet} akan menjadi {projected}, melebihi dana tersedia {limit}. Tambah alokasi wadah di halaman Keuangan, catat pemasukan, atau terima transfer masuk terlebih dulu.",
+    "Total pengeluaran/transfer dari wadah {wallet} akan menjadi {projected}, melebihi dana tersedia {limit}. Catat pemasukan atau terima transfer masuk ke wadah tersebut terlebih dulu.",
   "transactions.recurringTitle": "Transaksi Berulang",
   "transactions.recurringEvery": "tiap tanggal {n}",
   "transactions.recurringEmpty": "Belum ada transaksi berulang.",
@@ -519,8 +518,8 @@ const en: TranslationDict = {
   "form.typeExpense": "Expense",
   "form.typeIncome": "Income",
   "form.typeTransfer": "Transfer",
-  "form.fromUnit": "From Envelope / Subcategory",
-  "form.toUnit": "To Envelope / Subcategory",
+  "form.fromUnit": "From Envelope",
+  "form.toUnit": "To Envelope",
   "form.toCategory": "To Destination Envelope",
   "form.toCategoryRequired": "Destination envelope is required",
   "form.toCategoryPlaceholder": "Select destination envelope",
@@ -553,9 +552,6 @@ const en: TranslationDict = {
   "settings.categoryName": "Envelope Name",
   "settings.categoryColor": "Color",
   "settings.colorPresets": "Preset Colors",
-  "settings.allocation": "Allocation",
-  "finance.limitHint":
-    "Starting funds for this envelope each cycle. Expenses/transfers out are limited to available funds (allocation + income + transfers in) — an envelope with no allocation and no income cannot spend at all.",
   "settings.addSubcategory": "Add Subcategory",
   "settings.editSubcategory": "Edit Subcategory",
   "settings.subcategoryName": "Subcategory Name",
@@ -572,12 +568,8 @@ const en: TranslationDict = {
   "finance.walletBank": "Bank",
   "finance.walletEwallet": "E-Wallet",
   "finance.walletCash": "Cash",
-  "finance.walletCashBuiltIn":
-    "Built-in cash wallet — only its limit & color can be changed; it cannot be deleted.",
-  "finance.walletCashBuiltInTag": "Built-in",
-  "finance.notAllocated": "Not Allocated",
   "finance.notAllocatedHint":
-    "This envelope cannot spend or transfer yet. Set its allocation, record income, or receive an incoming transfer first.",
+    "This envelope cannot spend or transfer yet. Record income or receive an incoming transfer first — allocation cannot be set manually.",
   "finance.walletFunds": "Funds",
   "finance.walletUsed": "Used",
   "finance.walletRemainingLabel": "Left ",
@@ -601,8 +593,14 @@ const en: TranslationDict = {
   "finance.targetDeadlineLabel": "Deadline",
   "finance.targetDeadline": "Deadline (optional)",
   "finance.targetNote": "Note (optional)",
-  "finance.addTargetFunds": "Add Funds",
-  "finance.addFundsTitle": "Add Funds to Target",
+  "finance.targetScope": "Fund Source",
+  "finance.targetScopeAll": "All Envelopes",
+  "finance.targetScopeCustom": "Specific Envelopes",
+  "finance.targetScopeCount": "{n} envelopes",
+  "finance.targetScopeHint":
+    "Funds are computed automatically from all-cycle net savings of the selected envelopes (income + transfers in − expenses − transfers out).",
+  "finance.targetAutoHint":
+    "Funds are computed automatically from all-cycle savings — no manual add-funds.",
   "finance.deleteTargetConfirm": "Delete this target?",
   "finance.targetsEmpty":
     "No targets yet. Create your first one, e.g. buy a phone or a 1-year savings goal.",
@@ -620,7 +618,7 @@ const en: TranslationDict = {
   "form.protectionConfirm": "Force Continue",
   "form.walletLimitTitle": "Insufficient Envelope Funds",
   "form.walletLimitDesc":
-    "Total spending/transfers from {wallet} will reach {projected}, exceeding its available funds of {limit}. Raise the envelope allocation on the Finance page, record income, or receive an incoming transfer first.",
+    "Total spending/transfers from {wallet} will reach {projected}, exceeding its available funds of {limit}. Record income or receive an incoming transfer to that envelope first.",
   "transactions.recurringTitle": "Recurring Transactions",
   "transactions.recurringEvery": "every day {n}",
   "transactions.recurringEmpty": "No recurring transactions yet.",

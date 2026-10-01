@@ -84,8 +84,14 @@ export default function DashboardView({
   const cycleLabel = formatCycleLabel(cycle.year, cycle.monthIndex, locale);
 
   const stats = useMemo(
-    () => computeCycleStats(transactions, categories, settings.savingsInitial),
-    [transactions, categories, settings.savingsInitial],
+    () =>
+      computeCycleStats(
+        transactions,
+        categories,
+        settings.savingsInitial,
+        settings.protectedSavings,
+      ),
+    [transactions, categories, settings],
   );
   const chartData = useMemo(
     () =>

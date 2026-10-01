@@ -20,7 +20,7 @@ import {
   Typography,
 } from "antd";
 import dayjs from "dayjs";
-import { useSyncExternalStore, useMemo, useState } from "react";
+import { useSyncExternalStore, useMemo, useState, type ComponentProps } from "react";
 import { useLocale } from "@/components/i18n/LocaleProvider";
 import {
   buildUnits,
@@ -165,10 +165,54 @@ function TransactionForm({
   /** Pengulangan hanya untuk transaksi baru (bukan transfer). */
   const showRepeat = !isEdit && selectedType !== "TRANSFER";
 
-  /** Unit awal: subcategoryId transaksi, atau kategori itu sendiri. */
+  /**
+   * Unit awal: subkategori transaksi (hanya pengeluaran — pemasukan &
+   * transfer selalu di level wadah), atau kategori itu sendiri.
+   */
   const initialUnitId = editingTransaction
-    ? (editingTransaction.subcategoryId ?? editingTransaction.categoryId)
+    ? editingTransaction.type === "EXPENSE"
+      ? (editingTransaction.subcategoryId ?? editingTransaction.categoryId)
+      : editingTransaction.categoryId
     : (units[0]?.id ?? "");
+
+  /** Opsi unit pencatatan: pengeluaran memakai subkategori (kebutuhan);
+   *  pemasukan & transfer cukup di level wadah saja. */
+  const unitOptions = useMemo<
+    NonNullable<ComponentProps<typeof Select>["options"]>
+  >(() => {
+    if (selectedType === "EXPENSE") {
+      return categories.map((c) => ({
+        label: (
+          <span className="flex items-center gap-1.5">
+            <span
+              style={{
+                display: "inline-block",
+                width: 8,
+                height: 8,
+                borderRadius: "50%",
+                background: c.color,
+              }}
+            />
+            {c.name}
+          </span>
+        ),
+        title: c.name,
+        options: (c.subcategories.length > 0
+          ? c.subcategories.map((s) => ({
+              value: s.id,
+              label: `${s.name} · ${c.name}`,
+            }))
+          : [
+              {
+                value: c.id,
+                label: c.name,
+              },
+            ]
+        ) as { value: string; label: string }[],
+      }));
+    }
+    return categories.map((c) => ({ value: c.id, label: c.name }));
+  }, [categories, selectedType]);
 
   async function handleFinish(values: FormValues, force = false): Promise<void> {
     setSaving(true);
@@ -177,8 +221,13 @@ function TransactionForm({
       const categoryId = unit
         ? unit.categoryId
         : getParentCategoryId(categories, values.unitId ?? "");
+      /** Subkategori (kebutuhan) hanya untuk pengeluaran. */
       const subcategoryId =
-        unit && unit.id !== unit.categoryId ? unit.id : null;
+        (values.type ?? "EXPENSE") === "EXPENSE" &&
+        unit &&
+        unit.id !== unit.categoryId
+          ? unit.id
+          : null;
 
       const input: TransactionInput = {
         type: values.type ?? "EXPENSE",
@@ -270,6 +319,18 @@ function TransactionForm({
       <Form.Item name="type" className="mb-4">
         <Segmented
           block
+          // Jenis transaksi tidak bisa diubah saat edit (DROID.md).
+          disabled={isEdit}
+          onChange={(value) => {
+            // Pemasukan & transfer tidak memakai subkategori (kebutuhan) —
+            // naikkan unit terpilih ke wadah induknya bila perlu.
+            if (value !== "EXPENSE") {
+              const unit = getUnit(categories, form.getFieldValue("unitId"));
+              if (unit && unit.id !== unit.categoryId) {
+                form.setFieldValue("unitId", unit.categoryId);
+              }
+            }
+          }}
           options={TYPE_OPTIONS.map((o) => ({
             value: o.value,
             label: (
@@ -302,35 +363,7 @@ function TransactionForm({
           placeholder={t("form.subcategoryPlaceholder")}
           showSearch
           optionFilterProp="label"
-          options={categories.map((c) => ({
-            label: (
-              <span className="flex items-center gap-1.5">
-                <span
-                  style={{
-                    display: "inline-block",
-                    width: 8,
-                    height: 8,
-                    borderRadius: "50%",
-                    background: c.color,
-                  }}
-                />
-                {c.name}
-              </span>
-            ),
-            title: c.name,
-            options: (c.subcategories.length > 0
-              ? c.subcategories.map((s) => ({
-                  value: s.id,
-                  label: `${s.name} · ${c.name}`,
-                }))
-              : [
-                  {
-                    value: c.id,
-                    label: c.name,
-                  },
-                ]
-            ) as { value: string; label: string }[],
-          }))}
+          options={unitOptions}
         />
       </Form.Item>
 

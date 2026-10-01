@@ -165,8 +165,13 @@ model SavingsTarget {
   name   String
   /// Nilai target (rupiah).
   targetAmount Decimal @default(0) @map("target_amount") @db.Decimal(14, 2)
-  /// Dana yang sudah terkumpul (ditambah manual oleh user).
+  /// Dana terkumpul TIDAK lagi diisi manual — dihitung otomatis dari
+  /// tabungan bersih seluruh siklus pada wadah terpilih (kolom lama
+  /// hanya disimpan demi kompatibilitas data lama).
   savedAmount Decimal @default(0) @map("saved_amount") @db.Decimal(14, 2)
+  /// Wadah sumber dana target: kosong = semua wadah; berisi = hanya
+  /// wadah terpilih (id Category milik user).
+  categoryIds String[] @default([]) @map("category_ids")
   /// Batas waktu opsional.
   deadline DateTime?
   note   String   @default("")

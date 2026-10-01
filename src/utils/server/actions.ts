@@ -28,7 +28,6 @@ import {
   setRecurringActive,
 } from "@/services/recurring";
 import {
-  addTargetFunds,
   assertSavingsProtection,
   assertWalletLimit,
   createTarget,
@@ -390,7 +389,6 @@ export async function updateSettingsAction(data: {
 export async function createCategoryAction(data: {
   name: string;
   color: string;
-  allocation: number;
   walletType?: WalletType;
 }): Promise<BudgetCategory> {
   const userId = await requireUserId();
@@ -399,7 +397,6 @@ export async function createCategoryAction(data: {
   const category = await createCategory(userId, {
     name,
     color: data.color,
-    allocation: data.allocation,
     walletType: data.walletType,
   });
   revalidatePath("/");
@@ -414,7 +411,6 @@ export async function updateCategoryAction(
   data: {
     name?: string;
     color?: string;
-    allocation?: number;
     walletType?: WalletType;
   },
 ): Promise<void> {
@@ -500,6 +496,8 @@ export async function getTargetsAction(): Promise<SavingsTarget[]> {
 export async function createTargetAction(data: {
   name: string;
   targetAmount: number;
+  /** Wadah sumber dana: kosong/undefined = semua wadah. */
+  categoryIds?: string[];
   deadline?: string | null;
   note?: string;
 }): Promise<SavingsTarget> {
@@ -508,6 +506,7 @@ export async function createTargetAction(data: {
   const target = await createTarget(userId, {
     name: sanitizeText(data.name, 100),
     targetAmount: data.targetAmount,
+    categoryIds: data.categoryIds ?? [],
     deadline,
     note: data.note,
   });
@@ -520,6 +519,8 @@ export async function updateTargetAction(
   data: {
     name: string;
     targetAmount: number;
+    /** Wadah sumber dana: kosong/undefined = semua wadah. */
+    categoryIds?: string[];
     deadline?: string | null;
     note?: string;
   },
@@ -530,6 +531,7 @@ export async function updateTargetAction(
   await updateTarget(userId, id, {
     name: sanitizeText(data.name, 100),
     targetAmount: data.targetAmount,
+    categoryIds: data.categoryIds ?? [],
     deadline,
     note: data.note,
   });
@@ -541,18 +543,6 @@ export async function deleteTargetAction(id: string): Promise<void> {
   if (!isUuid(id)) throw new Error("Invalid target id.");
   await deleteTarget(userId, id);
   revalidatePath("/target");
-}
-
-/** Tambah dana terkumpul pada target. */
-export async function addTargetFundsAction(
-  id: string,
-  amount: number,
-): Promise<SavingsTarget> {
-  const userId = await requireUserId();
-  if (!isUuid(id)) throw new Error("Invalid target id.");
-  const target = await addTargetFunds(userId, id, amount);
-  revalidatePath("/target");
-  return target;
 }
 
 function parseDeadline(deadline?: string | null): Date | null {

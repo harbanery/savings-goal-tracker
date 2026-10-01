@@ -300,7 +300,6 @@ export async function createCategory(
   data: {
     name: string;
     color: string;
-    allocation: number;
     walletType?: WalletType;
   },
 ): Promise<BudgetCategory> {
@@ -316,7 +315,9 @@ export async function createCategory(
         name: data.name,
         color: data.color,
         walletType: data.walletType ?? "E_WALLET",
-        allocation: new Prisma.Decimal(data.allocation),
+        // Alokasi tidak bisa diisi manual — dana wadah murni lewat
+        // pemasukan/transfer (insight DROID.md).
+        allocation: new Prisma.Decimal(0),
         order: count,
       },
       include: { subcategories: { orderBy: { order: "asc" } } },
@@ -338,7 +339,6 @@ export async function updateCategory(
   data: {
     name?: string;
     color?: string;
-    allocation?: number;
     walletType?: WalletType;
   },
 ): Promise<void> {
@@ -348,13 +348,13 @@ export async function updateCategory(
   });
   if (!existing) throw new Error("Kategori tidak ditemukan.");
   // Wadah "Cash" (CASH) adalah wadah bawaan — nama & jenisnya terkunci;
-  // hanya warna dan batas (alokasi) yang bisa diubah (batas Cash ikut
-  // berlaku untuk pengeluaran). Nama yang sama (idempoten) dibiarkan.
+  // hanya warnanya yang bisa diubah. Nama yang sama (idempoten) dibiarkan.
+  // (Alokasi pun tidak bisa diubah — dana wadah lewat pemasukan/transfer.)
   if (existing.walletType === "CASH") {
     const renaming = data.name !== undefined && data.name !== existing.name;
     if (renaming || data.walletType !== undefined) {
       throw new Error(
-        "Wadah Cash bawaan tidak bisa diubah nama/jenisnya — hanya batas dan warna.",
+        "Wadah Cash bawaan tidak bisa diubah nama/jenisnya — hanya warnanya.",
       );
     }
   }
@@ -366,12 +366,6 @@ export async function updateCategory(
       throw new Error("Jenis dompet tidak valid.");
     }
     patch.walletType = data.walletType;
-  }
-  if (data.allocation !== undefined) {
-    if (!Number.isFinite(data.allocation) || data.allocation < 0) {
-      throw new Error("Alokasi tidak valid.");
-    }
-    patch.allocation = new Prisma.Decimal(Math.round(data.allocation));
   }
   await withRetry(() =>
     prisma.category.update({ where: { id: categoryId }, data: patch }),
