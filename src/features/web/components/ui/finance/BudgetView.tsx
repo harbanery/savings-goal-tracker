@@ -147,8 +147,10 @@ export default function BudgetView({ initialOverview, settings }: Props) {
               title={t("finance.budgetSpent")}
               value={formatIDR(overview.totalSpent, locale)}
               prefix={<RiseOutlined />}
-              valueStyle={{
-                color: overview.overProtected ? "#faad14" : undefined,
+              styles={{
+                content: {
+                  color: overview.overProtected ? "#faad14" : undefined,
+                },
               }}
             />
           </Card>

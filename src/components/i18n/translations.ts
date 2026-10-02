@@ -44,6 +44,9 @@ const id: TranslationDict = {
   "stats.initialBalance": "Saldo",
   "stats.totalSpent": "Total Pengeluaran",
   "stats.limitRemaining": "Sisa Limit",
+  "stats.limitUsed": "Limit Terpakai",
+  "stats.transactionCount": "Jumlah Transaksi",
+  "stats.dailyAvg": "Rata-rata Harian",
 
   // Table
   "table.colPurchase": "Transaksi",
@@ -100,6 +103,7 @@ const id: TranslationDict = {
   "chart.actualCumulative": "Kumulatif Aktual",
   "chart.dailySpending": "Pengeluaran Harian",
   "chart.dailySpendingTitle": "Pengeluaran Harian per Tanggal",
+  "chart.topCategories": "Top {n}",
 
   // Import / Export
   "io.template": "Template",
@@ -358,6 +362,9 @@ const en: TranslationDict = {
   "stats.initialBalance": "Balance",
   "stats.totalSpent": "Total Spending",
   "stats.limitRemaining": "Limit Remaining",
+  "stats.limitUsed": "Limit Used",
+  "stats.transactionCount": "Transactions",
+  "stats.dailyAvg": "Daily Average",
 
   "table.colPurchase": "Transaction",
   "table.colSubcategory": "Subcategory",
@@ -411,6 +418,7 @@ const en: TranslationDict = {
   "chart.actualCumulative": "Actual Cumulative",
   "chart.dailySpending": "Daily Spending",
   "chart.dailySpendingTitle": "Daily Spending by Date",
+  "chart.topCategories": "Top {n}",
 
   "io.template": "Template",
   "io.export": "Export",

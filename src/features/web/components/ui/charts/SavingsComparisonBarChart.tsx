@@ -52,13 +52,13 @@ export default function SavingsComparisonBarChart({ cycles }: Props) {
         {
           label: t("chart.expectedSavings"),
           data: cycles.map((c) => c.expectedSavings),
-          backgroundColor: "#3b82f6",
+          backgroundColor: "#5781eb",
           borderRadius: 4,
         },
         {
           label: t("chart.actualSavings"),
           data: cycles.map((c) => c.actualSavings),
-          backgroundColor: "#22c55e",
+          backgroundColor: "#0dab76",
           borderRadius: 4,
         },
       ],

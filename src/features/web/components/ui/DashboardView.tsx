@@ -1,7 +1,7 @@
 "use client";
 
 import { PlusOutlined } from "@ant-design/icons";
-import { Alert, Button } from "antd";
+import { Alert, Button, Card } from "antd";
 import dynamic from "next/dynamic";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useLocale } from "@/components/i18n/LocaleProvider";
@@ -21,24 +21,13 @@ import { formatCycleLabel, type CycleInfo } from "@/features/web/utils/cycle";
 import { formatIDR } from "@/utils/helpers";
 import TransactionFormModal from "./TransactionFormModal";
 import StatsCards from "./StatsCards";
+import CategoryBreakdownList from "./CategoryBreakdownList";
 
 const ChartLoading = () => (
   <div className="flex h-[300px] items-center justify-center">Loading…</div>
 );
 const AllocationBarChart = dynamic(
   () => import("./charts/AllocationBarChart"),
-  { ssr: false, loading: ChartLoading },
-);
-const BalanceDonutChart = dynamic(() => import("./charts/BalanceDonutChart"), {
-  ssr: false,
-  loading: ChartLoading,
-});
-const CategoryPieChart = dynamic(() => import("./charts/CategoryPieChart"), {
-  ssr: false,
-  loading: ChartLoading,
-});
-const CumulativeSavingsLineChart = dynamic(
-  () => import("./charts/CumulativeSavingsLineChart"),
   { ssr: false, loading: ChartLoading },
 );
 const DailySpendingLineChart = dynamic(
@@ -58,10 +47,10 @@ interface Props {
 }
 
 /**
- * Dashboard ringkas sesuai generate_web.md: kartu Saldo / Pemasukan /
- * Pengeluaran / Cash Flow, pengeluaran harian, dan grafik historis
- * (donut saldo, pie kategori, bar alokasi bulanan, perbandingan &
- * kumulatif tabungan). Catatan transaksi ada di halaman Transaksi.
+ * Dashboard sesuai referensi public/references/Dashboard Content.svg:
+ * baris kartu statistik (5 utama + 5 mini), line chart pengeluaran harian
+ * + daftar rincian kategori, dan dua bar chart historis (alokasi per bulan
+ * & perbandingan tabungan). Catatan transaksi ada di halaman Transaksi.
  */
 export default function DashboardView({
   initialTransactions,
@@ -162,27 +151,34 @@ export default function DashboardView({
         />
       )}
 
-      <StatsCards stats={stats} />
+      <StatsCards
+        stats={stats}
+        protectedSavings={settings.protectedSavings}
+        cycle={cycle}
+      />
 
-      <div className="mb-4">
-        <DailySpendingLineChart transactions={transactions} cycle={cycle} />
+      {/* Baris: line chart pengeluaran harian (kiri) + rincian kategori (kanan) */}
+      <div className="mb-4 grid grid-cols-1 gap-4 lg:grid-cols-12">
+        <div className="lg:col-span-5">
+          <DailySpendingLineChart transactions={transactions} cycle={cycle} />
+        </div>
+        <div className="lg:col-span-7">
+          <Card
+            variant="borderless"
+            className="shadow-sm"
+            style={{ height: "100%" }}
+            styles={{ body: { padding: 16, height: "100%" } }}
+            size="small"
+          >
+            <CategoryBreakdownList categories={stats.categories} />
+          </Card>
+        </div>
       </div>
 
-      {/* Row: Donut (saldo) + Pie (kategori) */}
-      <div className="mb-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <BalanceDonutChart stats={stats} />
-        <CategoryPieChart cycles={chartData} categories={categories} />
-      </div>
-
-      {/* Row: Allocation Bar */}
-      <div className="mb-4">
-        <AllocationBarChart cycles={chartData} categories={categories} />
-      </div>
-
-      {/* Row: Savings comparison + Cumulative line */}
+      {/* Baris: dua bar chart (alokasi bulanan + perbandingan tabungan) */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <AllocationBarChart cycles={chartData} categories={categories} />
         <SavingsComparisonBarChart cycles={chartData} />
-        <CumulativeSavingsLineChart cycles={chartData} />
       </div>
 
       <TransactionFormModal

@@ -53,6 +53,8 @@ interface Props {
   initialTransactions: Transaction[];
   /** Budget yang bisa dialokasikan siklus awal. */
   initialAllocatable: number;
+  /** Tabungan dilindungi siklus awal (dikurangkan dari total alokasi). */
+  initialProtected: number;
 }
 
 const PRESET_COLORS = [
@@ -95,13 +97,15 @@ function useCreatableWalletTypeOptions() {
  * Progress bar toolbar menampilkan BIAYA ALOKASI tiap wadah (pemasukan +
  * transfer masuk − transfer keluar) terhadap budget yang bisa
  * dialokasikan — transfer hanya memindahkan dana antar wadah sehingga
- * total alokasi tidak berubah (bug DROID.md).
+ * total alokasi tidak berubah (bug DROID.md); label Total Alokasi
+ * ditampilkan dikurangi tabungan dilindungi (DROID.md).
  * Subkategori wadah ada di halaman Kebutuhan; Budget & Target halaman sendiri.
  */
 export default function WalletsView({
   initialCategories,
   initialTransactions,
   initialAllocatable,
+  initialProtected,
 }: Props) {
   const { t, locale } = useLocale();
   const { message } = App.useApp();
@@ -112,6 +116,8 @@ export default function WalletsView({
     useState<Transaction[]>(initialTransactions);
   /** Budget yang bisa dialokasikan = saldo awal + pemasukan − tabungan dilindungi. */
   const [allocatable, setAllocatable] = useState(initialAllocatable);
+  /** Tabungan dilindungi — total alokasi tampil dikurangi nilai ini. */
+  const [protectedSavings, setProtectedSavings] = useState(initialProtected);
   const [reloadKey, setReloadKey] = useState(0);
 
   /** Siklus aktif global (dipilih lewat DatePicker month di navbar). */
@@ -140,6 +146,7 @@ export default function WalletsView({
       ]);
       setTransactions(fresh);
       setAllocatable(overview.allocatable);
+      setProtectedSavings(overview.protectedSavings);
     } catch (err) {
       console.error("[WalletsView] gagal memuat data siklus:", err);
       setTransactions([]);
@@ -222,6 +229,9 @@ export default function WalletsView({
    * dialokasikan di toolbar: alokasi = pemasukan + transfer masuk −
    * transfer keluar — transfer hanya memindahkan dana antar wadah, jadi
    * total alokasi TIDAK bertambah saat transfer (bug DROID.md).
+   * Total alokasi yang DITAMPILKAN dikurangi tabungan dilindungi
+   * (permintaan DROID.md) sehingga sebanding dengan budget yang bisa
+   * dialokasikan.
    */
   const allocatedSegments = useMemo(() => {
     const segs = categories
@@ -248,8 +258,10 @@ export default function WalletsView({
           allocatable > 0 ? (s.allocated * scale * 100) / allocatable : 0,
       })),
       totalAllocated,
+      /** Total alokasi tampil = total mutasi − tabungan dilindungi. */
+      totalAllocatedNet: Math.max(0, totalAllocated - protectedSavings),
     };
-  }, [categories, statByCat, allocatable]);
+  }, [categories, statByCat, allocatable, protectedSavings]);
 
   /** Tag jenis dompet (Bank / E-Wallet / Cash). */
   function renderWalletType(type: WalletType) {
@@ -405,7 +417,7 @@ export default function WalletsView({
           <div className="flex items-center justify-between gap-2">
             <Text style={{ fontSize: 11 }}>
               {t("finance.allocationTotal")}:{" "}
-              {formatIDR(allocatedSegments.totalAllocated, locale)}
+              {formatIDR(allocatedSegments.totalAllocatedNet, locale)}
             </Text>
             <Text type="secondary" style={{ fontSize: 11 }}>
               {t("finance.budgetAllocatable")}: {formatIDR(allocatable, locale)}

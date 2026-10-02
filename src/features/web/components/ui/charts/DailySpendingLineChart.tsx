@@ -62,7 +62,8 @@ export default function DailySpendingLineChart({
     };
   }, [transactions, cycle, locale]);
 
-  const primary = "#6366f1";
+  /** Biru primer selaras palet referensi Dashboard Content.svg. */
+  const primary = "#5781eb";
 
   const data: ChartData<"line"> = useMemo(
     () => ({
@@ -75,15 +76,15 @@ export default function DailySpendingLineChart({
           backgroundColor: (ctx) => {
             const { chart } = ctx;
             const { ctx: canvasCtx, chartArea } = chart;
-            if (!chartArea) return "rgba(99,102,241,0.15)";
+            if (!chartArea) return "rgba(87,129,235,0.15)";
             const gradient = canvasCtx.createLinearGradient(
               0,
               chartArea.top,
               0,
               chartArea.bottom,
             );
-            gradient.addColorStop(0, "rgba(99,102,241,0.35)");
-            gradient.addColorStop(1, "rgba(99,102,241,0.02)");
+            gradient.addColorStop(0, "rgba(87,129,235,0.35)");
+            gradient.addColorStop(1, "rgba(87,129,235,0.02)");
             return gradient;
           },
           borderWidth: 2,

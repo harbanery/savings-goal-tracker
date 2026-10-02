@@ -40,6 +40,7 @@ export default async function FinanceSection() {
       initialCategories={categories}
       initialTransactions={initialTransactions}
       initialAllocatable={overview.allocatable}
+      initialProtected={overview.protectedSavings}
     />
   );
 }

@@ -1,11 +1,12 @@
 "use client";
 
 import {
+  DownOutlined,
   DownloadOutlined,
   FileExcelOutlined,
   UploadOutlined,
 } from "@ant-design/icons";
-import { App, Dropdown } from "antd";
+import { App, Button, Dropdown, Space, Tooltip } from "antd";
 import type { MenuProps } from "antd";
 import { useRef, useState } from "react";
 import { importTransactionsAction } from "@/utils/server/actions";
@@ -37,8 +38,9 @@ function downloadCsv(csv: string, filename: string) {
 }
 
 /**
- * Multiple button Import (Dropdown.Button): button utama "Import"
- * langsung membuka file dialog CSV, sedangkan panah dropdown berisi
+ * Split button Import (Space.Compact + Dropdown + Button — pengganti
+ * Dropdown.Button yang deprecated di antd v6): button utama "Import"
+ * langsung membuka file dialog CSV, sedangkan tombol panah membuka menu
  * Export CSV dan Download Template (kompatibel Google Sheets).
  * Diposisikan di samping kiri tombol Tambah Transaksi di luar tabel.
  */
@@ -156,24 +158,32 @@ export default function ImportExportButtons({
         aria-hidden="true"
         tabIndex={-1}
       />
-      <Dropdown.Button
-        loading={importing}
-        menu={{
-          items,
-          onClick: ({ key }) => {
-            if (key === "export") handleExport();
-            if (key === "template") handleDownloadTemplate();
-          },
-        }}
-        onClick={handleImportClick}
-        placement="bottomRight"
-        trigger={["click"]}
-      >
-        <span className="flex items-center gap-2">
-          <UploadOutlined />
+      <Space.Compact>
+        <Button
+          loading={importing}
+          icon={<UploadOutlined />}
+          onClick={handleImportClick}
+        >
           {t("io.import")}
-        </span>
-      </Dropdown.Button>
+        </Button>
+        <Dropdown
+          menu={{
+            items,
+            onClick: ({ key }) => {
+              if (key === "export") handleExport();
+              if (key === "template") handleDownloadTemplate();
+            },
+          }}
+          placement="bottomRight"
+          trigger={["click"]}
+        >
+          {/* Panah split button: bagian dari grup Compact (bukan tombol
+              ikon mandiri) sehingga tetap shape default agar menyatu. */}
+          <Tooltip title={t("io.importTooltip")}>
+            <Button icon={<DownOutlined />} aria-label={t("io.import")} />
+          </Tooltip>
+        </Dropdown>
+      </Space.Compact>
     </>
   );
 }

@@ -65,7 +65,7 @@ export default function SiderLayout({ mobileOpen, onMobileClose }: SiderProps) {
         open={mobileOpen}
         onClose={onMobileClose}
         styles={{ body: { padding: 0 } }}
-        width={220}
+        size={220}
       >
         {content}
       </Drawer>

@@ -205,7 +205,7 @@ export default function NotificationTest() {
           </div>
         }
       >
-        <Space direction="vertical" size={8} className="w-full">
+        <Space orientation="vertical" size={8} className="w-full">
           {buttons.map((btn) => {
             const Icon = btn.icon;
             return (
