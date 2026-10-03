@@ -30,10 +30,7 @@ import type {
   Transaction,
 } from "@/features/web/types";
 import { useCycle } from "@/features/web/hooks/cycle";
-import {
-  formatCycleLabel,
-  type CycleInfo,
-} from "@/features/web/utils/cycle";
+import type { CycleInfo } from "@/features/web/utils/cycle";
 import TransactionFormModal from "./TransactionFormModal";
 import TransactionTable from "./TransactionTable";
 import ImportExportButtons from "./ImportExportButtons";
@@ -71,8 +68,6 @@ export default function TransactionsView({
   const { cycle } = useCycle();
 
   const { t, locale } = useLocale();
-
-  const cycleLabel = formatCycleLabel(cycle.year, cycle.monthIndex, locale);
 
   const editingTransaction = useMemo(
     () =>
@@ -291,7 +286,7 @@ export default function TransactionsView({
         open={formOpen}
         editingTransaction={editingTransaction}
         categories={categories}
-        cycleLabel={cycleLabel}
+        cycle={cycle}
         onClose={() => {
           setFormOpen(false);
           setEditingId(null);

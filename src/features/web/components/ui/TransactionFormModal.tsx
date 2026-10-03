@@ -19,7 +19,7 @@ import {
   Select,
   Typography,
 } from "antd";
-import dayjs from "dayjs";
+import dayjs, { type Dayjs } from "dayjs";
 import { useSyncExternalStore, useMemo, useState, type ComponentProps } from "react";
 import { useLocale } from "@/components/i18n/LocaleProvider";
 import {
@@ -27,6 +27,7 @@ import {
   getParentCategoryId,
   getUnit,
 } from "@/features/web/utils/categories";
+import type { CycleInfo } from "@/features/web/utils/cycle";
 import {
   parseSavingsProtectionError,
   parseWalletLimitError,
@@ -77,7 +78,8 @@ interface Props {
   open: boolean;
   editingTransaction: Transaction | null;
   categories: BudgetCategory[];
-  cycleLabel: string;
+  /** Siklus aktif — batas tanggal yang bisa dipilih pada input tanggal. */
+  cycle: CycleInfo;
   onClose: () => void;
   onSaved: () => void;
 }
@@ -104,7 +106,7 @@ export default function TransactionFormModal({
   open,
   editingTransaction,
   categories,
-  cycleLabel,
+  cycle,
   onClose,
   onSaved,
 }: Props) {
@@ -125,7 +127,7 @@ export default function TransactionFormModal({
         key={editingTransaction?.id ?? "create"}
         editingTransaction={editingTransaction}
         categories={categories}
-        cycleLabel={cycleLabel}
+        cycle={cycle}
         onClosed={onClose}
         onSaved={onSaved}
       />
@@ -136,7 +138,7 @@ export default function TransactionFormModal({
 interface FormProps {
   editingTransaction: Transaction | null;
   categories: BudgetCategory[];
-  cycleLabel: string;
+  cycle: CycleInfo;
   onClosed: () => void;
   onSaved: () => void;
 }
@@ -144,7 +146,7 @@ interface FormProps {
 function TransactionForm({
   editingTransaction,
   categories,
-  cycleLabel,
+  cycle,
   onClosed,
   onSaved,
 }: FormProps) {
@@ -156,6 +158,19 @@ function TransactionForm({
   const isEdit = editingTransaction !== null;
 
   const units = useMemo(() => buildUnits(categories), [categories]);
+
+  /** Batas tanggal siklus aktif — tanggal di luar rentang dinonaktifkan. */
+  const cycleStart = dayjs(cycle.startDate);
+  const cycleEnd = dayjs(cycle.endDate);
+
+  /** Tanggal default transaksi baru: hari ini bila masih dalam siklus,
+   *  atau awal siklus bila yang dilihat bukan siklus berjalan. */
+  const defaultDate = useMemo(() => {
+    const now = dayjs();
+    return now.isBefore(cycleStart, "day") || now.isAfter(cycleEnd, "day")
+      ? cycleStart
+      : now;
+  }, [cycleStart, cycleEnd]);
 
   const selectedType =
     Form.useWatch("type", form) ?? editingTransaction?.type ?? "EXPENSE";
@@ -312,8 +327,10 @@ function TransactionForm({
         unitId: initialUnitId,
         amount: editingTransaction?.amount,
         note: editingTransaction?.note ?? "",
-        date: editingTransaction ? dayjs(editingTransaction.date) : dayjs(),
+        date: editingTransaction ? dayjs(editingTransaction.date) : defaultDate,
         toCategoryId: editingTransaction?.toCategoryId ?? undefined,
+        // Pengulangan default "sekali" (DROID.md).
+        repeat: "once",
       }}
     >
       <Form.Item name="type" className="mb-4">
@@ -416,17 +433,19 @@ function TransactionForm({
 
       <Form.Item
         name="date"
-        label={
-          cycleLabel
-            ? t("form.dateWithCycle", { label: cycleLabel })
-            : t("form.date")
-        }
+        label={t("form.date")}
         rules={[{ required: true, message: t("form.dateRequired") }]}
       >
         <DatePicker
           className="w-full"
           inputReadOnly={isTouchDevice}
-          format="DD MMMM YYYY"
+          showTime={{ format: "HH:mm" }}
+          format="DD MMMM YYYY HH:mm"
+          // Hanya tanggal dalam siklus aktif yang bisa dipilih.
+          disabledDate={(current: Dayjs) =>
+            current.isBefore(cycleStart, "day") ||
+            current.isAfter(cycleEnd, "day")
+          }
           placeholder={t("form.datePlaceholder")}
         />
       </Form.Item>

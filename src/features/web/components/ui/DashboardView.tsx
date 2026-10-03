@@ -17,7 +17,7 @@ import type {
   UserSettings,
 } from "@/features/web/types";
 import { useCycle } from "@/features/web/hooks/cycle";
-import { formatCycleLabel, type CycleInfo } from "@/features/web/utils/cycle";
+import type { CycleInfo } from "@/features/web/utils/cycle";
 import { formatIDR } from "@/utils/helpers";
 import TransactionFormModal from "./TransactionFormModal";
 import StatsCards from "./StatsCards";
@@ -38,6 +38,10 @@ const SavingsComparisonBarChart = dynamic(
   () => import("./charts/SavingsComparisonBarChart"),
   { ssr: false, loading: ChartLoading },
 );
+const CumulativeSavingsChart = dynamic(
+  () => import("./charts/CumulativeSavingsChart"),
+  { ssr: false, loading: ChartLoading },
+);
 
 interface Props {
   initialTransactions: Transaction[];
@@ -49,8 +53,9 @@ interface Props {
 /**
  * Dashboard sesuai referensi public/references/Dashboard Content.svg:
  * baris kartu statistik (5 utama + 5 mini), line chart pengeluaran harian
- * + daftar rincian kategori, dan dua bar chart historis (alokasi per bulan
- * & perbandingan tabungan). Catatan transaksi ada di halaman Transaksi.
+ * per tanggal (satu baris penuh), rincian kategori + total pengeluaran
+ * per bulan (sejajar), lalu perbandingan tabungan target vs aktual +
+ * tabungan kumulatif (sejajar). Catatan transaksi ada di halaman Transaksi.
  */
 export default function DashboardView({
   initialTransactions,
@@ -69,8 +74,6 @@ export default function DashboardView({
   const { cycle } = useCycle();
 
   const { t, locale } = useLocale();
-
-  const cycleLabel = formatCycleLabel(cycle.year, cycle.monthIndex, locale);
 
   const stats = useMemo(
     () =>
@@ -157,35 +160,38 @@ export default function DashboardView({
         cycle={cycle}
       />
 
-      {/* Baris: line chart pengeluaran harian (kiri) + rincian kategori (kanan) */}
-      <div className="mb-4 grid grid-cols-1 gap-4 lg:grid-cols-12">
-        <div className="lg:col-span-5">
-          <DailySpendingLineChart transactions={transactions} cycle={cycle} />
-        </div>
-        <div className="lg:col-span-7">
-          <Card
-            variant="borderless"
-            className="shadow-sm"
-            style={{ height: "100%" }}
-            styles={{ body: { padding: 16, height: "100%" } }}
-            size="small"
-          >
-            <CategoryBreakdownList categories={stats.categories} />
-          </Card>
-        </div>
+      {/* Baris 1: line chart pengeluaran harian per tanggal (satu baris penuh) */}
+      <div className="mb-4">
+        <DailySpendingLineChart transactions={transactions} cycle={cycle} />
       </div>
 
-      {/* Baris: dua bar chart (alokasi bulanan + perbandingan tabungan) */}
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+      {/* Baris 2: rincian pengeluaran per kategori (kiri) + total
+          pengeluaran per bulan (kanan) */}
+      <div className="mb-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <Card
+          variant="borderless"
+          className="shadow-sm"
+          style={{ height: "100%" }}
+          styles={{ body: { padding: 16, height: "100%" } }}
+          size="small"
+        >
+          <CategoryBreakdownList categories={stats.categories} />
+        </Card>
         <AllocationBarChart cycles={chartData} categories={categories} />
+      </div>
+
+      {/* Baris 3: perbandingan tabungan target vs aktual (kiri) +
+          tabungan kumulatif (kanan) */}
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <SavingsComparisonBarChart cycles={chartData} />
+        <CumulativeSavingsChart cycles={chartData} />
       </div>
 
       <TransactionFormModal
         open={formOpen}
         editingTransaction={editingTransaction}
         categories={categories}
-        cycleLabel={cycleLabel}
+        cycle={cycle}
         onClose={() => {
           setFormOpen(false);
           setEditingId(null);

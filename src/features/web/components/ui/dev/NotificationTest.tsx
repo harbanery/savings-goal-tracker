@@ -70,7 +70,7 @@ export default function NotificationTest() {
     "quarterly-trend": false,
     "yearly-recap": false,
   });
-  const [visible, setVisible] = useState(true);
+  const [visible, setVisible] = useState(false);
 
   const isDev = IS_DEV && isClient;
 

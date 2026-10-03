@@ -26,6 +26,10 @@ export interface CycleChartData {
   expectedSavings: number;
   /** Actual savings = savingsInitial + totalIncome - totalSpent. */
   actualSavings: number;
+  /** Running target: savingsInitial + Σ (expectedSavings − savingsInitial). */
+  cumulativeExpected: number;
+  /** Running aktual: savingsInitial + Σ (actualSavings − savingsInitial). */
+  cumulativeActual: number;
   /** Pengeluaran per kategori (categoryId -> amount, EXPENSE saja). */
   categorySpent: Record<string, number>;
 }
@@ -67,6 +71,9 @@ export function buildCycleChartData(
   const keys = Object.keys(historical).sort(
     (a, b) => keyToSortKey(a) - keyToSortKey(b),
   );
+  /** Akumulator tabungan kumulatif (running, kronologis). */
+  let cumulativeExpected = 0;
+  let cumulativeActual = 0;
   return keys.map((key) => {
     const transactions = historical[key] ?? [];
     let totalSpent = 0;
@@ -86,14 +93,22 @@ export function buildCycleChartData(
     const label = parts
       ? formatCycleLabel(parts.year, parts.monthIndex, locale)
       : key;
+    const expectedSavings = savingsInitial - allocation;
+    const actualSavings = savingsInitial + totalIncome - totalSpent;
+    // Kumulatif = saldo awal + Σ selisih bersih tiap siklus (target maupun
+    // aktual dihitung relatif terhadap saldo awal agar tidak dobel hitung).
+    cumulativeExpected += expectedSavings - savingsInitial;
+    cumulativeActual += actualSavings - savingsInitial;
     return {
       key,
       label,
       savingsInitial,
       totalSpent,
       totalIncome,
-      expectedSavings: savingsInitial - allocation,
-      actualSavings: savingsInitial + totalIncome - totalSpent,
+      expectedSavings,
+      actualSavings,
+      cumulativeExpected: savingsInitial + cumulativeExpected,
+      cumulativeActual: savingsInitial + cumulativeActual,
       categorySpent,
     };
   });
