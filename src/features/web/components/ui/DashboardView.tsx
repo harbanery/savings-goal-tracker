@@ -165,19 +165,23 @@ export default function DashboardView({
         <DailySpendingLineChart transactions={transactions} cycle={cycle} />
       </div>
 
-      {/* Baris 2: rincian pengeluaran per kategori (kiri) + total
-          pengeluaran per bulan (kanan) */}
-      <div className="mb-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <Card
-          variant="borderless"
-          className="shadow-sm"
-          style={{ height: "100%" }}
-          styles={{ body: { padding: 16, height: "100%" } }}
-          size="small"
-        >
-          <CategoryBreakdownList categories={stats.categories} />
-        </Card>
-        <AllocationBarChart cycles={chartData} categories={categories} />
+      {/* Baris 2: rincian pengeluaran per kategori (kiri, lebih sempit) +
+          total pengeluaran per bulan (kanan, lebih lebar) */}
+      <div className="mb-4 grid grid-cols-1 gap-4 lg:grid-cols-12">
+        <div className="lg:col-span-5">
+          <Card
+            variant="borderless"
+            className="shadow-sm"
+            style={{ height: "100%" }}
+            styles={{ body: { padding: 16, height: "100%" } }}
+            size="small"
+          >
+            <CategoryBreakdownList categories={stats.categories} />
+          </Card>
+        </div>
+        <div className="lg:col-span-7">
+          <AllocationBarChart cycles={chartData} categories={categories} />
+        </div>
       </div>
 
       {/* Baris 3: perbandingan tabungan target vs aktual (kiri) +
