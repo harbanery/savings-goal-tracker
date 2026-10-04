@@ -18,10 +18,15 @@ import {
   ExclamationCircleOutlined,
   LockOutlined,
   PieChartOutlined,
-  WalletOutlined,
 } from "@ant-design/icons";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 import { useLocale } from "@/components/i18n/LocaleProvider";
 import type { BudgetOverview, UserSettings } from "@/features/web/types";
 import { useCycle } from "@/features/web/hooks/cycle";
@@ -204,41 +209,43 @@ export default function BudgetView({ initialOverview, settings }: Props) {
             protectedSavings: settings.protectedSavings,
             cycleStartDay: settings.cycleStartDay,
           }}
-          className="max-w-md"
         >
-          <Form.Item
-            name="protectedSavings"
-            label={t("finance.budgetProtected")}
-            rules={[{ required: true }]}
-          >
-            <InputNumber<number>
-              style={{ width: "100%" }}
-              addonBefore={locale === "en" ? "IDR" : "Rp"}
-              min={0}
-              step={100000}
-              formatter={(v) =>
-                v === undefined || v === null
-                  ? ""
-                  : `${v}`.replace(/\B(?=(\d{3})+(?!\d))/g, ".")
-              }
-              parser={(v) => Number((v ?? "").replace(/\D/g, "") || 0)}
-              prefix={<WalletOutlined />}
-            />
-          </Form.Item>
-          <Form.Item
-            name="cycleStartDay"
-            label={t("settings.cycleStartDay")}
-            extra={t("settings.cycleStartDayHint")}
-            rules={[{ required: true }]}
-          >
-            <Select
-              options={Array.from({ length: 28 }, (_, i) => ({
-                value: i + 1,
-                label: String(i + 1),
-              }))}
-              suffixIcon={<CalendarOutlined />}
-            />
-          </Form.Item>
+          {/* Dua pengaturan berdampingan di layar lebar (satu kolom di mobile)
+              agar kartu tidak menyisakan ruang kosong di sisi kanan. */}
+          <div className="grid grid-cols-1 gap-x-6 md:grid-cols-2">
+            <Form.Item
+              name="protectedSavings"
+              label={t("finance.budgetProtected")}
+              rules={[{ required: true }]}
+            >
+              <InputNumber<number>
+                style={{ width: "100%" }}
+                addonBefore={locale === "en" ? "IDR" : "Rp"}
+                min={0}
+                step={100000}
+                formatter={(v) =>
+                  v === undefined || v === null
+                    ? ""
+                    : `${v}`.replace(/\B(?=(\d{3})+(?!\d))/g, ".")
+                }
+                parser={(v) => Number((v ?? "").replace(/\D/g, "") || 0)}
+              />
+            </Form.Item>
+            <Form.Item
+              name="cycleStartDay"
+              label={t("settings.cycleStartDay")}
+              extra={t("settings.cycleStartDayHint")}
+              rules={[{ required: true }]}
+            >
+              <Select
+                options={Array.from({ length: 28 }, (_, i) => ({
+                  value: i + 1,
+                  label: String(i + 1),
+                }))}
+                suffixIcon={<CalendarOutlined />}
+              />
+            </Form.Item>
+          </div>
           <div className="flex justify-end">
             <Button
               type="primary"

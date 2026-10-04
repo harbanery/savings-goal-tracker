@@ -6,7 +6,7 @@ import { useLocale } from "./LocaleProvider";
 import { LOCALES, LOCALE_LABELS } from "./translations";
 
 export default function LanguageToggle() {
-  const { setLocale } = useLocale();
+  const { setLocale, t } = useLocale();
 
   const items: MenuProps["items"] = LOCALES.map((l) => ({
     key: l,
@@ -16,7 +16,12 @@ export default function LanguageToggle() {
 
   return (
     <Dropdown menu={{ items }} placement="bottomRight">
-      <Button shape="circle" icon={<GlobalOutlined />} type="default" />
+      <Button
+        shape="circle"
+        icon={<GlobalOutlined />}
+        type="default"
+        aria-label={t("lang.toggleAria")}
+      />
     </Dropdown>
   );
 }
