@@ -164,6 +164,14 @@ export function ThemeProvider({
       <ConfigProvider
         locale={locale === "id" ? idID : enUS}
         theme={{
+          /*
+           * Key cssVar WAJIB berbeda per tema (light/dark). Tanpa ini,
+           * class `css-var-*` pada elemen identik antar tema sehingga blok
+           * variabel tema lama (mis. hasil hidrasi) dapat menang cascade
+           * atas blok baru — menyebabkan bg `.ant-layout` tidak ikut
+           * berubah saat toggle dark mode sampai halaman di-refresh.
+           */
+          cssVar: { key: isDark ? "dark" : "light" },
           algorithm: isDark ? theme.darkAlgorithm : theme.defaultAlgorithm,
           token: {
             colorPrimary: "#4f46e5",

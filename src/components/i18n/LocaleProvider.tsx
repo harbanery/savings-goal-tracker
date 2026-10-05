@@ -67,6 +67,9 @@ function applyLocale(next: Locale): void {
   } catch {
     // ignore
   }
+  // Sinkronkan atribut `lang` pada <html> agar screen reader & browser
+  // mengikuti locale aktif (SSR merender "id" sebagai default).
+  document.documentElement.lang = next;
   emitLocale();
 }
 
@@ -83,6 +86,8 @@ export function LocaleProvider({
     const persisted = readPersistedLocale();
     if (persisted !== clientLocale) {
       applyLocale(persisted);
+    } else {
+      document.documentElement.lang = persisted;
     }
   }, []);
 

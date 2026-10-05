@@ -18,6 +18,7 @@ const id: TranslationDict = {
   "common.delete": "Hapus",
   "common.save": "Simpan",
   "common.close": "Tutup",
+  "common.loading": "Memuat…",
 
   // Not Found / Error page
   "notfound.desc": "Halaman yang Anda cari tidak tersedia atau sudah dipindahkan.",
@@ -30,6 +31,7 @@ const id: TranslationDict = {
   // App / Dashboard
   "app.title": "Savings Goal Tracker",
   "app.description": "Pantau pengeluaran bulanan dengan sistem wadah.",
+  "app.logoAria": "Celengan",
   "app.cycleLabel": "Siklus {label}",
   "app.rangeSeparator": "s/d",
   "app.tabCharts": "Grafik",
@@ -330,6 +332,11 @@ const id: TranslationDict = {
   "needs.subcategories": "Subkategori",
   "needs.subEmptyInline": "Belum ada subkategori",
   "needs.subCount": "{n} subkategori total",
+
+  // Footer
+  "footer.madeWith": "Dibangun dengan",
+  "footer.deployedOn": "di-deploy di",
+  "footer.rights": "Hak cipta dilindungi",
 };
 
 const en: TranslationDict = {
@@ -337,6 +344,7 @@ const en: TranslationDict = {
   "common.delete": "Delete",
   "common.save": "Save",
   "common.close": "Close",
+  "common.loading": "Loading…",
 
   // Not Found / Error page
   "notfound.desc": "The page you are looking for does not exist or has been moved.",
@@ -348,6 +356,7 @@ const en: TranslationDict = {
 
   "app.title": "Savings Goal Tracker",
   "app.description": "Track monthly spending with an envelope system.",
+  "app.logoAria": "Piggy bank",
   "app.cycleLabel": "{label}",
   "app.rangeSeparator": "to",
   "app.tabCharts": "Charts",
@@ -641,6 +650,11 @@ const en: TranslationDict = {
   "needs.subcategories": "Subcategories",
   "needs.subEmptyInline": "No subcategories yet",
   "needs.subCount": "{n} subcategories total",
+
+  // Footer
+  "footer.madeWith": "Built with",
+  "footer.deployedOn": "deployed on",
+  "footer.rights": "All rights reserved",
 };
 
 export const TRANSLATIONS: Record<Locale, TranslationDict> = { id, en };

@@ -28,7 +28,7 @@ function LoginSectionInner({ configured }: { configured: boolean }) {
     <div className="flex min-h-svh items-center justify-center p-4">
       <div className="w-full max-w-sm text-center">
         <div className="mb-6 flex flex-col items-center gap-3">
-          <span className="text-5xl" role="img" aria-label="Piggy bank">
+          <span className="text-5xl" role="img" aria-label={t("app.logoAria")}>
             🐷
           </span>
           <Typography.Title level={3} style={{ marginBottom: 0 }}>

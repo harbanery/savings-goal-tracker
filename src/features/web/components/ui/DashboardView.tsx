@@ -23,9 +23,14 @@ import TransactionFormModal from "./TransactionFormModal";
 import StatsCards from "./StatsCards";
 import CategoryBreakdownList from "./CategoryBreakdownList";
 
-const ChartLoading = () => (
-  <div className="flex h-[300px] items-center justify-center">Loading…</div>
-);
+const ChartLoading = () => {
+  const { t } = useLocale();
+  return (
+    <div className="flex h-[300px] items-center justify-center">
+      {t("common.loading")}
+    </div>
+  );
+};
 const AllocationBarChart = dynamic(
   () => import("./charts/AllocationBarChart"),
   { ssr: false, loading: ChartLoading },
