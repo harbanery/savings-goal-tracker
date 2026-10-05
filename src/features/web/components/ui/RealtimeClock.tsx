@@ -8,6 +8,9 @@ import { useLocale } from "@/components/i18n/LocaleProvider";
  * Jam realtime (hanya waktu) yang diperbarui setiap detik dengan
  * `setTimeout` rekursif. `now` dimulai null di server agar placeholder
  * konsisten dan tidak memicu hydration mismatch.
+ *
+ * Tanpa border sendiri — digabung dalam kapsul pemilih siklus
+ * (border round) di header.
  */
 export default function RealtimeClock() {
   const [now, setNow] = useState<Date | null>(null);
@@ -39,7 +42,7 @@ export default function RealtimeClock() {
   return (
     <output
       aria-label={t("clock.ariaTime", { time, date })}
-      className="flex select-none items-center rounded-full border border-zinc-200 px-3 py-1 font-mono text-xs font-semibold tabular-nums dark:border-zinc-700"
+      className="flex select-none items-center font-mono text-xs font-semibold tabular-nums"
       style={{ lineHeight: "22px" }}
     >
       {time}

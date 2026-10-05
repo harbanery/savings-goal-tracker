@@ -90,8 +90,7 @@ export default function StatsCards({
   const elapsedDays = Math.max(
     1,
     Math.ceil(
-      ((nowTs ?? cycle.endDate.getTime()) -
-        cycle.startDate.getTime()) /
+      ((nowTs ?? cycle.endDate.getTime()) - cycle.startDate.getTime()) /
         86_400_000,
     ),
   );
@@ -104,8 +103,7 @@ export default function StatsCards({
       value: formatIDR(stats.netSavings, locale),
       icon: <WalletOutlined />,
       color: ACCENT.blue,
-      tone:
-        stats.netSavings >= stats.savingsInitial ? "positive" : "negative",
+      tone: stats.netSavings >= stats.savingsInitial ? "positive" : "negative",
     },
     {
       key: "totalIncome",

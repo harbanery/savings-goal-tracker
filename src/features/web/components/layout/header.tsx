@@ -106,21 +106,40 @@ export default function HeaderLayout({
       </div>
 
       <Space size="middle" wrap={false}>
-        {/* Pemilih siklus bulanan (menggantikan baris navigasi per halaman).
-            Format "MMMM YYYY" + locale dayjs → "Oktober 2026" / "October 2026". */}
-        <DatePicker
-          picker="month"
-          allowClear={false}
-          format="MMMM YYYY"
-          value={dayjs().year(cycle.year).month(cycle.monthIndex)}
-          onChange={(date) => {
-            if (date) {
-              setCycle(getCycleInfo(date.year(), date.month(), startDay));
-            }
-          }}
-          aria-label={t("app.cyclePicker")}
-        />
-        {!isMobile && <RealtimeClock />}
+        {/* Kapsul siklus + jam realtime digabung satu unit (border round):
+            [ jam (desktop) | DatePicker pemilih siklus bulanan ].
+            Format "MMMM YYYY" + locale dayjs → "Oktober 2026" / "October 2026".
+            DatePicker borderless — border & radius disediakan kapsul. */}
+        <div
+          className={`flex items-center rounded-full border border-zinc-200 transition-colors hover:border-zinc-300 dark:border-zinc-700 dark:hover:border-zinc-600 ${
+            isMobile ? "pr-0.5" : "pl-1 pr-3"
+          }`}
+        >
+          <DatePicker
+            className="font-mono!"
+            picker="month"
+            size="small"
+            allowClear={false}
+            variant="borderless"
+            format="MMMM YYYY"
+            value={dayjs().year(cycle.year).month(cycle.monthIndex)}
+            onChange={(date) => {
+              if (date) {
+                setCycle(getCycleInfo(date.year(), date.month(), startDay));
+              }
+            }}
+            aria-label={t("app.cyclePicker")}
+          />
+          {!isMobile && (
+            <>
+              <span
+                aria-hidden
+                className="mx-1 h-4 w-px bg-zinc-200 dark:bg-zinc-700"
+              />
+              <RealtimeClock />
+            </>
+          )}
+        </div>
         <ThemeToggle />
         <LanguageToggle />
         <NotificationBell />
