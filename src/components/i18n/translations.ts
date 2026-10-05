@@ -49,6 +49,14 @@ const id: TranslationDict = {
   "stats.limitUsed": "Limit Terpakai",
   "stats.transactionCount": "Jumlah Transaksi",
   "stats.dailyAvg": "Rata-rata Harian",
+  "stats.profit": "Keuntungan",
+  "stats.profitDesc": "Persentase pemasukan yang berhasil disimpan",
+  "stats.incomeDesc": "Seluruh pemasukan yang pernah tercatat",
+  "stats.spentDesc": "Seluruh pengeluaran yang pernah tercatat",
+  "stats.cashFlowDesc": "Pemasukan dikurangi total pengeluaran",
+  "stats.cycleAchievement": "Pencapaian Siklus Ini",
+  "stats.balanceCycle": "Saldo Siklus Ini",
+  "stats.limitRemainingCycle": "Sisa Limit Siklus Ini",
 
   // Table
   "table.colPurchase": "Transaksi",
@@ -198,6 +206,8 @@ const id: TranslationDict = {
 
   // Navigasi siklus (navbar)
   "app.cyclePicker": "Pilih siklus bulan",
+  "app.currentMonth": "Bulan Ini",
+  "app.currentMonthAria": "Kembali ke bulan ini",
 
   // Auth / Login
   "auth.logout": "Keluar",
@@ -373,6 +383,14 @@ const en: TranslationDict = {
   "stats.limitUsed": "Limit Used",
   "stats.transactionCount": "Transactions",
   "stats.dailyAvg": "Daily Average",
+  "stats.profit": "Profit",
+  "stats.profitDesc": "Percentage of income successfully saved",
+  "stats.incomeDesc": "All income ever recorded",
+  "stats.spentDesc": "All spending ever recorded",
+  "stats.cashFlowDesc": "Income minus total spending",
+  "stats.cycleAchievement": "This Cycle's Achievement",
+  "stats.balanceCycle": "Balance This Cycle",
+  "stats.limitRemainingCycle": "Limit Remaining This Cycle",
 
   "table.colPurchase": "Transaction",
   "table.colSubcategory": "Subcategory",
@@ -515,6 +533,8 @@ const en: TranslationDict = {
 
   // Cycle navigation (navbar)
   "app.cyclePicker": "Select cycle month",
+  "app.currentMonth": "This Month",
+  "app.currentMonthAria": "Back to current month",
 
   // Auth / Login
   "auth.logout": "Log out",

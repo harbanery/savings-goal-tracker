@@ -5,7 +5,6 @@ import {
   Avatar,
   Breadcrumb,
   Button,
-  DatePicker,
   Dropdown,
   Grid,
   Layout,
@@ -13,16 +12,13 @@ import {
   theme,
   Typography,
 } from "antd";
-import dayjs from "dayjs";
 import { usePathname, useRouter } from "next/navigation";
 import { useMemo } from "react";
 import LanguageToggle from "@/components/i18n/LanguageToggle";
 import { useLocale } from "@/components/i18n/LocaleProvider";
 import ThemeToggle from "@/components/ui/theme/ThemeToggle";
 import NotificationBell from "@/features/web/components/ui/NotificationBell";
-import RealtimeClock from "@/features/web/components/ui/RealtimeClock";
-import { useCycle } from "@/features/web/hooks/cycle";
-import { getCycleInfo } from "@/features/web/utils/cycle";
+import CycleClockPicker from "@/features/web/components/ui/CycleClockPicker";
 import { clearWebSession, useWebSession } from "@/features/web/hooks/session";
 import { menuConfig } from "@/features/web/utils/menu";
 
@@ -39,7 +35,6 @@ export default function HeaderLayout({
   const pathname = usePathname();
   const { t } = useLocale();
   const { user } = useWebSession();
-  const { cycle, setCycle, startDay } = useCycle();
   const screens = Grid.useBreakpoint();
   const isMobile = !screens.md;
   // Warna header mengikuti tema antd (light/dark) via design token.
@@ -106,40 +101,8 @@ export default function HeaderLayout({
       </div>
 
       <Space size="middle" wrap={false}>
-        {/* Kapsul siklus + jam realtime digabung satu unit (border round):
-            [ jam (desktop) | DatePicker pemilih siklus bulanan ].
-            Format "MMMM YYYY" + locale dayjs → "Oktober 2026" / "October 2026".
-            DatePicker borderless — border & radius disediakan kapsul. */}
-        <div
-          className={`flex items-center rounded-full border border-zinc-200 transition-colors hover:border-zinc-300 dark:border-zinc-700 dark:hover:border-zinc-600 ${
-            isMobile ? "pr-0.5" : "pl-1 pr-3"
-          }`}
-        >
-          <DatePicker
-            className="font-mono!"
-            picker="month"
-            size="small"
-            allowClear={false}
-            variant="borderless"
-            format="MMMM YYYY"
-            value={dayjs().year(cycle.year).month(cycle.monthIndex)}
-            onChange={(date) => {
-              if (date) {
-                setCycle(getCycleInfo(date.year(), date.month(), startDay));
-              }
-            }}
-            aria-label={t("app.cyclePicker")}
-          />
-          {!isMobile && (
-            <>
-              <span
-                aria-hidden
-                className="mx-1 h-4 w-px bg-zinc-200 dark:bg-zinc-700"
-              />
-              <RealtimeClock />
-            </>
-          )}
-        </div>
+        {/* Kapsul siklus + jam realtime (satu komponen, border round). */}
+        <CycleClockPicker hideClock={isMobile} />
         <ThemeToggle />
         <LanguageToggle />
         <NotificationBell />

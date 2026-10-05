@@ -1,4 +1,5 @@
 import DashboardView from "@/features/web/components/ui/DashboardView";
+import type { AllTimeTotals } from "@/features/web/components/ui/StatsCards";
 import {
   getCycleTransactionsAction,
   getHistoricalTransactionsAction,
@@ -8,16 +9,19 @@ import type {
   Transaction,
   UserSettings,
 } from "@/features/web/types";
-import { getUserCategories, getUserSettings } from "@/services/transaction";
+import {
+  getAllTimeTotals,
+  getUserCategories,
+  getUserSettings,
+} from "@/services/transaction";
 import { getCurrentUser } from "@/lib/auth";
 import { ensureUserDefaults } from "@/services/user";
 import { getCurrentCycle } from "@/features/web/utils/cycle";
 
 /**
- * Feature module dashboard (generate_web.md): kartu Saldo/Pemasukan/
- * Pengeluaran/Cash Flow + pengeluaran harian + grafik historis
- * (donut saldo, pie kategori, bar alokasi bulanan, perbandingan &
- * kumulatif tabungan).
+ * Feature module dashboard: kartu keuntungan seluruh waktu + kartu mini
+ * siklus aktif + pengeluaran harian + grafik historis (donut saldo, pie
+ * kategori, bar alokasi bulanan, perbandingan & kumulatif tabungan).
  */
 export default async function DashboardSection() {
   const user = await getCurrentUser();
@@ -33,12 +37,15 @@ export default async function DashboardSection() {
   const cycle = getCurrentCycle(settings.cycleStartDay);
   let initialTransactions: Transaction[] = [];
   let initialHistorical: Record<string, Transaction[]> = {};
+  let initialAllTime: AllTimeTotals = { income: 0, spent: 0 };
 
   try {
-    [initialTransactions, initialHistorical] = await Promise.all([
-      getCycleTransactionsAction(cycle),
-      getHistoricalTransactionsAction(cycle, 6),
-    ]);
+    [initialTransactions, initialHistorical, initialAllTime] =
+      await Promise.all([
+        getCycleTransactionsAction(cycle),
+        getHistoricalTransactionsAction(cycle, 6),
+        getAllTimeTotals(user.id),
+      ]);
   } catch (err) {
     console.error("[DashboardSection] gagal memuat data awal:", err);
   }
@@ -47,6 +54,7 @@ export default async function DashboardSection() {
     <DashboardView
       initialTransactions={initialTransactions}
       initialHistorical={initialHistorical}
+      initialAllTime={initialAllTime}
       categories={categories}
       settings={settings}
     />

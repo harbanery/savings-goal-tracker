@@ -3,11 +3,10 @@
 import {
   ArrowDownOutlined,
   ArrowUpOutlined,
-  SafetyOutlined,
+  RiseOutlined,
   SwapOutlined,
-  WalletOutlined,
 } from "@ant-design/icons";
-import { Card, Typography } from "antd";
+import { Card, Divider, Typography } from "antd";
 import { useEffect, useState, type ReactNode } from "react";
 import { useLocale } from "@/components/i18n/LocaleProvider";
 import type { CycleInfo } from "@/features/web/utils/cycle";
@@ -16,44 +15,54 @@ import { formatIDR } from "@/utils/helpers";
 
 const { Text } = Typography;
 
+/** Total seluruh waktu (kartu utama). */
+export interface AllTimeTotals {
+  income: number;
+  spent: number;
+}
+
 interface Props {
   stats: CycleStats;
-  /** Tabungan dilindungi per siklus (settings user). */
-  protectedSavings: number;
+  /** Total pemasukan & pengeluaran seluruh waktu (kartu utama). */
+  allTime: AllTimeTotals;
   /** Siklus aktif — untuk rata-rata pengeluaran harian. */
   cycle: CycleInfo;
 }
 
-/** Palet aksen kartu statistik (selaras referensi Dashboard Content.svg). */
+/** Palet aksen kartu statistik. */
 const ACCENT = {
-  blue: "#5781eb",
   green: "#0dab76",
   amber: "#ffa726",
   purple: "#a127e2",
   red: "#d32f2f",
 } as const;
 
-interface StatCardSpec {
+interface MainCardSpec {
   key: string;
-  label: string;
+  title: string;
   value: string;
+  desc: string;
   icon: ReactNode;
   color: string;
-  /** Warna nilai: merah bila kondisi buruk, hijau bila baik. */
-  tone?: "positive" | "negative" | "warning";
+  /** Warna nilai: hijau bila baik, merah bila buruk. */
+  tone?: "positive" | "negative";
 }
 
 interface MiniCardSpec {
   key: string;
   label: string;
   value: string;
+  tone?: "positive" | "negative";
 }
 
-/** Chip ikon bulat lembut (latar versi terang dari warna aksen). */
-function IconChip({ icon, color }: { icon: ReactNode; color: string }) {
+/** Chip ikon persegi rounded (referensi public/references/Frame 427320104.svg). */
+function IconChip({
+  icon,
+  color,
+}: Readonly<{ icon: ReactNode; color: string }>) {
   return (
     <span
-      className="mb-3 flex h-10 w-10 items-center justify-center rounded-full text-base"
+      className="mb-2 flex h-10 w-10 items-center justify-center rounded-lg text-base"
       style={{ backgroundColor: `${color}1f`, color }}
     >
       {icon}
@@ -62,20 +71,26 @@ function IconChip({ icon, color }: { icon: ReactNode; color: string }) {
 }
 
 /**
- * Kartu ringkasan dashboard sesuai referensi Dashboard Content.svg:
- * baris pertama 5 kartu utama (ikon + nilai besar + label) — Saldo Bersih,
- * Pemasukan, Pengeluaran, Cash Flow, Sisa Limit; baris kedua 5 kartu mini
- * (label kecil + nilai) — Saldo Awal, Tabungan Dilindungi, Limit Terpakai,
- * Jumlah Transaksi, Rata-rata Harian.
+ * Kartu statistik dashboard:
+ * - Kartu utama (seluruh waktu, data tidak per siklus), tiap kartu terdiri
+ *   dari ikon + judul + jumlah + deskripsi — mengikuti referensi
+ *   public/references/Frame 427320104.svg: Total Pemasukan, Total
+ *   Pengeluaran, Cash Flow, Keuntungan (saving rate %).
+ * - Kartu mini pencapaian siklus aktif (satu judul "Pencapaian Siklus Ini"
+ *   di atas, dipisah divider dari kartu utama): jumlah transaksi, saldo,
+ *   rata-rata harian, sisa limit.
  */
 export default function StatsCards({
   stats,
-  protectedSavings,
+  allTime,
   cycle,
 }: Readonly<Props>) {
   const { t, locale } = useLocale();
 
-  const cashFlow = stats.totalIncome - stats.totalSpent;
+  const cashFlow = allTime.income - allTime.spent;
+  /** Saving rate: persentase pemasukan yang berhasil disimpan. */
+  const savingRate =
+    allTime.income > 0 ? Math.round((cashFlow / allTime.income) * 100) : 0;
 
   /** Waktu klien hanya dibaca setelah mount (render harus murni);
    *  null di SSR → rata-rata dihitung dari panjang siklus penuh. */
@@ -96,106 +111,106 @@ export default function StatsCards({
   );
   const dailyAvg = stats.totalSpent / elapsedDays;
 
-  const primary: StatCardSpec[] = [
-    {
-      key: "netSavings",
-      label: t("stats.netSavings"),
-      value: formatIDR(stats.netSavings, locale),
-      icon: <WalletOutlined />,
-      color: ACCENT.blue,
-      tone: stats.netSavings >= stats.savingsInitial ? "positive" : "negative",
-    },
+  const primary: MainCardSpec[] = [
     {
       key: "totalIncome",
-      label: t("stats.totalIncome"),
-      value: formatIDR(stats.totalIncome, locale),
+      title: t("stats.totalIncome"),
+      value: formatIDR(allTime.income, locale),
+      desc: t("stats.incomeDesc"),
       icon: <ArrowDownOutlined />,
       color: ACCENT.green,
-      tone: "positive",
     },
     {
       key: "totalSpent",
-      label: t("stats.totalSpent"),
-      value: formatIDR(stats.totalSpent, locale),
+      title: t("stats.totalSpent"),
+      value: formatIDR(allTime.spent, locale),
+      desc: t("stats.spentDesc"),
       icon: <ArrowUpOutlined />,
       color: ACCENT.amber,
-      tone: stats.overLimit ? "negative" : "warning",
     },
     {
       key: "cashFlow",
-      label: t("stats.cashFlow"),
+      title: t("stats.cashFlow"),
       value: formatIDR(cashFlow, locale),
+      desc: t("stats.cashFlowDesc"),
       icon: <SwapOutlined />,
       color: ACCENT.purple,
       tone: cashFlow >= 0 ? "positive" : "negative",
     },
     {
-      key: "limitRemaining",
-      label: t("stats.limitRemaining"),
-      value: formatIDR(stats.limitRemaining, locale),
-      icon: <SafetyOutlined />,
-      color: stats.limitRemaining >= 0 ? ACCENT.green : ACCENT.red,
-      tone: stats.limitRemaining >= 0 ? "positive" : "negative",
+      key: "profit",
+      title: t("stats.profit"),
+      value: `${savingRate}%`,
+      desc: t("stats.profitDesc"),
+      icon: <RiseOutlined />,
+      color: savingRate >= 0 ? ACCENT.green : ACCENT.red,
+      tone: savingRate >= 0 ? "positive" : "negative",
     },
   ];
 
   const mini: MiniCardSpec[] = [
-    {
-      key: "savingsInitial",
-      label: t("stats.initialBalance"),
-      value: formatIDR(stats.savingsInitial, locale),
-    },
-    {
-      key: "protected",
-      label: t("finance.budgetProtected"),
-      value: formatIDR(protectedSavings, locale),
-    },
-    {
-      key: "limitUsed",
-      label: t("stats.limitUsed"),
-      value: `${stats.limitPercent}%`,
-    },
     {
       key: "transactionCount",
       label: t("stats.transactionCount"),
       value: String(stats.transactionCount),
     },
     {
+      key: "balance",
+      label: t("stats.balanceCycle"),
+      value: formatIDR(stats.netSavings, locale),
+      tone: stats.netSavings >= stats.savingsInitial ? "positive" : "negative",
+    },
+    {
       key: "dailyAvg",
       label: t("stats.dailyAvg"),
       value: formatIDR(Math.round(dailyAvg), locale),
     },
+    {
+      key: "limitRemaining",
+      label: t("stats.limitRemainingCycle"),
+      value: formatIDR(stats.limitRemaining, locale),
+      tone: stats.limitRemaining >= 0 ? "positive" : "negative",
+    },
   ];
 
-  const toneColor: Record<"positive" | "negative" | "warning", string> = {
+  const toneColor: Record<"positive" | "negative", string> = {
     positive: "#16a34a",
     negative: "#ef4444",
-    warning: "#d97706",
   };
 
   return (
-    <div className="mb-4 space-y-4">
-      {/* Baris 1 — kartu utama (ikon + nilai + label) */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+    <div className="mb-4">
+      {/* Baris utama — 4 kartu seluruh waktu (ikon + judul + jumlah +
+          deskripsi), gaya referensi Frame 427320104.svg */}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {primary.map((card) => (
           <Card key={card.key} size="small" className="shadow-sm">
             <IconChip icon={card.icon} color={card.color} />
+            <Text type="secondary" className="block text-sm">
+              {card.title}
+            </Text>
             <div
-              className="truncate text-xl font-semibold tabular-nums"
+              className="mt-1 truncate text-xl font-semibold tabular-nums"
               style={{ color: card.tone ? toneColor[card.tone] : undefined }}
               title={card.value}
             >
               {card.value}
             </div>
-            <Text type="secondary" className="mt-1 block text-sm">
-              {card.label}
+            <Text type="secondary" className="mt-1 block text-xs">
+              {card.desc}
             </Text>
           </Card>
         ))}
       </div>
 
-      {/* Baris 2 — kartu mini (label kecil + nilai) */}
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 xl:grid-cols-5">
+      {/* Pemisah kartu utama ↔ kartu mini siklus */}
+      <Divider className="my-4!" />
+
+      {/* Kartu mini — satu judul "Pencapaian Siklus Ini" untuk semua kartu */}
+      <Text strong className="mb-2 block">
+        {t("stats.cycleAchievement")}
+      </Text>
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
         {mini.map((card) => (
           <Card key={card.key} size="small" className="shadow-sm">
             <Text type="secondary" className="block text-xs">
@@ -203,6 +218,7 @@ export default function StatsCards({
             </Text>
             <div
               className="mt-1 truncate text-base font-semibold tabular-nums"
+              style={{ color: card.tone ? toneColor[card.tone] : undefined }}
               title={card.value}
             >
               {card.value}

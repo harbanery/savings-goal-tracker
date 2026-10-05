@@ -7,6 +7,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useLocale } from "@/components/i18n/LocaleProvider";
 import {
   getCycleTransactionsAction,
+  getAllTimeTotalsAction,
   getHistoricalTransactionsAction,
 } from "@/utils/server/actions";
 import { computeCycleStats } from "@/features/web/utils/stats";
@@ -20,7 +21,7 @@ import { useCycle } from "@/features/web/hooks/cycle";
 import type { CycleInfo } from "@/features/web/utils/cycle";
 import { formatIDR } from "@/utils/helpers";
 import TransactionFormModal from "./TransactionFormModal";
-import StatsCards from "./StatsCards";
+import StatsCards, { type AllTimeTotals } from "./StatsCards";
 import CategoryBreakdownList from "./CategoryBreakdownList";
 
 const ChartLoading = () => {
@@ -51,6 +52,8 @@ const CumulativeSavingsChart = dynamic(
 interface Props {
   initialTransactions: Transaction[];
   initialHistorical: Record<string, Transaction[]>;
+  /** Total pemasukan & pengeluaran seluruh waktu (kartu utama). */
+  initialAllTime: AllTimeTotals;
   categories: BudgetCategory[];
   settings: UserSettings;
 }
@@ -65,6 +68,7 @@ interface Props {
 export default function DashboardView({
   initialTransactions,
   initialHistorical,
+  initialAllTime,
   categories,
   settings,
 }: Readonly<Props>) {
@@ -72,6 +76,7 @@ export default function DashboardView({
     useState<Transaction[]>(initialTransactions);
   const [historical, setHistorical] =
     useState<Record<string, Transaction[]>>(initialHistorical);
+  const [allTime, setAllTime] = useState<AllTimeTotals>(initialAllTime);
   const [formOpen, setFormOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
 
@@ -111,12 +116,14 @@ export default function DashboardView({
 
   const refreshCycle = useCallback(async (targetCycle: CycleInfo) => {
     try {
-      const [fresh, freshHistorical] = await Promise.all([
+      const [fresh, freshHistorical, freshAllTime] = await Promise.all([
         getCycleTransactionsAction(targetCycle),
         getHistoricalTransactionsAction(targetCycle, 6),
+        getAllTimeTotalsAction(),
       ]);
       setTransactions(fresh);
       setHistorical(freshHistorical);
+      setAllTime(freshAllTime);
     } catch (err) {
       console.error("[DashboardView] gagal memuat data:", err);
       setTransactions([]);
@@ -159,11 +166,7 @@ export default function DashboardView({
         />
       )}
 
-      <StatsCards
-        stats={stats}
-        protectedSavings={settings.protectedSavings}
-        cycle={cycle}
-      />
+      <StatsCards stats={stats} allTime={allTime} cycle={cycle} />
 
       {/* Baris 1: line chart pengeluaran harian per tanggal (satu baris penuh) */}
       <div className="mb-4">

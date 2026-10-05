@@ -10,6 +10,7 @@ import {
   deleteManyTransactions,
   deleteSubcategory,
   deleteTransaction,
+  getAllTimeTotals,
   getTransactionById,
   getTransactionsInRange,
   updateCategory,
@@ -157,6 +158,15 @@ export async function getFinanceBundleAction(): Promise<{
     getUserSettings(userId),
   ]);
   return { categories, settings };
+}
+
+/** Total pemasukan & pengeluaran seluruh waktu (kartu utama dashboard). */
+export async function getAllTimeTotalsAction(): Promise<{
+  income: number;
+  spent: number;
+}> {
+  const userId = await requireUserId();
+  return getAllTimeTotals(userId);
 }
 
 /** Kategori saja (halaman Kebutuhan — refresh daftar wadah & subkategori). */

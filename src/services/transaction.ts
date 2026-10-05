@@ -89,6 +89,26 @@ export async function getTransactionsInRange(
   return rows.map(toTransaction);
 }
 
+/** Total pemasukan & pengeluaran seluruh waktu (kartu keuntungan dashboard). */
+export async function getAllTimeTotals(
+  userId: string,
+): Promise<{ income: number; spent: number }> {
+  const rows = await withRetry(() =>
+    prisma.transaction.groupBy({
+      by: ["type"],
+      where: { userId },
+      _sum: { amount: true },
+    }),
+  );
+  let income = 0;
+  let spent = 0;
+  for (const row of rows) {
+    if (row.type === "INCOME") income = Number(row._sum.amount ?? 0);
+    else if (row.type === "EXPENSE") spent = Number(row._sum.amount ?? 0);
+  }
+  return { income, spent };
+}
+
 async function assertCategoryOwned(
   userId: string,
   categoryId: string,
