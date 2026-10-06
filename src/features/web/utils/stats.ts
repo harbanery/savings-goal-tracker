@@ -54,7 +54,7 @@ export interface CycleStats {
   /** Saldo bersih = savingsInitial + totalIncome - totalSpent. */
   netSavings: number;
   /** Limit pengeluaran = budget yang bisa dialokasikan
-   *  (saldo awal + pemasukan − tabungan dilindungi). */
+   *  (saldo awal + pemasukan − tabungan dilindungi yang efektif). */
   spendingLimit: number;
   /** Sisa dari limit pengeluaran (bisa minus). */
   limitRemaining: number;
@@ -165,8 +165,13 @@ export function computeCycleStats(
 
   const netSavings = savingsInitial + totalIncome - totalSpent;
   // Limit pengeluaran mengikuti budget yang bisa dialokasikan (insight
-  // DROID.md): saldo awal + pemasukan − tabungan dilindungi.
-  const spendingLimit = savingsInitial + totalIncome - protectedSavings;
+  // DROID.md): saldo awal + pemasukan − tabungan dilindungi. Tabungan
+  // dilindungi hanya dihitung bila saldo siklus masih menutupnya —
+  // saldo 0/kurang, atau saldo < nominal dilindungi, berarti dana
+  // yang "dilindungi" sudah terpakai sehingga tidak dikurangkan lagi.
+  const effectiveProtected =
+    netSavings <= 0 || netSavings < protectedSavings ? 0 : protectedSavings;
+  const spendingLimit = savingsInitial + totalIncome - effectiveProtected;
   const limitRemaining = spendingLimit - totalSpent;
   const limitPercent =
     spendingLimit > 0

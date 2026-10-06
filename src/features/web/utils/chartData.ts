@@ -1,7 +1,4 @@
-import type {
-  BudgetCategory,
-  Transaction,
-} from "@/features/web/types";
+import type { Transaction } from "@/features/web/types";
 import type { Locale } from "@/types/locale";
 import {
   formatCycleLabel,
@@ -9,7 +6,6 @@ import {
   getCycleInfo,
   type CycleInfo,
 } from "@/features/web/utils/cycle";
-import { totalAllocation } from "@/features/web/utils/categories";
 
 /**
  * Data satu siklus untuk chart historis (sadar EXPENSE/INCOME/TRANSFER).
@@ -22,13 +18,13 @@ export interface CycleChartData {
   savingsInitial: number;
   totalSpent: number;
   totalIncome: number;
-  /** Expected savings = savingsInitial - totalAllocation. */
+  /** Target tabungan per siklus = tabungan dilindungi (settings user). */
   expectedSavings: number;
-  /** Actual savings = savingsInitial + totalIncome - totalSpent. */
+  /** Tabungan aktual per siklus = pemasukan − pengeluaran. */
   actualSavings: number;
-  /** Running target: savingsInitial + Σ (expectedSavings − savingsInitial). */
+  /** Kumulatif target: saldo awal + Σ target tabungan tiap siklus. */
   cumulativeExpected: number;
-  /** Running aktual: savingsInitial + Σ (actualSavings − savingsInitial). */
+  /** Kumulatif aktual: saldo awal + Σ (pemasukan − pengeluaran). */
   cumulativeActual: number;
   /** Pengeluaran per kategori (categoryId -> amount, EXPENSE saja). */
   categorySpent: Record<string, number>;
@@ -57,17 +53,16 @@ function keyToParts(key: string): { year: number; monthIndex: number } | null {
 /**
  * Ubah map key -> transactions menjadi array CycleChartData terurut kronologis.
  * @param historical map dengan kunci netral "YYYY-MM"
- * @param categories kategori milik user (untuk total alokasi)
+ * @param protectedSavings tabungan dilindungi per siklus (target tabungan)
  * @param savingsInitial saldo awal per siklus milik user
  * @param locale locale untuk label tampilan
  */
 export function buildCycleChartData(
   historical: Record<string, Transaction[]>,
-  categories: BudgetCategory[],
+  protectedSavings: number,
   savingsInitial: number,
   locale: Locale = "id",
 ): CycleChartData[] {
-  const allocation = totalAllocation(categories);
   const keys = Object.keys(historical).sort(
     (a, b) => keyToSortKey(a) - keyToSortKey(b),
   );
@@ -93,12 +88,16 @@ export function buildCycleChartData(
     const label = parts
       ? formatCycleLabel(parts.year, parts.monthIndex, locale)
       : key;
-    const expectedSavings = savingsInitial - allocation;
-    const actualSavings = savingsInitial + totalIncome - totalSpent;
-    // Kumulatif = saldo awal + Σ selisih bersih tiap siklus (target maupun
-    // aktual dihitung relatif terhadap saldo awal agar tidak dobel hitung).
-    cumulativeExpected += expectedSavings - savingsInitial;
-    cumulativeActual += actualSavings - savingsInitial;
+    // Target tabungan per siklus = tabungan dilindungi. Rumus lama
+    // (saldo awal − total alokasi wadah) menghasilkan 0 ketika seluruh
+    // saldo dialokasikan sehingga chart target tampak kosong (insight
+    // DROID.md). Aktual = tabungan bersih siklus (tanpa saldo awal).
+    const expectedSavings = protectedSavings;
+    const actualSavings = totalIncome - totalSpent;
+    // Kumulatif = saldo awal + Σ tabungan tiap siklus (target maupun
+    // aktual); saldo awal tidak diulang per siklus agar tak dobel hitung.
+    cumulativeExpected += expectedSavings;
+    cumulativeActual += actualSavings;
     return {
       key,
       label,

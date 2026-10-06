@@ -206,8 +206,8 @@ const id: TranslationDict = {
 
   // Navigasi siklus (navbar)
   "app.cyclePicker": "Pilih siklus bulan",
-  "app.currentMonth": "Bulan Ini",
-  "app.currentMonthAria": "Kembali ke bulan ini",
+  "app.today": "Hari Ini",
+  "app.todayAria": "Kembali ke hari ini",
 
   // Auth / Login
   "auth.logout": "Keluar",
@@ -533,8 +533,8 @@ const en: TranslationDict = {
 
   // Cycle navigation (navbar)
   "app.cyclePicker": "Select cycle month",
-  "app.currentMonth": "This Month",
-  "app.currentMonthAria": "Back to current month",
+  "app.today": "Today",
+  "app.todayAria": "Back to today",
 
   // Auth / Login
   "auth.logout": "Log out",

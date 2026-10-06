@@ -99,11 +99,11 @@ export default function DashboardView({
     () =>
       buildCycleChartData(
         historical,
-        categories,
+        settings.protectedSavings,
         settings.savingsInitial,
         locale,
       ),
-    [historical, categories, settings.savingsInitial, locale],
+    [historical, settings.protectedSavings, settings.savingsInitial, locale],
   );
 
   const editingTransaction = useMemo(
