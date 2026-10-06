@@ -62,7 +62,7 @@ function IconChip({
 }: Readonly<{ icon: ReactNode; color: string }>) {
   return (
     <span
-      className="mb-2 flex h-10 w-10 items-center justify-center rounded-lg text-base"
+      className="mb-2 flex h-10 w-10 items-center justify-center rounded-full text-base"
       style={{ backgroundColor: `${color}1f`, color }}
     >
       {icon}
@@ -80,11 +80,7 @@ function IconChip({
  *   di atas, dipisah divider dari kartu utama): jumlah transaksi, saldo,
  *   rata-rata harian, sisa limit.
  */
-export default function StatsCards({
-  stats,
-  allTime,
-  cycle,
-}: Readonly<Props>) {
+export default function StatsCards({ stats, allTime, cycle }: Readonly<Props>) {
   const { t, locale } = useLocale();
 
   const cashFlow = allTime.income - allTime.spent;
@@ -190,7 +186,7 @@ export default function StatsCards({
               {card.title}
             </Text>
             <div
-              className="mt-1 truncate text-xl font-semibold tabular-nums"
+              className="mt-1 truncate text-4xl font-normal tabular-nums"
               style={{ color: card.tone ? toneColor[card.tone] : undefined }}
               title={card.value}
             >
@@ -217,7 +213,7 @@ export default function StatsCards({
               {card.label}
             </Text>
             <div
-              className="mt-1 truncate text-base font-semibold tabular-nums"
+              className="mt-1 truncate text-2xl font-medium tabular-nums"
               style={{ color: card.tone ? toneColor[card.tone] : undefined }}
               title={card.value}
             >

@@ -51,7 +51,7 @@ export default function CycleClockPicker({
       } ${hideClock ? "pr-0.5" : "pl-1 pr-3"}`}
     >
       <DatePicker
-        className="font-mono! text-xs! font-semibold! [&_input]:font-mono! [&_input]:text-xs! [&_input]:font-semibold!"
+        className="font-mono! border-transparent! text-xs! font-semibold! [&_input]:font-mono! [&_input]:text-xs! [&_input]:font-semibold!"
         picker="month"
         size="small"
         allowClear={false}
