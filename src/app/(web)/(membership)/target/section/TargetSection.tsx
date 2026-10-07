@@ -1,4 +1,4 @@
-import TargetsView from "@/features/web/components/ui/finance/TargetsView";
+import TargetsView from "@/features/target/components/ui/TargetsView";
 import { getTargets } from "@/services/finance";
 import { getUserCategories } from "@/services/transaction";
 import { getCurrentUser } from "@/lib/auth";

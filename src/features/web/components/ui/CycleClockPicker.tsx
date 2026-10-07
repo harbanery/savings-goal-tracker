@@ -1,6 +1,5 @@
 "use client";
 
-import { CalendarOutlined } from "@ant-design/icons";
 import { Button, DatePicker } from "antd";
 import dayjs from "dayjs";
 import { useEffect, useState } from "react";
@@ -122,7 +121,7 @@ export default function CycleClockPicker({
               type="button"
               onClick={openPicker}
               aria-label={t("app.cyclePicker")}
-              className="mr-1 flex cursor-pointer items-center"
+              className="flex cursor-pointer items-center"
             >
               <RealtimeClock />
             </button>
@@ -132,7 +131,7 @@ export default function CycleClockPicker({
             <Button
               type="text"
               size="small"
-              className="font-mono! text-xs! font-semibold!"
+              className="font-mono! text-xs! font-semibold! p-0! m-0!"
               onClick={() => setCycle(getCycleForDate(new Date(), startDay))}
               aria-label={t("app.todayAria")}
             >

@@ -7,6 +7,7 @@ import {
   CategoryScale,
   LinearScale,
   BarElement,
+  Title,
   Tooltip,
   Legend,
   type ChartData,
@@ -15,8 +16,7 @@ import {
 import { useMemo } from "react";
 import { useThemeMode } from "@/components/ui/theme/ThemeProvider";
 import { useLocale } from "@/components/i18n/LocaleProvider";
-import type { BudgetCategory } from "@/features/web/types";
-import type { CycleChartData } from "@/features/web/utils/chartData";
+import type { CycleChartData } from "@/features/home/utils/chartData";
 import { formatIDR } from "@/utils/helpers";
 
 const { Text } = Typography;
@@ -25,20 +25,20 @@ ChartJS.register(
   CategoryScale,
   LinearScale,
   BarElement,
+  Title,
   Tooltip,
   Legend,
 );
 
 interface Props {
   cycles: CycleChartData[];
-  categories: BudgetCategory[];
 }
 
 /**
- * Bar chart: X = bulan, Y = total pengeluaran per bulan.
- * Warna per-segmen berdasarkan alokasi kategori (stacked).
+ * Bar chart: expected savings vs actual savings per bulan.
+ * Expected savings = saldo awal - total alokasi wadah (dari bulan sebelumnya / konsisten).
  */
-export default function AllocationBarChart({ cycles, categories }: Props) {
+export default function SavingsComparisonBarChart({ cycles }: Props) {
   const { mode } = useThemeMode();
   const { t, locale } = useLocale();
   const isDark = mode === "dark";
@@ -48,21 +48,28 @@ export default function AllocationBarChart({ cycles, categories }: Props) {
   const data: ChartData<"bar"> = useMemo(() => {
     return {
       labels: cycles.map((c) => c.label),
-      datasets: categories.map((cat) => ({
-        label: cat.name,
-        data: cycles.map((c) => c.categorySpent[cat.id] ?? 0),
-        backgroundColor: cat.color,
-        borderRadius: 4,
-      })),
+      datasets: [
+        {
+          label: t("chart.expectedSavings"),
+          data: cycles.map((c) => c.expectedSavings),
+          backgroundColor: "#5781eb",
+          borderRadius: 4,
+        },
+        {
+          label: t("chart.actualSavings"),
+          data: cycles.map((c) => c.actualSavings),
+          backgroundColor: "#0dab76",
+          borderRadius: 4,
+        },
+      ],
     };
-  }, [cycles, categories]);
+  }, [cycles, t]);
 
   const options: ChartOptions<"bar"> = {
     responsive: true,
     maintainAspectRatio: false,
     plugins: {
       legend: {
-        display: true,
         position: "bottom",
         labels: {
           color: tickColor,
@@ -87,13 +94,11 @@ export default function AllocationBarChart({ cycles, categories }: Props) {
     },
     scales: {
       x: {
-        stacked: true,
         grid: { display: false },
         ticks: { color: tickColor, font: { size: 10 } },
         border: { display: false },
       },
       y: {
-        stacked: true,
         beginAtZero: true,
         grid: { color: gridColor },
         ticks: {
@@ -101,7 +106,7 @@ export default function AllocationBarChart({ cycles, categories }: Props) {
           font: { size: 10 },
           callback: (value) => {
             const v = Number(value);
-            if (v >= 1_000_000) return `${(v / 1_000_000).toFixed(1)} jt`;
+            if (v >= 1_000_000) return `${(v / 1_000_000).toFixed(0)} jt`;
             if (v >= 1_000) return `${(v / 1_000).toFixed(0)} rb`;
             return String(v);
           },
@@ -120,7 +125,7 @@ export default function AllocationBarChart({ cycles, categories }: Props) {
       style={{ height: "100%" }}
       styles={{ body: { padding: 16, height: "100%" } }}
       size="small"
-      title={<Text strong>{t("chart.allocationTitle")}</Text>}
+      title={<Text strong>{t("chart.comparisonTitle")}</Text>}
     >
       {isEmpty ? (
         <div className="flex h-[260px] items-center justify-center">

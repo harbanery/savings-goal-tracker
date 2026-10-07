@@ -181,7 +181,7 @@ export default function BudgetView({ initialOverview, settings }: Props) {
           <Card key={card.key} size="small" className="shadow-sm">
             <IconChip icon={card.icon} color={card.color} />
             <div
-              className="truncate text-xl font-semibold tabular-nums"
+              className="truncate text-4xl font-normal tabular-nums"
               title={card.value}
             >
               {card.value}

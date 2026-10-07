@@ -1,4 +1,4 @@
-import WalletsView from "@/features/web/components/ui/finance/WalletsView";
+import WalletsView from "@/features/finance/components/ui/WalletsView";
 import type { Transaction } from "@/features/web/types";
 import { getUserCategories, getUserSettings } from "@/services/transaction";
 import { getBudgetOverview } from "@/services/finance";

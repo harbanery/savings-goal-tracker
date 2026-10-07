@@ -14,7 +14,7 @@ import {
   generateTransactionsCsv,
   generateTemplateCsv,
   parseCsvToTransactions,
-} from "@/features/web/utils/csv";
+} from "@/features/transactions/utils/csv";
 import type { BudgetCategory, Transaction } from "@/features/web/types";
 import { useLocale } from "@/components/i18n/LocaleProvider";
 

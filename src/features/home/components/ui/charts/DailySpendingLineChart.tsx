@@ -17,7 +17,7 @@ import {
 import { useMemo } from "react";
 import { useThemeMode } from "@/components/ui/theme/ThemeProvider";
 import { useLocale } from "@/components/i18n/LocaleProvider";
-import { buildDailySpending } from "@/features/web/utils/chartData";
+import { buildDailySpending } from "@/features/home/utils/chartData";
 import type { Transaction } from "@/features/web/types";
 import { formatIDR } from "@/utils/helpers";
 import type { CycleInfo } from "@/features/web/utils/cycle";

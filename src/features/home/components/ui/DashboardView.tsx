@@ -11,7 +11,7 @@ import {
   getHistoricalTransactionsAction,
 } from "@/utils/server/actions";
 import { computeCycleStats } from "@/features/web/utils/stats";
-import { buildCycleChartData } from "@/features/web/utils/chartData";
+import { buildCycleChartData } from "@/features/home/utils/chartData";
 import type {
   BudgetCategory,
   Transaction,
@@ -20,7 +20,7 @@ import type {
 import { useCycle } from "@/features/web/hooks/cycle";
 import type { CycleInfo } from "@/features/web/utils/cycle";
 import { formatIDR } from "@/utils/helpers";
-import TransactionFormModal from "./TransactionFormModal";
+import TransactionFormModal from "@/features/transactions/components/ui/TransactionFormModal";
 import StatsCards, { type AllTimeTotals } from "./StatsCards";
 import CategoryBreakdownList from "./CategoryBreakdownList";
 

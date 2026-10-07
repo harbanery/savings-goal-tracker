@@ -1,14 +1,12 @@
 "use client";
 
 import { Card, Empty, Typography } from "antd";
-import { Line } from "react-chartjs-2";
+import { Bar } from "react-chartjs-2";
 import {
   Chart as ChartJS,
   CategoryScale,
   LinearScale,
-  PointElement,
-  LineElement,
-  Filler,
+  BarElement,
   Tooltip,
   Legend,
   type ChartData,
@@ -17,7 +15,8 @@ import {
 import { useMemo } from "react";
 import { useThemeMode } from "@/components/ui/theme/ThemeProvider";
 import { useLocale } from "@/components/i18n/LocaleProvider";
-import type { CycleChartData } from "@/features/web/utils/chartData";
+import type { BudgetCategory } from "@/features/web/types";
+import type { CycleChartData } from "@/features/home/utils/chartData";
 import { formatIDR } from "@/utils/helpers";
 
 const { Text } = Typography;
@@ -25,85 +24,45 @@ const { Text } = Typography;
 ChartJS.register(
   CategoryScale,
   LinearScale,
-  PointElement,
-  LineElement,
-  Filler,
+  BarElement,
   Tooltip,
   Legend,
 );
 
 interface Props {
   cycles: CycleChartData[];
+  categories: BudgetCategory[];
 }
 
-/** Warna aksen selaras referensi Dashboard Content.svg. */
-const EXPECTED_COLOR = "#5781eb";
-const ACTUAL_COLOR = "#0dab76";
-
 /**
- * Line chart: akumulasi tabungan per bulan (running) — pasangan chart
- * Tabungan Target vs Aktual. Nilai kumulatif = saldo awal + Σ selisih
- * bersih tiap siklus; garis target dashed, garis aktual solid dengan
- * gradien halus agar tren pertumbuhan tabungan mudah terbaca.
+ * Bar chart: X = bulan, Y = total pengeluaran per bulan.
+ * Warna per-segmen berdasarkan alokasi kategori (stacked).
  */
-export default function CumulativeSavingsChart({ cycles }: Props) {
+export default function AllocationBarChart({ cycles, categories }: Props) {
   const { mode } = useThemeMode();
   const { t, locale } = useLocale();
   const isDark = mode === "dark";
   const gridColor = isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.06)";
   const tickColor = isDark ? "#9ca3af" : "#6b7280";
 
-  const data: ChartData<"line"> = useMemo(() => {
+  const data: ChartData<"bar"> = useMemo(() => {
     return {
       labels: cycles.map((c) => c.label),
-      datasets: [
-        {
-          label: t("chart.expectedCumulative"),
-          data: cycles.map((c) => c.cumulativeExpected),
-          borderColor: EXPECTED_COLOR,
-          borderWidth: 2,
-          borderDash: [6, 4],
-          pointRadius: 2.5,
-          pointHoverRadius: 6,
-          pointBackgroundColor: EXPECTED_COLOR,
-          fill: false,
-          tension: 0.35,
-        },
-        {
-          label: t("chart.actualCumulative"),
-          data: cycles.map((c) => c.cumulativeActual),
-          borderColor: ACTUAL_COLOR,
-          backgroundColor: (ctx) => {
-            const { chart } = ctx;
-            const { ctx: canvasCtx, chartArea } = chart;
-            if (!chartArea) return "rgba(13,171,118,0.15)";
-            const gradient = canvasCtx.createLinearGradient(
-              0,
-              chartArea.top,
-              0,
-              chartArea.bottom,
-            );
-            gradient.addColorStop(0, "rgba(13,171,118,0.30)");
-            gradient.addColorStop(1, "rgba(13,171,118,0.02)");
-            return gradient;
-          },
-          borderWidth: 2,
-          pointRadius: 2.5,
-          pointHoverRadius: 6,
-          pointBackgroundColor: ACTUAL_COLOR,
-          fill: true,
-          tension: 0.35,
-        },
-      ],
+      datasets: categories.map((cat) => ({
+        label: cat.name,
+        data: cycles.map((c) => c.categorySpent[cat.id] ?? 0),
+        backgroundColor: cat.color,
+        borderRadius: 4,
+      })),
     };
-  }, [cycles, t]);
+  }, [cycles, categories]);
 
-  const options: ChartOptions<"line"> = {
+  const options: ChartOptions<"bar"> = {
     responsive: true,
     maintainAspectRatio: false,
-    interaction: { mode: "index", intersect: false },
     plugins: {
       legend: {
+        display: true,
         position: "bottom",
         labels: {
           color: tickColor,
@@ -128,11 +87,13 @@ export default function CumulativeSavingsChart({ cycles }: Props) {
     },
     scales: {
       x: {
+        stacked: true,
         grid: { display: false },
         ticks: { color: tickColor, font: { size: 10 } },
         border: { display: false },
       },
       y: {
+        stacked: true,
         beginAtZero: true,
         grid: { color: gridColor },
         ticks: {
@@ -140,7 +101,7 @@ export default function CumulativeSavingsChart({ cycles }: Props) {
           font: { size: 10 },
           callback: (value) => {
             const v = Number(value);
-            if (v >= 1_000_000) return `${(v / 1_000_000).toFixed(0)} jt`;
+            if (v >= 1_000_000) return `${(v / 1_000_000).toFixed(1)} jt`;
             if (v >= 1_000) return `${(v / 1_000).toFixed(0)} rb`;
             return String(v);
           },
@@ -159,7 +120,7 @@ export default function CumulativeSavingsChart({ cycles }: Props) {
       style={{ height: "100%" }}
       styles={{ body: { padding: 16, height: "100%" } }}
       size="small"
-      title={<Text strong>{t("chart.cumulativeTitle")}</Text>}
+      title={<Text strong>{t("chart.allocationTitle")}</Text>}
     >
       {isEmpty ? (
         <div className="flex h-[260px] items-center justify-center">
@@ -167,7 +128,7 @@ export default function CumulativeSavingsChart({ cycles }: Props) {
         </div>
       ) : (
         <div className="h-[260px] w-full sm:h-[300px]">
-          <Line data={data} options={options} />
+          <Bar data={data} options={options} />
         </div>
       )}
     </Card>

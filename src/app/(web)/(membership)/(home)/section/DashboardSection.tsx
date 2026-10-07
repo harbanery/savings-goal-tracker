@@ -1,5 +1,5 @@
-import DashboardView from "@/features/web/components/ui/DashboardView";
-import type { AllTimeTotals } from "@/features/web/components/ui/StatsCards";
+import DashboardView from "@/features/home/components/ui/DashboardView";
+import type { AllTimeTotals } from "@/features/home/components/ui/StatsCards";
 import {
   getCycleTransactionsAction,
   getHistoricalTransactionsAction,

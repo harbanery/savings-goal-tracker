@@ -1,4 +1,4 @@
-import BudgetView from "@/features/web/components/ui/finance/BudgetView";
+import BudgetView from "@/features/budget/components/ui/BudgetView";
 import type { UserSettings } from "@/features/web/types";
 import { getUserSettings } from "@/services/transaction";
 import { getBudgetOverview } from "@/services/finance";

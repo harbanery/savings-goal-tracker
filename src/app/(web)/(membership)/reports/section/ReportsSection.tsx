@@ -1,4 +1,4 @@
-import ReportsView from "@/features/web/components/ui/ReportsView";
+import ReportsView from "@/features/reports/components/ui/ReportsView";
 import { getCycleTransactionsAction } from "@/utils/server/actions";
 import type {
   BudgetCategory,

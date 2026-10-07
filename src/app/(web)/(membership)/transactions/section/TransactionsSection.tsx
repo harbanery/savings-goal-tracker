@@ -1,4 +1,4 @@
-import TransactionsView from "@/features/web/components/ui/TransactionsView";
+import TransactionsView from "@/features/transactions/components/ui/TransactionsView";
 import { getCycleTransactionsAction } from "@/utils/server/actions";
 import type {
   BudgetCategory,

@@ -6,7 +6,7 @@ import { useLocale } from "@/components/i18n/LocaleProvider";
 import {
   getTopKeywords,
   hasKeywordData,
-} from "@/features/web/utils/keywordStats";
+} from "@/features/reports/utils/keywordStats";
 import { getCategory } from "@/features/web/utils/categories";
 import type {
   BudgetCategory,

@@ -1,4 +1,4 @@
-import NeedsView from "@/features/web/components/ui/finance/NeedsView";
+import NeedsView from "@/features/needs/components/ui/NeedsView";
 import type { BudgetCategory } from "@/features/web/types";
 import { getUserCategories } from "@/services/transaction";
 import { getCurrentUser } from "@/lib/auth";
