@@ -18,7 +18,12 @@ import {
 import { neueHaasDisplay } from "@/utils/fonts/next-local";
 
 export const metadata: Metadata = {
-  title: META_TITLE,
+  // Title template: halaman cukup set string title ("Budget") dan otomatis
+  // menjadi "Budget | Savings Goal Tracker"; tanpa title pakai default.
+  title: {
+    default: META_TITLE,
+    template: `%s | ${META_APP}`,
+  },
   applicationName: META_APP,
   ...(META_DESCRIPTION && { description: META_DESCRIPTION }),
   metadataBase: new URL(BASE_URL),

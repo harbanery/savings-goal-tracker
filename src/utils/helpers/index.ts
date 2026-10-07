@@ -1,4 +1,9 @@
+import type { Metadata } from "next";
 import type { Locale } from "@/types/locale";
+import {
+  DEFAULT_LOCALE,
+  TRANSLATIONS,
+} from "@/components/i18n/translations";
 
 /**
  * Utilitas format mata uang Rupiah (IDR) + tanggal (fungsi murni global).
@@ -127,5 +132,27 @@ export function getWeekdayLabel(d: Date, locale: Locale = "id"): string {
 /** Nama bulan panjang sesuai locale (Januari / January). */
 export function getMonthLabel(monthIndex: number, locale: Locale = "id"): string {
   return MONTH_NAMES[locale][monthIndex];
+}
+
+// ---------------------------------------------------------------------------
+// Page metadata helper (server-side <head>)
+// ---------------------------------------------------------------------------
+
+/**
+ * Bangun metadata halaman dari key translate (title + description opsional).
+ * Selalu memakai DEFAULT_LOCALE karena metadata dievaluasi server-side
+ * sebelum hidrasi (locale aktif user tersimpan di localStorage, tidak
+ * terbaca server) — konsisten dengan SSR yang merender "id" sebagai
+ * default. Title halaman otomatis digabung template root layout
+ * ("%s | Savings Goal Tracker").
+ */
+export function buildPageMetadata(
+  titleKey: string,
+  descriptionKey?: string,
+): Metadata {
+  const dict = TRANSLATIONS[DEFAULT_LOCALE];
+  const title = dict[titleKey] ?? titleKey;
+  const description = descriptionKey ? dict[descriptionKey] : undefined;
+  return { title, ...(description && { description }) };
 }
 

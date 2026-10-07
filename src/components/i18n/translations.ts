@@ -223,6 +223,23 @@ const id: TranslationDict = {
   "auth.errorGoogle": "Login Google dibatalkan atau gagal.",
   "auth.errorDefault": "Gagal login. Coba lagi.",
 
+  // Metadata halaman (title/description <head> — dipakai buildPageMetadata)
+  "auth.loginTitle": "Login",
+  "meta.descLogin":
+    "Masuk dengan akun Google untuk mencatat pengeluaran dan mengejar target tabungan Anda.",
+  "meta.descBudget":
+    "Atur nominal tabungan yang dilindungi tiap siklus agar tidak tersentuh pengeluaran.",
+  "meta.descFinance":
+    "Pantau dana tiap wadah beserta pemasukan dan pengeluaran siklus aktif.",
+  "meta.descNeeds":
+    "Kelola subkategori kebutuhan pada tiap wadah alokasi Anda.",
+  "meta.descReports":
+    "Lihat insight kata kunci transaksi untuk memahami kebiasaan belanja.",
+  "meta.descTarget":
+    "Susun target tabungan dan pantau dana terkumpul yang dihitung otomatis.",
+  "meta.descTransactions":
+    "Catat, cari, dan kelola seluruh transaksi pada siklus aktif.",
+
   // Form multi-tipe
   "form.typeExpense": "Pengeluaran",
   "form.typeIncome": "Pemasukan",
@@ -549,6 +566,23 @@ const en: TranslationDict = {
   "auth.errorUnverified": "Your Google email is not verified.",
   "auth.errorGoogle": "Google sign-in was cancelled or failed.",
   "auth.errorDefault": "Login failed. Please try again.",
+
+  // Page metadata (title/description <head> — used by buildPageMetadata)
+  "auth.loginTitle": "Login",
+  "meta.descLogin":
+    "Sign in with your Google account to track spending and chase your savings goals.",
+  "meta.descBudget":
+    "Set the protected savings amount for each cycle so spending never touches it.",
+  "meta.descFinance":
+    "Monitor funds per envelope along with income and spending for the active cycle.",
+  "meta.descNeeds":
+    "Manage needs subcategories for each of your allocation envelopes.",
+  "meta.descReports":
+    "See transaction keyword insights to understand your spending habits.",
+  "meta.descTarget":
+    "Set savings goals and track funds accumulated automatically.",
+  "meta.descTransactions":
+    "Record, search, and manage all transactions in the active cycle.",
 
   // Multi-type form
   "form.typeExpense": "Expense",
