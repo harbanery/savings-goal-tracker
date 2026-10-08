@@ -1,4 +1,5 @@
 import { createHash, randomBytes } from "node:crypto";
+import { cache } from "react";
 import { cookies } from "next/headers";
 import type { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
@@ -106,12 +107,26 @@ export async function getUserIdFromToken(
   return session.userId;
 }
 
-/** User saat ini dari cookie sesi (untuk server component / route handler). */
-export async function getCurrentUser() {
+/**
+ * User saat ini dari cookie sesi (untuk server component / route handler).
+ *
+ * Dibungkus React `cache()` (pola resmi Next.js 16 untuk akses DB non-fetch):
+ * deduplikasi dalam satu render pass — layout + section yang sama-sama
+ * memanggil getCurrentUser() hanya mengeksekusi 1 query gabungan
+ * (session + user via `include`), bukan 2 query berurutan per pemanggil.
+ */
+export const getCurrentUser = cache(async () => {
   const store = await cookies();
-  const userId = await getUserIdFromToken(
-    store.get(SESSION_COOKIE)?.value,
-  );
-  if (!userId) return null;
-  return prisma.user.findUnique({ where: { id: userId } });
-}
+  const token = store.get(SESSION_COOKIE)?.value;
+  if (!token) return null;
+  const session = await prisma.userSession.findUnique({
+    where: { id: hashSessionToken(token) },
+    include: { user: true },
+  });
+  if (!session) return null;
+  if (session.expiresAt < new Date()) {
+    await prisma.userSession.delete({ where: { id: session.id } }).catch(() => {});
+    return null;
+  }
+  return session.user;
+});

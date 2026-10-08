@@ -1,5 +1,6 @@
 import { Prisma } from "@prisma/client";
 import type { PrismaClient } from "@prisma/client";
+import { cache } from "react";
 import { prisma, withRetry } from "@/lib/prisma";
 import type {
   BudgetCategory,
@@ -33,35 +34,43 @@ export function toTransaction(t: TransactionRecord): Transaction {
 }
 
 /** Kategori user (+ subkategori terurut) sebagai BudgetCategory UI. */
-export async function getUserCategories(userId: string): Promise<BudgetCategory[]> {
-  const rows = await withRetry(() =>
-    prisma.category.findMany({
-      where: { userId },
-      orderBy: { order: "asc" },
-      include: { subcategories: { orderBy: { order: "asc" } } },
-    }),
-  );
-  return rows.map((c) => ({
-    id: c.id,
-    name: c.name,
-    color: c.color,
-    walletType: c.walletType,
-    allocation: Number(c.allocation),
-    subcategories: c.subcategories.map((s) => ({ id: s.id, name: s.name })),
-  }));
-}
+export const getUserCategories = cache(
+  async (userId: string): Promise<BudgetCategory[]> => {
+    const rows = await withRetry(() =>
+      prisma.category.findMany({
+        where: { userId },
+        orderBy: { order: "asc" },
+        include: { subcategories: { orderBy: { order: "asc" } } },
+      }),
+    );
+    return rows.map((c) => ({
+      id: c.id,
+      name: c.name,
+      color: c.color,
+      walletType: c.walletType,
+      allocation: Number(c.allocation),
+      subcategories: c.subcategories.map((s) => ({ id: s.id, name: s.name })),
+    }));
+  },
+);
 
-/** Settings user (dengan fallback default bila belum ada). */
-export async function getUserSettings(userId: string): Promise<UserSettings> {
-  const s = await withRetry(() =>
-    prisma.userSettings.findUnique({ where: { userId } }),
-  );
-  return {
-    cycleStartDay: s?.cycleStartDay ?? 25,
-    savingsInitial: s ? Number(s.savingsInitial) : 0,
-    protectedSavings: s ? Number(s.protectedSavings) : 0,
-  };
-}
+/**
+ * Settings user (dengan fallback default bila belum ada).
+ * Dibungkus React `cache()` → layout + section di render pass yang sama
+ * hanya mengeksekusi 1 query (deduplikasi request per render).
+ */
+export const getUserSettings = cache(
+  async (userId: string): Promise<UserSettings> => {
+    const s = await withRetry(() =>
+      prisma.userSettings.findUnique({ where: { userId } }),
+    );
+    return {
+      cycleStartDay: s?.cycleStartDay ?? 25,
+      savingsInitial: s ? Number(s.savingsInitial) : 0,
+      protectedSavings: s ? Number(s.protectedSavings) : 0,
+    };
+  },
+);
 
 /** Ambil satu transaksi milik user (null bila tidak ada). */
 export async function getTransactionById(

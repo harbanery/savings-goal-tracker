@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { cache } from "react";
 import { prisma } from "@/lib/prisma";
 import {
   DEFAULT_CYCLE_START_DAY,
@@ -39,8 +40,11 @@ function cashWalletId(userId: string): string {
  * aman race-condition). Dipanggil setelah register Google pertama kali —
  * layout dan page bisa memanggilnya bersamaan, jadi wajib upsert dengan id
  * deterministik (bukan find-then-create).
+ *
+ * Dibungkus React `cache()`: bila layout DAN section memanggilnya di
+ * render pass yang sama, eksekusi hanya 1× (bukan 2× upsert per request).
  */
-export async function ensureUserDefaults(userId: string): Promise<void> {
+export const ensureUserDefaults = cache(async (userId: string): Promise<void> => {
   await prisma.userSettings.upsert({
     where: { userId },
     update: {},
@@ -66,7 +70,7 @@ export async function ensureUserDefaults(userId: string): Promise<void> {
       order: -1,
     },
   });
-}
+});
 
 /** Identitas user + settings untuk API session. */
 export async function getSessionUser(userId: string) {
