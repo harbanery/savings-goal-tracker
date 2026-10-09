@@ -2,21 +2,13 @@
 
 import { BellOutlined, BellFilled } from "@ant-design/icons";
 import { App, Badge, Button, Tooltip } from "antd";
-import { useCallback, useEffect, useSyncExternalStore, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { VAPID_PUBLIC_KEY } from "@/utils/config/variables";
 import { useLocale } from "@/components/i18n/LocaleProvider";
+import { useMounted } from "@/hooks/useMounted";
 
 /** URL base untuk API calls. */
 const API_BASE = "/api/web/push";
-
-/**
- * Deteksi client-side via useSyncExternalStore agar tidak ada hydration
- * mismatch: server snapshot selalu `false`, client snapshot selalu `true`.
- * Ini membuat tombol lonceng hanya muncul setelah hydration selesai.
- */
-const emptySubscribe = () => () => {};
-const getClientSnapshot = () => true;
-const getServerSnapshot = () => false;
 
 /** Konversi base64 URL ke ArrayBuffer (untuk applicationServerKey). */
 function urlBase64ToUint8Array(base64String: string): ArrayBuffer {
@@ -52,11 +44,9 @@ function isPushSupported(): boolean {
  * hanya mempengaruhi status subscription, bukan tampilan tombol.
  */
 export default function NotificationBell() {
-  const isClient = useSyncExternalStore(
-    emptySubscribe,
-    getClientSnapshot,
-    getServerSnapshot,
-  );
+  // Deteksi client via useMounted: server selalu false sehingga tombol
+  // lonceng hanya muncul setelah hydration selesai (tidak ada mismatch).
+  const isClient = useMounted();
   const { t } = useLocale();
   const { message } = App.useApp();
   const [subscribed, setSubscribed] = useState(false);

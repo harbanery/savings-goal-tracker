@@ -10,6 +10,7 @@ import { VercelCompatibleComponents } from "@/components/ui/vercel";
 import { geistMono, geistSans } from "@/utils/fonts/next-google";
 import {
   BASE_URL,
+  LOCALE_COOKIE,
   META_APP,
   META_DESCRIPTION,
   META_TITLE,
@@ -123,10 +124,14 @@ export default async function RootLayout({
   const cookieStore = await cookies();
   const cookieTheme = cookieStore.get(THEME_COOKIE)?.value;
   const initialMode = cookieTheme === "dark" ? "dark" : "light";
+  // Locale juga dari cookie (ditulis LocaleProvider): atribut <html lang>
+  // langsung benar saat SSR — tidak menunggu hidrasi client.
+  const cookieLocale = cookieStore.get(LOCALE_COOKIE)?.value;
+  const htmlLang = cookieLocale === "en" ? "en" : "id";
 
   return (
     <html
-      lang="id"
+      lang={htmlLang}
       suppressHydrationWarning
       className={`${geistSans.variable} ${geistMono.variable} ${neueHaasDisplay.variable} h-full antialiased`}
     >

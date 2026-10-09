@@ -9,6 +9,7 @@ import {
   type ReactNode,
 } from "react";
 import type { Locale } from "@/types/locale";
+import { LOCALE_COOKIE } from "@/utils/config/variables";
 import {
   DEFAULT_LOCALE,
   TRANSLATIONS,
@@ -67,8 +68,15 @@ function applyLocale(next: Locale): void {
   } catch {
     // ignore
   }
+  // Persist juga ke cookie (dibaca SSR root layout) — pola yang sama dengan
+  // THEME_COOKIE agar <html lang> sudah benar sebelum hidrasi.
+  try {
+    document.cookie = `${LOCALE_COOKIE}=${next}; path=/; max-age=31536000; samesite=lax`;
+  } catch {
+    // ignore
+  }
   // Sinkronkan atribut `lang` pada <html> agar screen reader & browser
-  // mengikuti locale aktif (SSR merender "id" sebagai default).
+  // mengikuti locale aktif (SSR merender dari cookie LOCALE_COOKIE).
   document.documentElement.lang = next;
   emitLocale();
 }

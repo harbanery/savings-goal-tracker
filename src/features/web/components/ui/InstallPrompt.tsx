@@ -2,8 +2,9 @@
 
 import { MobileOutlined } from "@ant-design/icons";
 import { Button, Card } from "antd";
-import { useEffect, useState, useSyncExternalStore } from "react";
+import { useEffect, useState } from "react";
 import { useLocale } from "@/components/i18n/LocaleProvider";
+import { useMounted } from "@/hooks/useMounted";
 
 /**
  * Prompt pemasangan PWA.
@@ -18,7 +19,7 @@ import { useLocale } from "@/components/i18n/LocaleProvider";
  *
  * Konten sepenuhnya dilokalkan melalui `useLocale()`.
  *
- * Menggunakan `useSyncExternalStore` (pola yang sama dengan NotificationBell)
+ * Menggunakan `useMounted` (pola yang sama dengan NotificationBell)
  * agar SSR dan render awal klien selalu konsisten (tidak menampilkan prompt),
  * lalu beralih ke snapshot klien setelah mount — mencegah hydration mismatch.
  */
@@ -30,10 +31,6 @@ interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>;
   userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
 }
-
-const emptySubscribe = () => () => {};
-const getClientSnapshot = () => true;
-const getServerSnapshot = () => false;
 
 /** Apakah aplikasi sudah berjalan standalone (terpasang)? Hanya dipanggil di klien. */
 function isStandaloneMode(): boolean {
@@ -63,11 +60,7 @@ function wasDismissed(): boolean {
 
 export default function InstallPrompt() {
   const { t } = useLocale();
-  const isClient = useSyncExternalStore(
-    emptySubscribe,
-    getClientSnapshot,
-    getServerSnapshot,
-  );
+  const isClient = useMounted();
   const [deferred, setDeferred] = useState<BeforeInstallPromptEvent | null>(
     null,
   );

@@ -37,6 +37,12 @@ export const OAUTH_STATE_COOKIE = "sgt_oauth_state";
  * yang benar (tidak ada flash putih saat dark mode).
  */
 export const THEME_COOKIE = "sgt_theme";
+/**
+ * Cookie locale (id/en). localStorage tetap sumber kebenaran di klien;
+ * cookie dibaca SSR root layout agar atribut <html lang> langsung benar
+ * (screen reader tidak membaca bahasa yang salah sebelum hidrasi).
+ */
+export const LOCALE_COOKIE = "sgt_locale";
 /** Masa berlaku sesi login (jam). */
 export const SESSION_TTL_HOURS = 720; // 30 hari — login awet untuk app harian
 export const MAX_SESSIONS_PER_USER = 5;
