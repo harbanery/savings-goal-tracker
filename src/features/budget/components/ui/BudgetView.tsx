@@ -178,7 +178,7 @@ export default function BudgetView({ initialOverview, settings }: Props) {
       {/* Baris kartu ringkasan (ikon + nilai + label) */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {primary.map((card) => (
-          <Card key={card.key} size="small" className="shadow-sm">
+          <Card key={card.key} size="small" className="shadow-sm!">
             <IconChip icon={card.icon} color={card.color} />
             <div
               className="truncate text-4xl font-normal tabular-nums"
@@ -186,7 +186,7 @@ export default function BudgetView({ initialOverview, settings }: Props) {
             >
               {card.value}
             </div>
-            <Text type="secondary" className="mt-1 block text-sm">
+            <Text type="secondary" className="mt-1! block! text-sm!">
               {card.label}
             </Text>
           </Card>
@@ -195,7 +195,7 @@ export default function BudgetView({ initialOverview, settings }: Props) {
 
       <Card
         variant="borderless"
-        className="shadow-sm"
+        className="shadow-sm!"
         title={<Text strong>{t("finance.budgetSettingTitle")}</Text>}
       >
         <p className="mb-4 text-sm opacity-70">

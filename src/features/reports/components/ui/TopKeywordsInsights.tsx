@@ -42,7 +42,7 @@ export default function TopKeywordsInsights({
     return (
       <Card
         variant="borderless"
-        className="shadow-sm"
+        className="shadow-sm!"
         size="small"
         title={<Text strong>{t("insights.topKeywordsTitle")}</Text>}
       >
@@ -56,7 +56,7 @@ export default function TopKeywordsInsights({
   return (
     <Card
       variant="borderless"
-      className="shadow-sm"
+      className="shadow-sm!"
       size="small"
       title={<Text strong>{t("insights.topKeywordsTitle")}</Text>}
       styles={{ body: { padding: 0 } }}
@@ -76,7 +76,7 @@ export default function TopKeywordsInsights({
               <Tag
                 key={catId}
                 color={color}
-                className="!m-0 !text-[10px] !leading-4"
+                className="m-0! text-[10px]! leading-4!"
                 variant="solid"
               >
                 {label}
@@ -91,14 +91,14 @@ export default function TopKeywordsInsights({
             >
               <Text
                 strong
-                className="!w-5 shrink-0 text-center"
+                className="w-5! shrink-0! text-center!"
                 style={{ color: stat.categoryColor }}
               >
                 {idx + 1}
               </Text>
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <Text className="truncate !text-sm" title={stat.label}>
+                  <Text className="truncate! text-sm!" title={stat.label}>
                     {stat.label}
                   </Text>
                   <Tooltip
@@ -109,7 +109,7 @@ export default function TopKeywordsInsights({
                     <div className="flex gap-1">{categoryTags}</div>
                   </Tooltip>
                 </div>
-                <Text type="secondary" className="!text-[11px]">
+                <Text type="secondary" className="text-[11px]!">
                   {t("insights.keywordStat", {
                     count: stat.count,
                     total: formatIDR(stat.totalSpent, locale),
@@ -121,7 +121,7 @@ export default function TopKeywordsInsights({
                   val: stat.count,
                 })}
               >
-                <Text code className="!text-xs">
+                <Text code className="text-xs!">
                   {stat.count}x
                 </Text>
               </Tooltip>

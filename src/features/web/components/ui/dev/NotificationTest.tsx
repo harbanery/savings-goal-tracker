@@ -193,11 +193,11 @@ export default function NotificationTest() {
     <div className="fixed bottom-4 right-4 z-50 pointer-events-none">
       <Card
         size="small"
-        className="pointer-events-auto w-full max-w-xs shadow-lg"
+        className="pointer-events-auto! w-full! max-w-xs! shadow-lg!"
         styles={{ body: { padding: 12 } }}
         title={
           <div className="flex items-center gap-2">
-            <ExperimentOutlined className="text-indigo-500" />
+            <ExperimentOutlined className="text-indigo-500!" />
             <span className="text-xs font-semibold">{t("dev.title")}</span>
             <Tag color="orange" className="ml-auto! mr-0!">
               DEV
@@ -205,7 +205,7 @@ export default function NotificationTest() {
           </div>
         }
       >
-        <Space orientation="vertical" size={8} className="w-full">
+        <Space orientation="vertical" size={8} className="w-full!">
           {buttons.map((btn) => {
             const Icon = btn.icon;
             return (
@@ -228,7 +228,7 @@ export default function NotificationTest() {
             type="text"
             size="small"
             onClick={() => setVisible(false)}
-            className="text-xs opacity-50"
+            className="text-xs! opacity-50!"
           >
             {t("common.close")}
           </Button>

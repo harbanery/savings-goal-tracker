@@ -147,7 +147,7 @@ export default function NeedsView({ initialCategories }: Props) {
 
       <Card
         variant="borderless"
-        className="shadow-sm"
+        className="shadow-sm!"
         title={
           <span className="flex items-center gap-2">
             <AppstoreOutlined />

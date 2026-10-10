@@ -292,7 +292,7 @@ export default function TransactionTable({
   const searchBar = (
     <div className="flex flex-row flex-wrap items-center gap-2">
       <Input
-        prefix={<SearchOutlined className="text-zinc-400" />}
+        prefix={<SearchOutlined className="text-zinc-400!" />}
         placeholder={t("table.searchPlaceholder")}
         allowClear
         value={searchText}
@@ -323,7 +323,7 @@ export default function TransactionTable({
   return (
     <Card
       variant="borderless"
-      className="shadow-sm"
+      className="shadow-sm!"
       title={searchBar}
       extra={
         hasSelected ? (

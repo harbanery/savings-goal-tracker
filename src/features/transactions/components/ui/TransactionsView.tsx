@@ -208,7 +208,7 @@ export default function TransactionsView({
       {viewMode === "recurring" && (
         <Card
           variant="borderless"
-          className="shadow-sm"
+          className="shadow-sm!"
           title={<Text strong>{t("transactions.recurringTitle")}</Text>}
           styles={{ body: { padding: rules.length === 0 ? 0 : 16 } }}
         >
@@ -236,7 +236,7 @@ export default function TransactionsView({
                     >
                       {t(`form.type${rule.type.charAt(0)}${rule.type.slice(1).toLowerCase()}`)}
                     </Tag>
-                    <Text strong ellipsis className="max-w-40">
+                    <Text strong ellipsis className="max-w-40!">
                       {rule.name}
                     </Text>
                     <Text>{formatIDR(rule.amount, locale)}</Text>

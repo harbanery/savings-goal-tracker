@@ -305,7 +305,7 @@ export default function WalletsView({
     // Wadah tanpa dana sama sekali: belum bisa pengeluaran/transfer.
     if (budget <= 0) {
       return (
-        <Text type="secondary" style={{ fontSize: 12 }} className="mt-2 block">
+        <Text type="secondary" style={{ fontSize: 12 }} className="mt-2! block!">
           {t("finance.notAllocatedHint")}
         </Text>
       );
@@ -373,7 +373,7 @@ export default function WalletsView({
                 <Text
                   type="secondary"
                   style={{ fontSize: 11 }}
-                  className="truncate"
+                  className="truncate!"
                 >
                   {s.name}
                   <span className="ml-1 opacity-70">
@@ -441,7 +441,7 @@ export default function WalletsView({
       {/* Daftar wadah sebagai grid card (bukan table) — subkategori ada di
           halaman Kebutuhan. */}
       {visibleCategories.length === 0 ? (
-        <Card variant="borderless" className="shadow-sm">
+        <Card variant="borderless" className="shadow-sm!">
           <div className="flex items-center justify-center py-12">
             <Empty description={t("settings.categoriesEmpty")} />
           </div>
@@ -452,7 +452,7 @@ export default function WalletsView({
             <Card
               key={category.id}
               variant="borderless"
-              className="shadow-sm"
+              className="shadow-sm!"
               size="small"
               title={
                 <span className="flex min-w-0 items-center gap-2">
@@ -466,7 +466,7 @@ export default function WalletsView({
                       flexShrink: 0,
                     }}
                   />
-                  <Text strong ellipsis className="max-w-40">
+                  <Text strong ellipsis className="max-w-40!">
                     {category.name}
                   </Text>
                 </span>

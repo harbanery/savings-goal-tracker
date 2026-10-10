@@ -320,7 +320,7 @@ function TransactionForm({
       layout="vertical"
       onFinish={handleFinish}
       requiredMark={false}
-      className="mt-2"
+      className="mt-2!"
       initialValues={{
         type: editingTransaction?.type ?? "EXPENSE",
         name: editingTransaction?.name ?? "",
@@ -333,7 +333,7 @@ function TransactionForm({
         repeat: "once",
       }}
     >
-      <Form.Item name="type" className="mb-4">
+      <Form.Item name="type" className="mb-4!">
         <Segmented
           block
           // Jenis transaksi tidak bisa diubah saat edit (DROID.md).
@@ -416,7 +416,7 @@ function TransactionForm({
         ]}
       >
         <InputNumber<number>
-          className="w-full"
+          className="w-full!"
           style={{ width: "100%" }}
           addonBefore={locale === "en" ? "IDR" : "Rp"}
           min={1}
@@ -437,7 +437,7 @@ function TransactionForm({
         rules={[{ required: true, message: t("form.dateRequired") }]}
       >
         <DatePicker
-          className="w-full"
+          className="w-full!"
           inputReadOnly={isTouchDevice}
           showTime={{ format: "HH:mm" }}
           format="DD MMMM YYYY HH:mm"
@@ -463,8 +463,8 @@ function TransactionForm({
         </Form.Item>
       )}
       {showRepeat && selectedRepeat === "monthly" && (
-        <Typography.Text type="secondary" className="block -mt-3 mb-4" style={{ fontSize: 12 }}>
-          <RetweetOutlined className="mr-1" />
+        <Typography.Text type="secondary" className="block! -mt-3! mb-4!" style={{ fontSize: 12 }}>
+          <RetweetOutlined className="mr-1!" />
           {t("form.recurHint", {
             n: selectedDate?.date() ?? dayjs().date(),
           })}

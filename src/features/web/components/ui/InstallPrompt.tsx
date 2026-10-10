@@ -112,7 +112,7 @@ export default function InstallPrompt() {
     <div className="fixed inset-x-0 bottom-0 z-50 flex justify-center px-4 pb-4 pointer-events-none">
       <Card
         size="small"
-        className="pointer-events-auto w-full max-w-sm shadow-lg"
+        className="pointer-events-auto! w-full! max-w-sm! shadow-lg!"
         styles={{ body: { padding: 16 } }}
       >
         <div className="flex items-start gap-3">
