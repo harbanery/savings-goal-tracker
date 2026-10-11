@@ -6,6 +6,8 @@
 :root {
   --background: #f5f5f7;
   --foreground: #171717;
+  /* Sinkron dengan token antd colorBgLayout di ThemeProvider */
+  color-scheme: light;
 }
 
 @theme inline {
@@ -18,7 +20,9 @@
 
 .dark {
   --background: #0a0a0b;
-  --foreground: #ededed;
+  --foreground: #d9d9d9;
+  /* Sinkron dengan token antd colorBgLayout di ThemeProvider */
+  color-scheme: dark;
 }
 
 html,
@@ -33,6 +37,40 @@ body {
   transition:
     background-color 0.2s ease,
     color 0.2s ease;
+}
+
+/*
+ * Transisi pergantian tema terang/gelap pada permukaan struktural antd,
+ * selaras dengan transisi body di atas. Dicakup ke elemen struktural saja
+ * agar murah dan tidak mengganggu state hover komponen kecil.
+ */
+.ant-layout,
+.ant-layout-header,
+.ant-layout-sider,
+.ant-layout-content,
+.ant-layout-footer,
+.ant-card,
+.ant-table,
+.ant-table-cell,
+.ant-pagination,
+.ant-modal .ant-modal-content,
+.ant-modal .ant-modal-header,
+.ant-modal .ant-modal-footer,
+.ant-select-dropdown,
+.ant-dropdown .ant-dropdown-menu {
+  transition:
+    background-color 0.2s ease,
+    border-color 0.2s ease,
+    color 0.2s ease;
+}
+
+/* Warna seleksi teks mengikuti tema (kontras di mode gelap) */
+::selection {
+  background: rgb(79 70 229 / 0.25);
+}
+.dark ::selection {
+  background: rgb(99 102 241 / 0.45);
+  color: #ffffff;
 }
 
 /*

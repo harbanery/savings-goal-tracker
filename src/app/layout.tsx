@@ -1,24 +1,30 @@
 import "@/assets/global/index.css";
 import { AntdRegistry } from "@ant-design/nextjs-registry";
 import type { Metadata, Viewport } from "next";
-import { ThemeProvider } from "@/components/theme/ThemeProvider";
-import { LocaleProvider } from "@/components/locale/LocaleProvider";
-import { CycleConfigProvider } from "@/components/config/CycleConfigProvider";
-import Footer from "@/components/footer";
-import InstallPrompt from "@/components/pwa/InstallPrompt";
-import NotificationTest from "@/components/dev/NotificationTest";
-import { VercelCompatibleComponents } from "@/components/vercel";
+import { cookies } from "next/headers";
+import { ThemeProvider } from "@/components/ui/theme/ThemeProvider";
+import { LocaleProvider } from "@/components/i18n/LocaleProvider";
+import InstallPrompt from "@/features/web/components/ui/InstallPrompt";
+import NotificationTest from "@/features/web/components/ui/dev/NotificationTest";
+import { VercelCompatibleComponents } from "@/components/ui/vercel";
 import { geistMono, geistSans } from "@/utils/fonts/next-google";
 import {
   BASE_URL,
+  LOCALE_COOKIE,
   META_APP,
   META_DESCRIPTION,
   META_TITLE,
-} from "@/config/variables";
+  THEME_COOKIE,
+} from "@/utils/config/variables";
 import { neueHaasDisplay } from "@/utils/fonts/next-local";
 
 export const metadata: Metadata = {
-  title: META_TITLE,
+  // Title template: halaman cukup set string title ("Budget") dan otomatis
+  // menjadi "Budget | Savings Goal Tracker"; tanpa title pakai default.
+  title: {
+    default: META_TITLE,
+    template: `%s | ${META_APP}`,
+  },
   applicationName: META_APP,
   ...(META_DESCRIPTION && { description: META_DESCRIPTION }),
   metadataBase: new URL(BASE_URL),
@@ -108,28 +114,44 @@ export const viewport: Viewport = {
   ],
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  // Tema dari cookie agar SSR antd menghasilkan style tema yang benar
+  // (dark mode tidak flash putih). localStorage tidak bisa dibaca server.
+  const cookieStore = await cookies();
+  const cookieTheme = cookieStore.get(THEME_COOKIE)?.value;
+  const initialMode = cookieTheme === "dark" ? "dark" : "light";
+  // Locale juga dari cookie (ditulis LocaleProvider): atribut <html lang>
+  // langsung benar saat SSR — tidak menunggu hidrasi client.
+  const cookieLocale = cookieStore.get(LOCALE_COOKIE)?.value;
+  const htmlLang = cookieLocale === "en" ? "en" : "id";
+
   return (
     <html
-      lang="id"
+      lang={htmlLang}
       suppressHydrationWarning
       className={`${geistSans.variable} ${geistMono.variable} ${neueHaasDisplay.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
+        {/* Set class `dark` sebelum hidrasi agar tidak ada flash tema terang
+            (FOUC) bagi pengguna dark mode. Harus sinkron dengan STORAGE_KEY
+            dan logika preferensi sistem di ThemeProvider. Cookie `sgt_theme`
+            ikut ditulis agar SSR berikutnya memakai tema yang sama. */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{var s=localStorage.getItem("savings-goal-tracker:theme");var d=s==="dark"||((s!=="light")&&window.matchMedia("(prefers-color-scheme: dark)").matches);var r=document.documentElement;if(d){r.classList.add("dark");r.style.colorScheme="dark";}else{r.style.colorScheme="light";}document.cookie="sgt_theme="+(d?"dark":"light")+"; path=/; max-age=31536000; samesite=lax";}catch(e){}})();`,
+          }}
+        />
         <AntdRegistry>
           <LocaleProvider>
-            <CycleConfigProvider>
-              <ThemeProvider>
-                {children}
-                <Footer />
-                <InstallPrompt />
-                <NotificationTest />
-              </ThemeProvider>
-            </CycleConfigProvider>
+            <ThemeProvider initialMode={initialMode}>
+              {children}
+              <InstallPrompt />
+              <NotificationTest />
+            </ThemeProvider>
           </LocaleProvider>
         </AntdRegistry>
         <VercelCompatibleComponents.Analytics />

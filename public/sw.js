@@ -134,7 +134,7 @@ self.addEventListener("pushsubscriptionchange", (event) => {
       if (!event.oldSubscription) return;
       // Hapus subscription lama di server.
       try {
-        await fetch("/api/push/unsubscribe", {
+        await fetch("/api/web/push/unsubscribe", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ endpoint: event.oldSubscription.endpoint }),
@@ -146,7 +146,7 @@ self.addEventListener("pushsubscriptionchange", (event) => {
       if (!event.newSubscription) return;
       // Daftarkan subscription baru ke server.
       try {
-        await fetch("/api/push/subscribe", {
+        await fetch("/api/web/push/subscribe", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(event.newSubscription),
