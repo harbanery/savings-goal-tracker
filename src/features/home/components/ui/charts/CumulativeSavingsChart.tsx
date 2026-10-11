@@ -155,7 +155,7 @@ export default function CumulativeSavingsChart({ cycles }: Props) {
   return (
     <Card
       variant="borderless"
-      className="shadow-sm"
+      className="shadow-sm!"
       style={{ height: "100%" }}
       styles={{ body: { padding: 16, height: "100%" } }}
       size="small"

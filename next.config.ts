@@ -39,7 +39,12 @@ const securityHeaders = [
   // CSP frame-ancestors (yang sudah menset 'none' di atas).
   { key: "X-Frame-Options", value: "DENY" },
   // Paksa HTTPS untuk semua request berikutnya (termasuk subdomain).
-  { key: "Strict-Transport-Security", value: "max-age=63072000; includeSubDomains" },
+  // `preload` menandakan situs siap masuk daftar preload browser
+  // (hstspreload.org — syarat: max-age >= 2 tahun + includeSubDomains).
+  {
+    key: "Strict-Transport-Security",
+    value: "max-age=63072000; includeSubDomains; preload",
+  },
   // Nonaktifkan API perangkat yang tidak dipakai aplikasi. Notifications
   // sengaja TIDAK dibatasi karena app memakai Web Push (NotificationBell).
   {
@@ -48,7 +53,14 @@ const securityHeaders = [
   },
   { key: "X-Content-Type-Options", value: "nosniff" },
   { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
-  { key: "X-DNS-Prefetch-Control", value: "on" },
+  // Isolasi browsing context terhadap cross-origin opener (mitigasi
+  // XS-Leaks). Aman untuk flow OAuth ini karena login Google memakai
+  // redirect penuh (window.location.assign), bukan popup window.open.
+  { key: "Cross-Origin-Opener-Policy", value: "same-origin" },
+  // Matikan DNS prefetch eksplisit (rekomendasi B2) — Privacy:
+  // browser tidak membocorkan domain eksternal yang akan dihubungi
+  // (satu-satunya beacon eksternal: Vercel Analytics).
+  { key: "X-DNS-Prefetch-Control", value: "off" },
   { key: "Content-Security-Policy", value: cspHeader },
 ];
 

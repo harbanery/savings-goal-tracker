@@ -180,9 +180,9 @@ export default function StatsCards({ stats, allTime, cycle }: Readonly<Props>) {
           deskripsi), gaya referensi Frame 427320104.svg */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {primary.map((card) => (
-          <Card key={card.key} size="small" className="shadow-sm">
+          <Card key={card.key} size="small" className="shadow-sm!">
             <IconChip icon={card.icon} color={card.color} />
-            <Text type="secondary" className="block text-sm">
+            <Text type="secondary" className="block! text-sm!">
               {card.title}
             </Text>
             <div
@@ -192,7 +192,7 @@ export default function StatsCards({ stats, allTime, cycle }: Readonly<Props>) {
             >
               {card.value}
             </div>
-            <Text type="secondary" className="mt-1 block text-xs">
+            <Text type="secondary" className="mt-1! block! text-xs!">
               {card.desc}
             </Text>
           </Card>
@@ -203,13 +203,13 @@ export default function StatsCards({ stats, allTime, cycle }: Readonly<Props>) {
       <Divider className="my-4!" />
 
       {/* Kartu mini — satu judul "Pencapaian Siklus Ini" untuk semua kartu */}
-      <Text strong className="mb-2 block">
+      <Text strong className="mb-2! block!">
         {t("stats.cycleAchievement")}
       </Text>
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
         {mini.map((card) => (
-          <Card key={card.key} size="small" className="shadow-sm">
-            <Text type="secondary" className="block text-xs">
+          <Card key={card.key} size="small" className="shadow-sm!">
+            <Text type="secondary" className="block! text-xs!">
               {card.label}
             </Text>
             <div

@@ -179,7 +179,7 @@ export default function DashboardView({
         <div className="lg:col-span-5">
           <Card
             variant="borderless"
-            className="shadow-sm"
+            className="shadow-sm!"
             style={{ height: "100%" }}
             styles={{ body: { padding: 16, height: "100%" } }}
             size="small"

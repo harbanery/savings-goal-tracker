@@ -69,12 +69,12 @@ export default function CategoryBreakdownList({
                 />
                 <div className="min-w-0 flex-1">
                   <div className="flex items-baseline justify-between gap-2">
-                    <Text ellipsis className="min-w-0 text-sm">
+                    <Text ellipsis className="min-w-0! text-sm!">
                       {cat.name}
                     </Text>
                     <Text
                       strong
-                      className="shrink-0 text-sm tabular-nums"
+                      className="shrink-0! text-sm! tabular-nums!"
                     >
                       {formatIDR(cat.spent, locale)}
                     </Text>
@@ -94,7 +94,7 @@ export default function CategoryBreakdownList({
                     <Text
                       type="secondary"
                       style={{ fontSize: 11 }}
-                      className="shrink-0"
+                      className="shrink-0!"
                     >
                       {cat.transactionCount}x
                     </Text>

@@ -186,7 +186,7 @@ export default function TargetsView({
       </div>
 
       {targets.length === 0 ? (
-        <Card variant="borderless" className="shadow-sm">
+        <Card variant="borderless" className="shadow-sm!">
           <div className="flex items-center justify-center py-12">
             <Empty description={t("finance.targetsEmpty")} />
           </div>
@@ -200,11 +200,11 @@ export default function TargetsView({
               <Card
                 key={target.id}
                 variant="borderless"
-                className="shadow-sm h-full"
+                className="shadow-sm! h-full!"
                 title={
                   <span className="flex items-center gap-2">
                     <AimOutlined />
-                    <Text strong ellipsis className="max-w-45">
+                    <Text strong ellipsis className="max-w-45!">
                       {target.name}
                     </Text>
                   </span>
@@ -374,7 +374,7 @@ export default function TargetsView({
             rules={[]}
           >
             <DatePicker
-              className="w-full"
+              className="w-full!"
               format="DD MMM YYYY"
               placeholder={t("form.datePlaceholder")}
             />

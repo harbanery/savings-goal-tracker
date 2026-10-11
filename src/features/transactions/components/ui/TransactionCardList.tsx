@@ -40,7 +40,7 @@ export default function TransactionCardList({
   const { t, locale } = useLocale();
   if (transactions.length === 0) {
     return (
-      <Card variant="borderless" className="shadow-sm">
+      <Card variant="borderless" className="shadow-sm!">
         <Empty description={t("table.empty")} />
       </Card>
     );
@@ -57,7 +57,7 @@ export default function TransactionCardList({
             key={tr.id}
             size="small"
             variant="borderless"
-            className="shadow-sm"
+            className="shadow-sm!"
             styles={{ body: { padding: "10px 14px" } }}
           >
             <div className="flex items-center justify-between gap-2">
@@ -65,7 +65,7 @@ export default function TransactionCardList({
                 <div
                   className={`flex items-center gap-2 ${tr.note ? "pb-2" : "pb-1"}`}
                 >
-                  <Text strong style={{ fontSize: 13 }} className="truncate">
+                  <Text strong style={{ fontSize: 13 }} className="truncate!">
                     {tr.name}
                   </Text>
                   {tr.recurringId && (
@@ -91,7 +91,7 @@ export default function TransactionCardList({
                   <Text
                     type="secondary"
                     style={{ fontSize: 11 }}
-                    className="block truncate"
+                    className="block! truncate!"
                   >
                     {tr.note}
                   </Text>

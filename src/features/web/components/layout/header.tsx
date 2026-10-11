@@ -110,7 +110,7 @@ export default function HeaderLayout({
           <Button
             type="text"
             shape={isMobile ? "circle" : "default"}
-            className="flex items-center gap-2"
+            className="flex! items-center! gap-2!"
             icon={
               user?.avatar ? (
                 <Avatar size={26} src={user.avatar} />
@@ -120,7 +120,7 @@ export default function HeaderLayout({
             }
           >
             {user && !isMobile && (
-              <Text ellipsis className="max-w-30">
+              <Text ellipsis className="max-w-30!">
                 {user.name}
               </Text>
             )}
