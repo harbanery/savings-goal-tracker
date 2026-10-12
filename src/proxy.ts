@@ -1,5 +1,10 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { SESSION_COOKIE } from "@/utils/config/variables";
+import {
+  matchRateLimitRule,
+  rateLimit,
+  type RateLimitRule,
+} from "@/utils/server/rateLimit";
 
 /**
  * Proteksi rute (Next.js 16: proxy.ts menggantikan middleware.ts).
@@ -7,7 +12,7 @@ import { SESSION_COOKIE } from "@/utils/config/variables";
  * di route handler / server component via getCurrentUser().
  */
 
-const PRIVATE_PAGES = [
+const PRIVATE_PAGES = new Set([
   "/",
   "/transactions",
   "/finance",
@@ -15,11 +20,35 @@ const PRIVATE_PAGES = [
   "/budget",
   "/target",
   "/reports",
-];
+]);
 const PRIVATE_API_PREFIXES = ["/api/web/push"];
+
+/**
+ * Rate limit endpoint sensitif (rekomendasi B3): 10 req/menit untuk flow
+ * Google OAuth (consent spam), 30 req/menit untuk push subscription
+ * (flood subscribe/unsubscribe). Dihitung per IP, fixed window — lihat
+ * src/utils/server/rateLimit.ts.
+ */
+const RATE_LIMIT_RULES: readonly RateLimitRule[] = [
+  { prefix: "/api/web/auth/google/", limit: 10, windowMs: 60_000 },
+  { prefix: "/api/web/push/", limit: 30, windowMs: 60_000 },
+];
 
 function hasSession(request: NextRequest): boolean {
   return Boolean(request.cookies.get(SESSION_COOKIE)?.value);
+}
+
+/**
+ * IP klien dari header proxy terbalik (Vercel selalu menset x-forwarded-for
+ * dan menimpa nilai dari client). Ambil entri pertama (paling kiri = klien).
+ */
+function getClientIp(request: NextRequest): string {
+  const forwarded = request.headers.get("x-forwarded-for");
+  if (forwarded) {
+    const first = forwarded.split(",")[0]?.trim();
+    if (first) return first;
+  }
+  return request.headers.get("x-real-ip")?.trim() || "unknown";
 }
 
 export function proxy(request: NextRequest) {
@@ -33,6 +62,26 @@ export function proxy(request: NextRequest) {
     const requestOrigin = request.headers.get("origin");
     if (requestOrigin && requestOrigin !== origin) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+  }
+
+  // Rate limit endpoint sensitif — wajib sebelum early-return auth di bawah
+  // agar /api/web/auth/google/* tetap tercakup.
+  const rule = matchRateLimitRule(pathname, RATE_LIMIT_RULES);
+  if (rule) {
+    const { allowed, retryAfterSeconds } = rateLimit(
+      `${rule.prefix}:${getClientIp(request)}`,
+      rule.limit,
+      rule.windowMs,
+    );
+    if (!allowed) {
+      return NextResponse.json(
+        { error: "Too many requests" },
+        {
+          status: 429,
+          headers: { "Retry-After": String(retryAfterSeconds) },
+        },
+      );
     }
   }
 
@@ -52,7 +101,7 @@ export function proxy(request: NextRequest) {
   }
 
   // Halaman privat → redirect login bila belum ada sesi.
-  if (PRIVATE_PAGES.includes(pathname)) {
+  if (PRIVATE_PAGES.has(pathname)) {
     if (!hasSession(request)) {
       const loginUrl = new URL("/login", origin);
       loginUrl.searchParams.set("redirect", pathname);
