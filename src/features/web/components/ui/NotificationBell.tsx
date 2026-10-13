@@ -6,6 +6,7 @@ import { useCallback, useEffect, useState } from "react";
 import { VAPID_PUBLIC_KEY } from "@/utils/config/variables";
 import { useLocale } from "@/components/i18n/LocaleProvider";
 import { useMounted } from "@/hooks/useMounted";
+import { trackEvent } from "@/components/ui/vercel/track";
 
 /** URL base untuk API calls. */
 const API_BASE = "/api/web/push";
@@ -94,6 +95,7 @@ export default function NotificationBell() {
 
       if (!res.ok) throw new Error("Failed to subscribe on server");
       setSubscribed(true);
+      trackEvent("push_subscribed");
       message.success(t("notif.enabled"));
     } catch (err) {
       console.error("[NotificationBell] subscribe error:", err);
@@ -118,6 +120,7 @@ export default function NotificationBell() {
         });
       }
       setSubscribed(false);
+      trackEvent("push_unsubscribed");
       message.info(t("notif.disabled"));
     } catch (err) {
       console.error("[NotificationBell] unsubscribe error:", err);

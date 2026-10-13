@@ -17,6 +17,7 @@ import {
 } from "@/features/transactions/utils/csv";
 import type { BudgetCategory, Transaction } from "@/features/web/types";
 import { useLocale } from "@/components/i18n/LocaleProvider";
+import { trackEvent } from "@/components/ui/vercel/track";
 
 interface Props {
   transactions: Transaction[];
@@ -57,6 +58,7 @@ export default function ImportExportButtons({
   /** Download template CSV kosong (dengan contoh). */
   function handleDownloadTemplate() {
     downloadCsv(generateTemplateCsv(categories), "template-transaksi.csv");
+    trackEvent("csv_template_downloaded");
   }
 
   /** Export transaksi siklus aktif ke CSV. */
@@ -69,6 +71,7 @@ export default function ImportExportButtons({
       generateTransactionsCsv(transactions, categories),
       "transaksi.csv",
     );
+    trackEvent("csv_exported", { count: transactions.length });
   }
 
   /** Buka file dialog untuk import CSV (button utama). */
@@ -106,6 +109,10 @@ export default function ImportExportButtons({
     try {
       const result = await importTransactionsAction(valid);
       if (result.imported > 0) {
+        trackEvent("csv_imported", {
+          count: result.imported,
+          skipped: result.errors.length,
+        });
         message.success(
           result.errors.length > 0
             ? t("io.importedPartial", {

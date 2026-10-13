@@ -5,6 +5,7 @@ import { Button, Card } from "antd";
 import { useEffect, useState } from "react";
 import { useLocale } from "@/components/i18n/LocaleProvider";
 import { useMounted } from "@/hooks/useMounted";
+import { trackEvent } from "@/components/ui/vercel/track";
 
 /**
  * Prompt pemasangan PWA.
@@ -86,6 +87,7 @@ export default function InstallPrompt() {
   }, [isClient]);
 
   const handleLater = () => {
+    trackEvent("pwa_install_dismissed");
     try {
       localStorage.setItem(DISMISS_KEY, "1");
     } catch {
@@ -100,7 +102,10 @@ export default function InstallPrompt() {
       return;
     }
     await deferred.prompt();
-    await deferred.userChoice;
+    const { outcome } = await deferred.userChoice;
+    trackEvent(
+      outcome === "accepted" ? "pwa_install_accepted" : "pwa_install_dismissed",
+    );
     setDeferred(null);
   };
 

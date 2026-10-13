@@ -43,6 +43,7 @@ import {
   updateTransactionAction,
 } from "@/utils/server/actions";
 import { formatIDR } from "@/utils/helpers";
+import { trackEvent } from "@/components/ui/vercel/track";
 
 const TOUCH_QUERY = "(pointer: coarse)";
 
@@ -259,8 +260,14 @@ function TransactionForm({
 
       if (isEdit && editingTransaction) {
         await updateTransactionAction(editingTransaction.id, input, force);
+        trackEvent("transaction_updated");
       } else {
         await createTransactionAction(input, { force, recurring });
+        // Nominal transaksi sengaja tidak dikirim (privasi) — hanya jenisnya.
+        trackEvent("transaction_created", {
+          type: input.type.toLowerCase(),
+          recurring,
+        });
       }
       onSaved();
       onClosed();

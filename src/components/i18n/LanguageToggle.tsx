@@ -4,6 +4,7 @@ import { GlobalOutlined } from "@ant-design/icons";
 import { Button, Dropdown, type MenuProps } from "antd";
 import { useLocale } from "./LocaleProvider";
 import { LOCALES, LOCALE_LABELS } from "./translations";
+import { trackEvent } from "@/components/ui/vercel/track";
 
 export default function LanguageToggle() {
   const { setLocale, t } = useLocale();
@@ -11,7 +12,10 @@ export default function LanguageToggle() {
   const items: MenuProps["items"] = LOCALES.map((l) => ({
     key: l,
     label: LOCALE_LABELS[l],
-    onClick: () => setLocale(l),
+    onClick: () => {
+      trackEvent("locale_changed", { locale: l });
+      setLocale(l);
+    },
   }));
 
   return (

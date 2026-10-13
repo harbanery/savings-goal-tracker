@@ -2,6 +2,7 @@
 
 import { Button, Tooltip } from "antd";
 import { useLocale } from "@/components/i18n/LocaleProvider";
+import { trackEvent } from "@/components/ui/vercel/track";
 
 /** Ikon Google (SVG inline, tanpa library tambahan). */
 function GoogleIcon() {
@@ -53,7 +54,10 @@ export default function GoogleButton({ enabled, redirectTo = "/" }: Props) {
       block
       disabled={!enabled}
       icon={<GoogleIcon />}
-      onClick={() => window.location.assign(href)}
+      onClick={() => {
+        trackEvent("login_google_clicked");
+        window.location.assign(href);
+      }}
     >
       {t("auth.googleBtn")}
     </Button>
