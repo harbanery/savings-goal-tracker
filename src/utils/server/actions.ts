@@ -114,6 +114,11 @@ export async function getCycleTransactionsAction(
 /**
  * Fetch transaksi untuk beberapa siklus terakhir (untuk chart historis).
  * Mengembalikan map label siklus -> daftar transaksi.
+ *
+ * A8 (rekomendasi_feature.md): seluruh rentang historis diambil dengan
+ * 1 query (sebelumnya 1 query per siklus — 6 siklus = 6 query), lalu
+ * didistribusikan ke masing-masing siklus di memori. Materialisasi
+ * aturan berulang tetap per siklus (idempoten, operasi tulis).
  */
 export async function getHistoricalTransactionsAction(
   endCycle: CycleInfo,
@@ -121,28 +126,44 @@ export async function getHistoricalTransactionsAction(
 ): Promise<Record<string, Transaction[]>> {
   const userId = await requireUserId();
   const result: Record<string, Transaction[]> = {};
-  let current = endCycle;
+  if (count <= 0) return result;
+
   const cycles: CycleInfo[] = [];
+  let current = endCycle;
   for (let i = 0; i < count; i++) {
     cycles.push(current);
     current = shiftCycle(current, -1);
   }
-  cycles.reverse();
+  cycles.reverse(); // terlama -> terbaru
 
   await Promise.all(
-    cycles.map(async (c) => {
-      try {
-        await materializeRecurringForCycle(userId, c);
-        result[c.key] = await getTransactionsInRange(
-          userId,
-          c.startDate,
-          c.endDate,
-        );
-      } catch {
-        result[c.key] = [];
-      }
-    }),
+    cycles.map((c) =>
+      materializeRecurringForCycle(userId, c).catch(() => undefined),
+    ),
   );
+
+  // 1 query untuk seluruh rentang (siklus terlama s/d endCycle).
+  const oldest = cycles[0];
+  const newest = cycles[cycles.length - 1];
+  if (!oldest || !newest) return result;
+  const rows = await getTransactionsInRange(
+    userId,
+    oldest.startDate,
+    newest.endDate,
+  );
+
+  // Distribusi per siklus di memori (bandingkan instan tanggal yang sama
+  // dengan saat query per siklus: gte startDate, lte endDate).
+  for (const c of cycles) result[c.key] = [];
+  for (const row of rows) {
+    const date = new Date(row.date);
+    for (const c of cycles) {
+      if (date >= c.startDate && date <= c.endDate) {
+        result[c.key].push(row);
+        break;
+      }
+    }
+  }
 
   return result;
 }
