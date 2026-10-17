@@ -54,13 +54,21 @@ function getClientIp(request: NextRequest): string {
 export function proxy(request: NextRequest) {
   const { pathname, origin } = request.nextUrl;
 
-  // Tolak mutasi API lintas situs (Origin ≠ Host).
+  // Tolak mutasi API lintas situs (Origin ≠ Host). Fallback untuk request
+  // tanpa Origin (rekomendasi B4): browser modern selalu mengirim
+  // Sec-Fetch-Site pada fetch() — tolak bila konteksnya lintas situs.
   if (
     pathname.startsWith("/api/") &&
     !["GET", "HEAD", "OPTIONS"].includes(request.method)
   ) {
     const requestOrigin = request.headers.get("origin");
     if (requestOrigin && requestOrigin !== origin) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+    if (
+      !requestOrigin &&
+      request.headers.get("sec-fetch-site") === "cross-site"
+    ) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
   }
