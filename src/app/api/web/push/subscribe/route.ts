@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
+import { isAllowedPushEndpoint } from "@/lib/web-push";
 import { upsertSubscription } from "@/services/push";
 
 export const runtime = "nodejs";
@@ -21,6 +22,15 @@ export async function POST(request: Request) {
     if (!endpoint || !keys?.p256dh || !keys?.auth) {
       return NextResponse.json(
         { error: "Missing endpoint or keys" },
+        { status: 400 },
+      );
+    }
+
+    // B5: endpoint wajib https + hostname layanan push resmi — mencegah
+    // server dipakai sebagai relay request ke host arbitrer.
+    if (!isAllowedPushEndpoint(endpoint)) {
+      return NextResponse.json(
+        { error: "Invalid push endpoint" },
         { status: 400 },
       );
     }
