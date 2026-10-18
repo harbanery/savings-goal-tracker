@@ -1,10 +1,7 @@
 import { createHash } from "node:crypto";
 import { cache } from "react";
 import { prisma } from "@/lib/prisma";
-import {
-  DEFAULT_CYCLE_START_DAY,
-  DEFAULT_SAVINGS_INITIAL,
-} from "@/utils/config/variables";
+import { DEFAULT_CYCLE_START_DAY } from "@/utils/config/variables";
 
 /**
  * Data user: sesi, settings, dan defaults saat register pertama.
@@ -51,7 +48,7 @@ export const ensureUserDefaults = cache(async (userId: string): Promise<void> =>
     create: {
       userId,
       cycleStartDay: DEFAULT_CYCLE_START_DAY,
-      savingsInitial: DEFAULT_SAVINGS_INITIAL,
+      // Saldo awal selalu 0 (default kolom) — tanpa seed env.
     },
   });
 

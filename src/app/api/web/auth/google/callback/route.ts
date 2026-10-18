@@ -3,7 +3,10 @@ import { applySessionCookie, createSession } from "@/lib/auth";
 import { exchangeGoogleCode } from "@/lib/google";
 import { prisma } from "@/lib/prisma";
 import { ensureUserDefaults } from "@/services/user";
-import { OAUTH_STATE_COOKIE } from "@/utils/config/variables";
+import {
+  MAX_REGISTERED_USERS,
+  OAUTH_STATE_COOKIE,
+} from "@/utils/config/variables";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -81,6 +84,18 @@ export async function GET(request: NextRequest) {
         },
       });
     } else {
+      // Kuota pendaftaran (DROID.md: aplikasi pribadi, maks 5 user).
+      // Cek count tepat sebelum create; race antar dua register bersamaan
+      // masih mungkin (personal app — risiko diterima).
+      const userCount = await prisma.user.count();
+      if (userCount >= MAX_REGISTERED_USERS) {
+        console.error(
+          "[google/callback] registrasi ditolak: kuota",
+          MAX_REGISTERED_USERS,
+          "user tercapai",
+        );
+        return NextResponse.redirect(loginUrl("googleError=limit"));
+      }
       // Register otomatis: email Google sudah terverifikasi.
       user = await prisma.user.create({
         data: {

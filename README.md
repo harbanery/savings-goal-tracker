@@ -118,9 +118,6 @@ To get a local copy up and running follow these simple steps.
    NEXT_PUBLIC_URL="http://localhost:3000"
    NEXT_PUBLIC_API_BASE_URL="http://localhost:3000/api"
 
-   # Budget config - initial balance per cycle (top-up on the 25th)
-   NEXT_PUBLIC_SAVINGS_INITIAL=0
-
    # PostgreSQL database connection URL
    DATABASE_URL="postgresql://user:password@host:port/dbname"
 

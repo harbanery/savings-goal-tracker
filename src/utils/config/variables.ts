@@ -48,15 +48,22 @@ export const SESSION_TTL_HOURS = 720; // 30 hari — login awet untuk app harian
 export const MAX_SESSIONS_PER_USER = 5;
 
 // ---------------------------------------------------------------------------
-// Default data user baru (dipakai saat register Google pertama kali;
-// nilai ini hanya seed awal — selanjutnya dikontrol user dari halaman Settings)
+// Default data user baru (dipakai saat register Google pertama kali)
 // ---------------------------------------------------------------------------
-/** Saldo awal default per siklus untuk user baru. */
-export const DEFAULT_SAVINGS_INITIAL: number = Number(
-  process.env.NEXT_PUBLIC_SAVINGS_INITIAL ?? "0",
-);
+/**
+ * Saldo awal user baru SELALU 0 (DROID.md: NEXT_PUBLIC_SAVINGS_INITIAL sudah
+ * dihapus — saldo tumbuh murni dari transaksi yang dicatat). Kolom
+ * `savings_initial` di DB tetap ada (default 0) demi kompatibilitas data.
+ */
 /** Tanggal mulai siklus default (1-28) untuk user baru. */
 export const DEFAULT_CYCLE_START_DAY = 25;
+
+/**
+ * Kuota pendaftaran akun (DROID.md: aplikasi pribadi — maksimal 5 user).
+ * Login Google dari akun baru ditolak bila kuota sudah tercapai; akun
+ * yang sudah terdaftar tetap bisa login.
+ */
+export const MAX_REGISTERED_USERS = 5;
 
 // Web Push (VAPID keys untuk push notifications)
 export const VAPID_PUBLIC_KEY: string =

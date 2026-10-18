@@ -12,6 +12,7 @@ const ERROR_KEYS: Record<string, string> = {
   exchange: "auth.errorExchange",
   unverified: "auth.errorUnverified",
   google: "auth.errorGoogle",
+  limit: "auth.errorLimit",
   default: "auth.errorDefault",
 };
 

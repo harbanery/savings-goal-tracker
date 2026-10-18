@@ -221,6 +221,8 @@ const id: TranslationDict = {
   "auth.errorExchange": "Gagal memverifikasi akun Google. Coba lagi.",
   "auth.errorUnverified": "Email Google Anda belum terverifikasi.",
   "auth.errorGoogle": "Login Google dibatalkan atau gagal.",
+  "auth.errorLimit":
+    "Pendaftaran baru ditutup — kuota 5 akun sudah tercapai.",
   "auth.errorDefault": "Gagal login. Coba lagi.",
 
   // Metadata halaman (title/description <head> — dipakai buildPageMetadata)
@@ -565,6 +567,8 @@ const en: TranslationDict = {
   "auth.errorExchange": "Failed to verify your Google account. Try again.",
   "auth.errorUnverified": "Your Google email is not verified.",
   "auth.errorGoogle": "Google sign-in was cancelled or failed.",
+  "auth.errorLimit":
+    "New registrations are closed — the 5-account quota has been reached.",
   "auth.errorDefault": "Login failed. Please try again.",
 
   // Page metadata (title/description <head> — used by buildPageMetadata)

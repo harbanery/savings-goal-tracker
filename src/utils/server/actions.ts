@@ -405,7 +405,6 @@ export async function importTransactionsAction(
 
 export async function updateSettingsAction(data: {
   cycleStartDay?: number;
-  savingsInitial?: number;
   protectedSavings?: number;
 }): Promise<UserSettings> {
   const userId = await requireUserId();

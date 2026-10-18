@@ -269,12 +269,12 @@ export async function deleteManyTransactions(
 // Settings
 // ---------------------------------------------------------------------------
 
-/** Perbarui settings user (cycle start day / saldo awal / tabungan dilindungi). */
+/** Perbarui settings user (cycle start day / tabungan dilindungi).
+ *  Saldo awal tidak bisa di-set — selalu 0 (lihat DROID.md). */
 export async function updateUserSettings(
   userId: string,
   data: {
     cycleStartDay?: number;
-    savingsInitial?: number;
     protectedSavings?: number;
   },
 ): Promise<UserSettings> {
@@ -284,14 +284,6 @@ export async function updateUserSettings(
       throw new Error("Tanggal mulai siklus harus 1-28.");
     }
     patch.cycleStartDay = data.cycleStartDay;
-  }
-  if (data.savingsInitial !== undefined) {
-    if (!Number.isFinite(data.savingsInitial) || data.savingsInitial < 0) {
-      throw new Error("Saldo awal tidak valid.");
-    }
-    patch.savingsInitial = new Prisma.Decimal(
-      Math.round(data.savingsInitial),
-    );
   }
   if (data.protectedSavings !== undefined) {
     if (!Number.isFinite(data.protectedSavings) || data.protectedSavings < 0) {
@@ -308,7 +300,6 @@ export async function updateUserSettings(
       create: {
         userId,
         cycleStartDay: data.cycleStartDay ?? 25,
-        savingsInitial: Math.round(data.savingsInitial ?? 0),
         protectedSavings: Math.round(data.protectedSavings ?? 0),
       },
     }),
