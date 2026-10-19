@@ -114,6 +114,13 @@ const id: TranslationDict = {
   "chart.dailySpendingTitle": "Pengeluaran Harian per Tanggal",
   "chart.topCategories": "Top {n}",
 
+  // Dashboard (rekomendasi D1)
+  "dashboard.firstTransaction": "Catat transaksi pertama",
+  "dashboard.recentTitle": "Transaksi Terakhir",
+  "dashboard.viewAll": "Lihat semua",
+  "dashboard.rangeLabel": "Rentang historis",
+  "dashboard.rangeCycles": "{n} siklus",
+
   // Import / Export
   "io.template": "Template",
   "io.export": "Export",
@@ -463,6 +470,13 @@ const en: TranslationDict = {
   "chart.dailySpending": "Daily Spending",
   "chart.dailySpendingTitle": "Daily Spending by Date",
   "chart.topCategories": "Top {n}",
+
+  // Dashboard (rekomendasi D1)
+  "dashboard.firstTransaction": "Record first transaction",
+  "dashboard.recentTitle": "Recent Transactions",
+  "dashboard.viewAll": "View all",
+  "dashboard.rangeLabel": "Historical range",
+  "dashboard.rangeCycles": "{n} cycles",
 
   "io.template": "Template",
   "io.export": "Export",

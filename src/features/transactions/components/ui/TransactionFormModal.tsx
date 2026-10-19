@@ -192,40 +192,46 @@ function TransactionForm({
     : (units[0]?.id ?? "");
 
   /** Opsi unit pencatatan: pengeluaran memakai subkategori (kebutuhan);
-   *  pemasukan & transfer cukup di level wadah saja. */
+   *  pemasukan & transfer cukup di level wadah saja.
+   *  Aturan (DROID.md): wadah tanpa subkategori → klik wadahnya sendiri;
+   *  wadah dengan subkategori → klik subkategorinya. */
   const unitOptions = useMemo<
     NonNullable<ComponentProps<typeof Select>["options"]>
   >(() => {
     if (selectedType === "EXPENSE") {
-      return categories.map((c) => ({
-        label: (
-          <span className="flex items-center gap-1.5">
-            <span
-              style={{
-                display: "inline-block",
-                width: 8,
-                height: 8,
-                borderRadius: "50%",
-                background: c.color,
-              }}
-            />
-            {c.name}
-          </span>
-        ),
-        title: c.name,
-        options: (c.subcategories.length > 0
-          ? c.subcategories.map((s) => ({
-              value: s.id,
-              label: `${s.name} · ${c.name}`,
-            }))
-          : [
+      return categories.flatMap(
+        (c): NonNullable<ComponentProps<typeof Select>["options"]> => {
+          const wadahLabel = (
+            <span className="flex items-center gap-1.5">
+              <span
+                style={{
+                  display: "inline-block",
+                  width: 8,
+                  height: 8,
+                  borderRadius: "50%",
+                  background: c.color,
+                }}
+              />
+              {c.name}
+            </span>
+          );
+          // Ada subkategori → grup: yang bisa diklik subkategorinya.
+          if (c.subcategories.length > 0) {
+            return [
               {
-                value: c.id,
-                label: c.name,
+                label: wadahLabel,
+                title: c.name,
+                options: c.subcategories.map((s) => ({
+                  value: s.id,
+                  label: `${s.name} · ${c.name}`,
+                })),
               },
-            ]
-        ) as { value: string; label: string }[],
-      }));
+            ];
+          }
+          // Tanpa subkategori → wadah itu sendiri jadi opsi yang bisa diklik.
+          return [{ value: c.id, label: wadahLabel, title: c.name }];
+        },
+      );
     }
     return categories.map((c) => ({ value: c.id, label: c.name }));
   }, [categories, selectedType]);

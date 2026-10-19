@@ -1,29 +1,39 @@
 "use client";
 
-import { Empty, Typography } from "antd";
-import { useMemo } from "react";
+import { PlusOutlined } from "@ant-design/icons";
+import { Button, Empty, Segmented, Typography } from "antd";
+import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { useLocale } from "@/components/i18n/LocaleProvider";
 import type { CategoryStat } from "@/features/web/utils/stats";
 import { formatIDR } from "@/utils/helpers";
 
 const { Text } = Typography;
 
+/** Pilihan Top-N kategori (rekomendasi D1: 5/10). */
+const TOP_N_OPTIONS = [5, 10] as const;
+
 interface Props {
   /** Stat per kategori siklus aktif (dari computeCycleStats). */
   categories: CategoryStat[];
-  /** Jumlah kategori teratas yang ditampilkan. */
-  topN?: number;
+  /** D1: buka modal tambah transaksi dari empty state CTA. */
+  onAddFirst?: () => void;
 }
 
 /**
  * Daftar rincian pengeluaran per kategori sesuai referensi
  * Dashboard Content.svg: baris ikon warna + nama kategori + jumlah
  * transaksi, bar tipis proporsi, dan nilai ter-align kanan.
+ *
+ * D1 (rekomendasi_feature.md): jumlah kategori teratas bisa diubah
+ * (Top 5/10) dan ada tombol "lihat semua" menuju halaman Laporan.
  */
 export default function CategoryBreakdownList({
   categories,
-  topN = 5,
+  onAddFirst,
 }: Readonly<Props>) {
+  const [topN, setTopN] = useState<number>(TOP_N_OPTIONS[0]);
+  const router = useRouter();
   const { t, locale } = useLocale();
 
   const rows = useMemo(
@@ -39,21 +49,45 @@ export default function CategoryBreakdownList({
 
   return (
     <div className="flex h-full flex-col">
-      <div className="mb-3 flex items-baseline justify-between gap-2">
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <Text strong>{t("chart.categoryTitle")}</Text>
-        {rows.length > 0 && (
-          <Text type="secondary" style={{ fontSize: 12 }}>
-            {t("chart.topCategories", { n: rows.length })}
-          </Text>
-        )}
+        <div className="flex items-center gap-1">
+          <Segmented
+            size="small"
+            value={topN}
+            options={TOP_N_OPTIONS.map((n) => ({
+              value: n,
+              label: t("chart.topCategories", { n }),
+            }))}
+            onChange={(value) => setTopN(value as number)}
+          />
+          <Button
+            type="link"
+            size="small"
+            className="px-1!"
+            onClick={() => router.push("/reports")}
+          >
+            {t("dashboard.viewAll")}
+          </Button>
+        </div>
       </div>
 
       {rows.length === 0 ? (
-        <div className="flex flex-1 items-center justify-center py-8">
-          <Empty description={t("chart.emptySpending")} />
+        <div className="flex flex-1 flex-col items-center justify-center py-8">
+          <Empty description={t("chart.emptySpending")}>
+            {onAddFirst && (
+              <Button
+                type="primary"
+                icon={<PlusOutlined />}
+                onClick={onAddFirst}
+              >
+                {t("dashboard.firstTransaction")}
+              </Button>
+            )}
+          </Empty>
         </div>
       ) : (
-        <ul className="m-0 flex-1 list-none space-y-1 p-0">
+        <ul className="m-0 flex-1 list-none space-y-1 overflow-y-auto p-0">
           {rows.map((cat) => {
             const share =
               maxSpent > 0 ? Math.round((cat.spent / maxSpent) * 100) : 0;

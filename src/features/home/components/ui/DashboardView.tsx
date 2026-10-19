@@ -1,7 +1,7 @@
 "use client";
 
 import { PlusOutlined } from "@ant-design/icons";
-import { Alert, Button, Card } from "antd";
+import { Alert, Button, Card, Segmented, Typography } from "antd";
 import dynamic from "next/dynamic";
 import {
   Suspense,
@@ -31,6 +31,13 @@ import TransactionFormModal from "@/features/transactions/components/ui/Transact
 import SectionSkeleton from "@/features/web/components/ui/sectionSkeleton";
 import StatsCards, { type AllTimeTotals } from "./StatsCards";
 import CategoryBreakdownList from "./CategoryBreakdownList";
+import RecentTransactions from "./RecentTransactions";
+
+const { Text } = Typography;
+
+/** Pilihan rentang historis chart (rekomendasi D1: 3/6/12 siklus). */
+const RANGE_OPTIONS = [3, 6, 12] as const;
+const DEFAULT_RANGE = 6;
 
 const ChartLoading = () => {
   const { t } = useLocale();
@@ -72,8 +79,18 @@ interface Props {
 interface SliceProps {
   categories: BudgetCategory[];
   settings: UserSettings;
-  /** Naik saat transaksi disimpan/diubah agar slice memuat ulang. */
+  /** Naik saat transaksi disimpan/diubah/dihapus agar slice memuat ulang. */
   refreshKey: number;
+  /** D1: buka modal tambah transaksi (CTA empty state). */
+  onAddFirst: () => void;
+}
+
+/** Prop tambahan slice statistik (aksi cepat daftar transaksi terakhir). */
+interface StatsSliceProps extends SliceProps {
+  /** D1: buka modal edit transaksi (aksi cepat list terakhir). */
+  onEdit: (transaction: Transaction) => void;
+  /** Dipanggil setelah hapus cepat sukses agar semua slice memuat ulang. */
+  onChanged: () => void;
 }
 
 /**
@@ -96,6 +113,7 @@ export default function DashboardView({
   settings,
 }: Readonly<Props>) {
   const [formOpen, setFormOpen] = useState(false);
+  const [editingTx, setEditingTx] = useState<Transaction | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
 
   const { t } = useLocale();
@@ -103,23 +121,36 @@ export default function DashboardView({
   /** Siklus aktif global (dipilih lewat DatePicker month di navbar). */
   const { cycle } = useCycle();
 
+  const openAdd = useCallback(() => {
+    setEditingTx(null);
+    setFormOpen(true);
+  }, []);
+  const openEdit = useCallback((transaction: Transaction) => {
+    setEditingTx(transaction);
+    setFormOpen(true);
+  }, []);
+  const handleChanged = useCallback(() => {
+    setRefreshKey((key) => key + 1);
+  }, []);
+
   return (
     <div className="mx-auto w-full max-w-350">
       {/* Navigasi siklus ada di navbar (DatePicker month); sisakan tombol tambah.
-          Dashboard hanya MENAMBAH transaksi (tidak mengedit) — modal selalu
-          mode tambah. */}
+          Modal dipakai bersama: mode tambah (CTA/tombol) & mode edit (aksi
+          cepat di daftar transaksi terakhir — D1). */}
       <div className="mb-4 flex flex-wrap items-center justify-end gap-2">
         <Button
           type="primary"
           icon={<PlusOutlined />}
-          onClick={() => setFormOpen(true)}
+          onClick={openAdd}
         >
           {t("table.addPurchase")}
         </Button>
       </div>
 
       {/* Slice 1: alert batas + kartu statistik + line chart pengeluaran
-          harian (butuh transaksi siklus + total seluruh waktu). */}
+          harian + daftar transaksi terakhir (butuh transaksi siklus +
+          total seluruh waktu). */}
       <Suspense fallback={<SectionSkeleton variant="stats" />}>
         <DashboardStatsSlice
           transactionsPromise={transactionsPromise}
@@ -127,11 +158,14 @@ export default function DashboardView({
           categories={categories}
           settings={settings}
           refreshKey={refreshKey}
+          onAddFirst={openAdd}
+          onEdit={openEdit}
+          onChanged={handleChanged}
         />
       </Suspense>
 
       {/* Slice 2: rincian kategori + grafik historis (butuh transaksi siklus
-          + historis 6 siklus) — tidak menunggu slice kartu statistik. */}
+          + historis beberapa siklus) — tidak menunggu slice kartu statistik. */}
       <Suspense fallback={<SectionSkeleton variant="charts" />}>
         <DashboardChartsSlice
           transactionsPromise={transactionsPromise}
@@ -139,12 +173,13 @@ export default function DashboardView({
           categories={categories}
           settings={settings}
           refreshKey={refreshKey}
+          onAddFirst={openAdd}
         />
       </Suspense>
 
       <TransactionFormModal
         open={formOpen}
-        editingTransaction={null}
+        editingTransaction={editingTx}
         categories={categories}
         cycle={cycle}
         onClose={() => setFormOpen(false)}
@@ -154,14 +189,18 @@ export default function DashboardView({
   );
 }
 
-/** Slice statistik: alert over-limit + StatsCards + pengeluaran harian. */
+/** Slice statistik: alert over-limit + StatsCards + pengeluaran harian +
+ *  daftar 5 transaksi terakhir dengan aksi cepat (D1). */
 function DashboardStatsSlice({
   transactionsPromise,
   allTimePromise,
   categories,
   settings,
   refreshKey,
-}: Readonly<SliceProps & {
+  onAddFirst,
+  onEdit,
+  onChanged,
+}: Readonly<StatsSliceProps & {
   transactionsPromise: Promise<Transaction[]>;
   allTimePromise: Promise<AllTimeTotals>;
 }>) {
@@ -226,20 +265,36 @@ function DashboardStatsSlice({
 
       {/* Baris 1: line chart pengeluaran harian per tanggal (satu baris penuh) */}
       <div className="mb-4">
-        <DailySpendingLineChart transactions={transactions} cycle={cycle} />
+        <DailySpendingLineChart
+          transactions={transactions}
+          cycle={cycle}
+          onAddFirst={onAddFirst}
+        />
+      </div>
+
+      {/* D1: 5 transaksi terakhir + aksi edit/hapus cepat (satu baris penuh) */}
+      <div className="mb-4">
+        <RecentTransactions
+          transactions={transactions}
+          categories={categories}
+          onEdit={onEdit}
+          onAddFirst={onAddFirst}
+          onChanged={onChanged}
+        />
       </div>
     </>
   );
 }
 
 /** Slice grafik: rincian kategori + alokasi bulanan + perbandingan &
- *  kumulatif tabungan. */
+ *  kumulatif tabungan. Rentang historis bisa diubah (D1: 3/6/12 siklus). */
 function DashboardChartsSlice({
   transactionsPromise,
   historicalPromise,
   categories,
   settings,
   refreshKey,
+  onAddFirst,
 }: Readonly<SliceProps & {
   transactionsPromise: Promise<Transaction[]>;
   historicalPromise: Promise<Record<string, Transaction[]>>;
@@ -250,9 +305,12 @@ function DashboardChartsSlice({
     useState<Transaction[]>(initialTransactions);
   const [historical, setHistorical] =
     useState<Record<string, Transaction[]>>(initialHistorical);
+  /** D1: rentang historis aktif — parameter count getHistoricalTransactionsAction. */
+  const [rangeCount, setRangeCount] = useState<number>(DEFAULT_RANGE);
+  const [rangeLoading, setRangeLoading] = useState(false);
 
   const { cycle } = useCycle();
-  const { locale } = useLocale();
+  const { locale, t } = useLocale();
 
   // Rincian kategori diturunkan dari transaksi siklus (statistik siklus).
   const stats = useMemo(
@@ -276,28 +334,49 @@ function DashboardChartsSlice({
     [historical, settings.protectedSavings, settings.savingsInitial, locale],
   );
 
-  const refresh = useCallback(async (targetCycle: CycleInfo) => {
+  const refresh = useCallback(async (targetCycle: CycleInfo, count: number) => {
+    setRangeLoading(true);
     try {
       const [fresh, freshHistorical] = await Promise.all([
         getCycleTransactionsAction(targetCycle),
-        getHistoricalTransactionsAction(targetCycle, 6),
+        getHistoricalTransactionsAction(targetCycle, count),
       ]);
       setTransactions(fresh);
       setHistorical(freshHistorical);
     } catch (err) {
       console.error("[DashboardView] gagal memuat data historis:", err);
       setTransactions([]);
+    } finally {
+      setRangeLoading(false);
     }
   }, []);
 
   /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
-    refresh(cycle).catch(() => {});
-  }, [cycle, refreshKey, refresh]);
+    refresh(cycle, rangeCount).catch(() => {});
+  }, [cycle, refreshKey, rangeCount, refresh]);
   /* eslint-enable react-hooks/set-state-in-effect */
 
   return (
     <>
+      {/* D1: pilihan rentang historis (3/6/12 siklus) untuk semua chart
+          historis di bawah. */}
+      <div className="mb-3 flex flex-wrap items-center justify-end gap-2">
+        <Text type="secondary" style={{ fontSize: 12 }}>
+          {t("dashboard.rangeLabel")}
+        </Text>
+        <Segmented
+          size="small"
+          value={rangeCount}
+          disabled={rangeLoading}
+          options={RANGE_OPTIONS.map((n) => ({
+            value: n,
+            label: t("dashboard.rangeCycles", { n }),
+          }))}
+          onChange={(value) => setRangeCount(value as number)}
+        />
+      </div>
+
       {/* Baris 2: rincian pengeluaran per kategori (kiri, lebih sempit) +
           total pengeluaran per bulan (kanan, lebih lebar) */}
       <div className="mb-4 grid grid-cols-1 gap-4 lg:grid-cols-12">
@@ -309,7 +388,10 @@ function DashboardChartsSlice({
             styles={{ body: { padding: 16, height: "100%" } }}
             size="small"
           >
-            <CategoryBreakdownList categories={stats.categories} />
+            <CategoryBreakdownList
+              categories={stats.categories}
+              onAddFirst={onAddFirst}
+            />
           </Card>
         </div>
         <div className="lg:col-span-7">

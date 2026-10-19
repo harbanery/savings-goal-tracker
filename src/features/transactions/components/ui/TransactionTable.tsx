@@ -20,7 +20,7 @@ import {
 } from "antd";
 import type { ColumnsType, TableProps } from "antd/es/table";
 import dayjs from "dayjs";
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ComponentProps } from "react";
 import { useLocale } from "@/components/i18n/LocaleProvider";
 import {
   buildUnits,
@@ -82,17 +82,29 @@ export default function TransactionTable({
 
   const units = useMemo(() => buildUnits(categories), [categories]);
 
-  /** Opsi filter unit, tergrup per kategori/wadah. */
-  const unitFilterOptions = useMemo(
-    () =>
-      categories
-        .map((c) => ({
-          label: c.name,
-          options: units
-            .filter((u) => u.categoryId === c.id)
-            .map((u) => ({ value: u.id, label: u.name })),
-        }))
-        .filter((g) => g.options.length > 0),
+  /** Opsi filter unit, tergrup per kategori/wadah.
+   *  Aturan (DROID.md): wadah tanpa subkategori → klik wadahnya sendiri;
+   *  wadah dengan subkategori → klik subkategorinya. */
+  const unitFilterOptions = useMemo<
+    NonNullable<ComponentProps<typeof Select>["options"]>
+  >(() =>
+    categories.flatMap(
+      (c): NonNullable<ComponentProps<typeof Select>["options"]> => {
+        // Tanpa subkategori → wadah jadi opsi tunggal yang bisa diklik.
+        if (c.subcategories.length === 0) {
+          return [{ value: c.id, label: c.name }];
+        }
+        // Ada subkategori → grup: yang bisa diklik subkategorinya.
+        return [
+          {
+            label: c.name,
+            options: units
+              .filter((u) => u.categoryId === c.id)
+              .map((u) => ({ value: u.id, label: u.name })),
+          },
+        ];
+      },
+    ),
     [categories, units],
   );
 
@@ -123,8 +135,14 @@ export default function TransactionTable({
     if (filterUnit) {
       const unit = getUnit(categories, filterUnit);
       result = result.filter((tr) => {
-        if (unit && tr.subcategoryId) return tr.subcategoryId === filterUnit;
-        return unit ? tr.categoryId === unit.categoryId : false;
+        if (!unit) return false;
+        // Filter di level wadah (tanpa subkategori) → cocokkan semua
+        // transaksi wadah itu, termasuk yang tercatat lewat subkategorinya.
+        if (unit.id === unit.categoryId) {
+          return tr.categoryId === unit.categoryId;
+        }
+        // Filter di level subkategori → cocokkan subkategori persis.
+        return tr.subcategoryId === unit.id;
       });
     }
     return result;

@@ -1,6 +1,7 @@
 "use client";
 
-import { Card, Empty, Typography } from "antd";
+import { PlusOutlined } from "@ant-design/icons";
+import { Button, Card, Empty, Typography } from "antd";
 import { Line } from "react-chartjs-2";
 import {
   Chart as ChartJS,
@@ -37,6 +38,8 @@ ChartJS.register(
 interface Props {
   transactions: Transaction[];
   cycle: CycleInfo;
+  /** D1: buka modal tambah transaksi dari empty state CTA. */
+  onAddFirst?: () => void;
 }
 
 /**
@@ -47,6 +50,7 @@ interface Props {
 export default function DailySpendingLineChart({
   transactions,
   cycle,
+  onAddFirst,
 }: Props) {
   const { mode } = useThemeMode();
   const { t, locale } = useLocale();
@@ -174,7 +178,17 @@ export default function DailySpendingLineChart({
     >
       {isEmpty ? (
         <div className="flex h-[260px] items-center justify-center">
-          <Empty description={t("chart.emptySpending")} />
+          <Empty description={t("chart.emptySpending")}>
+            {onAddFirst && (
+              <Button
+                type="primary"
+                icon={<PlusOutlined />}
+                onClick={onAddFirst}
+              >
+                {t("dashboard.firstTransaction")}
+              </Button>
+            )}
+          </Empty>
         </div>
       ) : (
         <div className="h-[260px] w-full sm:h-[300px]">

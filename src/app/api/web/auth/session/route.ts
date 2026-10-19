@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getCurrentUser } from "@/lib/auth";
+import { getCurrentUser, syncSessionCookie } from "@/lib/auth";
 import { getSessionUser } from "@/services/user";
 
 export const runtime = "nodejs";
@@ -15,5 +15,10 @@ export async function GET() {
   if (!session) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-  return NextResponse.json(session);
+  const response = NextResponse.json(session);
+  // B6 sliding session: cookie browser tidak bisa dibaca tanggal
+  // kedaluwarsanya, jadi tiap panggilan route ini (shell klien aktif)
+  // cookie di-set ulang mengikuti expiresAt DB yang bisa diperpanjang.
+  await syncSessionCookie(response);
+  return response;
 }
