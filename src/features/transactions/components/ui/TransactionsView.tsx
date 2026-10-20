@@ -1,6 +1,6 @@
 "use client";
 
-import { PlusOutlined } from "@ant-design/icons";
+import { DeleteOutlined, EditOutlined, PlusOutlined } from "@ant-design/icons";
 import {
   Button,
   Card,
@@ -13,7 +13,6 @@ import {
   Tooltip,
   Typography,
 } from "antd";
-import { DeleteOutlined } from "@ant-design/icons";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useLocale } from "@/components/i18n/LocaleProvider";
 import {
@@ -32,6 +31,7 @@ import type {
 import { useCycle } from "@/features/web/hooks/cycle";
 import type { CycleInfo } from "@/features/web/utils/cycle";
 import TransactionFormModal from "./TransactionFormModal";
+import RecurringFormModal from "./RecurringFormModal";
 import TransactionTable from "./TransactionTable";
 import ImportExportButtons from "./ImportExportButtons";
 import { formatIDR } from "@/utils/helpers";
@@ -63,6 +63,8 @@ export default function TransactionsView({
   const [editingId, setEditingId] = useState<string | null>(null);
   const [rules, setRules] = useState<RecurringRule[]>([]);
   const [viewMode, setViewMode] = useState<TableViewMode>("transactions");
+  const [ruleFormOpen, setRuleFormOpen] = useState(false);
+  const [editingRuleId, setEditingRuleId] = useState<string | null>(null);
 
   /** Siklus aktif global (dipilih lewat DatePicker month di navbar). */
   const { cycle } = useCycle();
@@ -75,6 +77,14 @@ export default function TransactionsView({
         ? (transactions.find((tr) => tr.id === editingId) ?? null)
         : null,
     [transactions, editingId],
+  );
+
+  const editingRule = useMemo(
+    () =>
+      editingRuleId
+        ? (rules.find((r) => r.id === editingRuleId) ?? null)
+        : null,
+    [rules, editingRuleId],
   );
 
   const refreshCycle = useCallback(async (targetCycle: CycleInfo) => {
@@ -182,11 +192,20 @@ export default function TransactionsView({
             type="primary"
             icon={<PlusOutlined />}
             onClick={() => {
-              setEditingId(null);
-              setFormOpen(true);
+              // Tombol tambah kontekstual: aturan berulang di tab Berulang,
+              // transaksi biasa di tab Transaksi (rekomendasi D2).
+              if (viewMode === "recurring") {
+                setEditingRuleId(null);
+                setRuleFormOpen(true);
+              } else {
+                setEditingId(null);
+                setFormOpen(true);
+              }
             }}
           >
-            {t("table.addPurchase")}
+            {viewMode === "recurring"
+              ? t("transactions.recurringAdd")
+              : t("table.addPurchase")}
           </Button>
         </Space>
       </div>
@@ -214,7 +233,21 @@ export default function TransactionsView({
         >
         {rules.length === 0 ? (
           <div className="flex items-center justify-center py-8">
-            <Empty description={t("transactions.recurringEmpty")} />
+            <Empty
+              description={t("transactions.recurringEmpty")}
+              className="py-2"
+            >
+              <Button
+                type="primary"
+                icon={<PlusOutlined />}
+                onClick={() => {
+                  setEditingRuleId(null);
+                  setRuleFormOpen(true);
+                }}
+              >
+                {t("transactions.recurringAdd")}
+              </Button>
+            </Empty>
           </div>
         ) : (
           <div className="flex flex-col gap-2">
@@ -257,6 +290,19 @@ export default function TransactionsView({
                         }
                       />
                     </Tooltip>
+                    <Tooltip title={t("transactions.recurringEdit")}>
+                      <Button
+                        type="text"
+                        shape="circle"
+                        size="small"
+                        icon={<EditOutlined />}
+                        aria-label={t("transactions.recurringEdit")}
+                        onClick={() => {
+                          setEditingRuleId(rule.id);
+                          setRuleFormOpen(true);
+                        }}
+                      />
+                    </Tooltip>
                     <Popconfirm
                       title={t("transactions.deleteRecurringConfirm")}
                       okText={t("common.delete")}
@@ -295,6 +341,18 @@ export default function TransactionsView({
           void refreshCycle(cycle);
           void refreshRules();
         }}
+      />
+
+      {/* Form tambah/edit aturan berulang (rekomendasi D2). */}
+      <RecurringFormModal
+        open={ruleFormOpen}
+        editingRule={editingRule}
+        categories={categories}
+        onClose={() => {
+          setRuleFormOpen(false);
+          setEditingRuleId(null);
+        }}
+        onSaved={() => void refreshRules()}
       />
     </div>
   );

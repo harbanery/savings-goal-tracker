@@ -13,6 +13,9 @@ export type AnalyticsEvent =
   // Transaksi
   | "transaction_created"
   | "transaction_updated"
+  // Transaksi berulang
+  | "recurring_created"
+  | "recurring_updated"
   // CSV
   | "csv_imported"
   | "csv_exported"

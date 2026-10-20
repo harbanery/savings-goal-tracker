@@ -155,6 +155,7 @@ export default async function RootLayout({
           </LocaleProvider>
         </AntdRegistry>
         <VercelCompatibleComponents.Analytics />
+        <VercelCompatibleComponents.SpeedInsights />
       </body>
     </html>
   );

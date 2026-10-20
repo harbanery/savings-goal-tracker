@@ -347,6 +347,13 @@ const id: TranslationDict = {
   "form.repeatMonthly": "Setiap Bulan",
   "form.recurHint":
     "Otomatis tercatat setiap tanggal {n} bulan berikutnya — tanpa perlu tambah transaksi lagi.",
+  "form.recurringAddTitle": "Tambah Aturan Berulang",
+  "form.recurringEditTitle": "Edit Aturan Berulang",
+  "form.dayOfMonth": "Tanggal Berulang (1–31)",
+  "form.dayOfMonthRequired": "Tanggal berulang wajib diisi",
+  "form.dayOfMonthRange": "Tanggal harus antara 1–31",
+  "form.dayOfMonthHint":
+    "Otomatis tercatat setiap tanggal {n} — di bulan pendek (mis. Februari) digeser ke akhir bulan.",
   "form.protectionTitle": "Menyentuh Tabungan Dilindungi",
   "form.protectionDesc":
     "Pengeluaran akan menjadi {projected}, melebihi batas alokasi {limit} dan menyentuh tabungan yang Anda lindungi. Lanjutkan terpaksa?",
@@ -357,6 +364,8 @@ const id: TranslationDict = {
   "transactions.recurringTitle": "Transaksi Berulang",
   "transactions.recurringEvery": "tiap tanggal {n}",
   "transactions.recurringEmpty": "Belum ada transaksi berulang.",
+  "transactions.recurringAdd": "Tambah Aturan",
+  "transactions.recurringEdit": "Edit aturan",
   "transactions.recurringTag": "Berulang",
   "transactions.recurringToggle": "Aktifkan/nonaktifkan aturan",
   "transactions.deleteRecurringConfirm":
@@ -701,6 +710,13 @@ const en: TranslationDict = {
   "form.repeatMonthly": "Every Month",
   "form.recurHint":
     "Automatically recorded on day {n} of the following months — no need to add it again.",
+  "form.recurringAddTitle": "Add Recurring Rule",
+  "form.recurringEditTitle": "Edit Recurring Rule",
+  "form.dayOfMonth": "Day of Month (1–31)",
+  "form.dayOfMonthRequired": "Day of month is required",
+  "form.dayOfMonthRange": "Day must be between 1 and 31",
+  "form.dayOfMonthHint":
+    "Automatically recorded every day {n} — shifted to the month's end in short months (e.g. February).",
   "form.protectionTitle": "Touching Protected Savings",
   "form.protectionDesc":
     "Spending will reach {projected}, exceeding the {limit} allocation limit and touching your protected savings. Force continue?",
@@ -711,6 +727,8 @@ const en: TranslationDict = {
   "transactions.recurringTitle": "Recurring Transactions",
   "transactions.recurringEvery": "every day {n}",
   "transactions.recurringEmpty": "No recurring transactions yet.",
+  "transactions.recurringAdd": "Add Rule",
+  "transactions.recurringEdit": "Edit rule",
   "transactions.recurringTag": "Recurring",
   "transactions.recurringToggle": "Enable/disable the rule",
   "transactions.deleteRecurringConfirm":

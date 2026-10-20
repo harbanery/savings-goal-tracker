@@ -108,6 +108,48 @@ export async function createRecurringRule(
   return toRecurringRule(row);
 }
 
+/** Ubah aturan berulang (semua field divalidasi ulang seperti create). */
+export async function updateRecurringRule(
+  userId: string,
+  id: string,
+  data: CreateRecurringData,
+): Promise<RecurringRule> {
+  if (data.type !== "EXPENSE" && data.type !== "INCOME") {
+    throw new Error("Transaksi berulang hanya untuk pengeluaran/pemasukan.");
+  }
+  if (!Number.isFinite(data.amount) || data.amount <= 0) {
+    throw new Error("Nominal transaksi berulang tidak valid.");
+  }
+  if (
+    !Number.isInteger(data.dayOfMonth) ||
+    data.dayOfMonth < 1 ||
+    data.dayOfMonth > 31
+  ) {
+    throw new Error("Tanggal berulang harus 1-31.");
+  }
+  await assertUnitsOwned(userId, data.categoryId, data.subcategoryId);
+  const existing = await prisma.recurringTransaction.findFirst({
+    where: { id, userId },
+    select: { id: true },
+  });
+  if (!existing) throw new Error("Aturan berulang tidak ditemukan.");
+  const row = await withRetry(() =>
+    prisma.recurringTransaction.update({
+      where: { id },
+      data: {
+        type: data.type,
+        name: data.name,
+        amount: new Prisma.Decimal(Math.round(data.amount)),
+        dayOfMonth: data.dayOfMonth,
+        categoryId: data.categoryId,
+        subcategoryId: data.subcategoryId ?? null,
+        note: data.note,
+      },
+    }),
+  );
+  return toRecurringRule(row);
+}
+
 /** Aktifkan/nonaktifkan aturan (nonaktif tidak dimaterialisasi lagi). */
 export async function setRecurringActive(
   userId: string,

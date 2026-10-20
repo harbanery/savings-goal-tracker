@@ -27,6 +27,7 @@ import {
   getRecurringRules,
   materializeRecurringForCycle,
   setRecurringActive,
+  updateRecurringRule,
 } from "@/services/recurring";
 import {
   assertSavingsProtection,
@@ -625,6 +626,39 @@ export async function createRecurringRuleAction(data: {
   if (!name) throw new Error("Nama transaksi wajib diisi.");
   if (!isUuid(data.categoryId)) throw new Error("Wadah wajib dipilih.");
   const rule = await createRecurringRule(userId, {
+    type: data.type as "EXPENSE" | "INCOME",
+    name,
+    amount: data.amount,
+    dayOfMonth: data.dayOfMonth,
+    categoryId: data.categoryId,
+    subcategoryId: isUuid(data.subcategoryId ?? "")
+      ? data.subcategoryId
+      : null,
+    note: sanitizeText(data.note ?? "", 500),
+  });
+  revalidatePath("/");
+  return rule;
+}
+
+/** Ubah aturan berulang (field divalidasi ulang seperti create). */
+export async function updateRecurringRuleAction(
+  id: string,
+  data: {
+    type: string;
+    name: string;
+    amount: number;
+    dayOfMonth: number;
+    categoryId: string;
+    subcategoryId?: string | null;
+    note?: string;
+  },
+): Promise<RecurringRule> {
+  const userId = await requireUserId();
+  if (!isUuid(id)) throw new Error("Invalid recurring id.");
+  const name = sanitizeText(data.name, 100);
+  if (!name) throw new Error("Nama transaksi wajib diisi.");
+  if (!isUuid(data.categoryId)) throw new Error("Wadah wajib dipilih.");
+  const rule = await updateRecurringRule(userId, id, {
     type: data.type as "EXPENSE" | "INCOME",
     name,
     amount: data.amount,
