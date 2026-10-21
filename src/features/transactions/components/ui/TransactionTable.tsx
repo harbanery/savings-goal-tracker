@@ -20,7 +20,7 @@ import {
 } from "antd";
 import type { ColumnsType, TableProps } from "antd/es/table";
 import dayjs from "dayjs";
-import { useMemo, useState, type ComponentProps } from "react";
+import { useEffect, useMemo, useState, type ComponentProps } from "react";
 import { useLocale } from "@/components/i18n/LocaleProvider";
 import {
   buildUnits,
@@ -53,6 +53,9 @@ interface Props {
   onEdit: (transaction: Transaction) => void;
   onDelete: (id: string) => void;
   onDeleteBulk: (ids: string[]) => void;
+  /** D2: laporkan hasil filter/search aktif ke parent (export CSV
+   *  mengikuti filter — rekomendasi rekomendasi_feature.md). */
+  onFilteredChange?: (filtered: Transaction[]) => void;
 }
 
 interface RowData {
@@ -66,6 +69,9 @@ const TYPE_TAG: Record<TransactionType, { color: string; icon: string }> = {
   TRANSFER: { color: "blue", icon: "⇄" },
 };
 
+/** Opsi ukuran halaman tabel (rekomendasi D2: pageSize configurable). */
+const PAGE_SIZE_OPTIONS = [10, 25, 50];
+
 /** Tabel daftar transaksi multi-tipe dengan filter & aksi. */
 export default function TransactionTable({
   transactions,
@@ -73,11 +79,13 @@ export default function TransactionTable({
   onEdit,
   onDelete,
   onDeleteBulk,
+  onFilteredChange,
 }: Props) {
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
   const [searchText, setSearchText] = useState("");
   const [filterType, setFilterType] = useState<TransactionType | "ALL">("ALL");
   const [filterUnit, setFilterUnit] = useState<string | null>(null);
+  const [pageSize, setPageSize] = useState(PAGE_SIZE_OPTIONS[0]);
   const { t, locale } = useLocale();
 
   const units = useMemo(() => buildUnits(categories), [categories]);
@@ -152,6 +160,11 @@ export default function TransactionTable({
     () => filtered.map((tr) => ({ key: tr.id, transaction: tr })),
     [filtered],
   );
+
+  // D2: sinkronkan hasil filter ke parent (export CSV mengikuti filter).
+  useEffect(() => {
+    onFilteredChange?.(filtered);
+  }, [filtered, onFilteredChange]);
 
   const rowSelection: TableProps<RowData>["rowSelection"] = {
     selectedRowKeys,
@@ -396,13 +409,38 @@ export default function TransactionTable({
               rowSelection={rowSelection}
               columns={columns}
               dataSource={dataSource}
-              pagination={{ pageSize: 10, size: "small" }}
+              pagination={{
+                pageSize,
+                size: "small",
+                // D2: pageSize configurable (10/25/50) + indikator jumlah
+                // hasil filter (paritas mobile).
+                showSizeChanger: true,
+                pageSizeOptions: PAGE_SIZE_OPTIONS,
+                onShowSizeChange: (_, size) => setPageSize(size),
+                showTotal: (total, [from, to]) =>
+                  t("table.filterResult", {
+                    shown: to - from + 1,
+                    total,
+                  }),
+              }}
               size="small"
               scroll={{ y: TABLE_SCROLL_Y }}
             />
           </div>
           {/* Kartu untuk mobile */}
           <div className="block p-3 sm:hidden">
+            {/* D2: indikator jumlah hasil filter — paritas dengan
+                pagination showTotal di tabel desktop. */}
+            <Text
+              type="secondary"
+              style={{ fontSize: 12 }}
+              className="mb-2! block! text-right!"
+            >
+              {t("table.filterResult", {
+                shown: filtered.length,
+                total: transactions.length,
+              })}
+            </Text>
             <TransactionCardList
               transactions={filtered}
               categories={categories}

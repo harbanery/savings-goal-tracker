@@ -7,6 +7,7 @@ import {
   Empty,
   Popconfirm,
   Segmented,
+  Select,
   Space,
   Switch,
   Tag,
@@ -19,7 +20,7 @@ import {
   deleteRecurringAction,
   deleteTransactionAction,
   deleteTransactionsAction,
-  getCycleTransactionsAction,
+  getRangeTransactionsAction,
   getRecurringRulesAction,
   toggleRecurringAction,
 } from "@/utils/server/actions";
@@ -47,6 +48,12 @@ interface Props {
 type TableViewMode = "transactions" | "recurring";
 
 /**
+ * Opsi rentang pencarian lintas siklus (rekomendasi D2 — P2).
+ * 0 = semua waktu, 1 = siklus aktif (default), N = N siklus terakhir.
+ */
+const RANGE_OPTIONS = [1, 3, 6, 12, 0] as const;
+
+/**
  * Halaman Transaksi (generate_web.md): seluruh catatan transaksi siklus —
  * semua jenis (pemasukan/pengeluaran/transfer), pencarian, filter,
  * import/export, CRUD, dan daftar transaksi berulang. Segmented di kiri
@@ -65,6 +72,12 @@ export default function TransactionsView({
   const [viewMode, setViewMode] = useState<TableViewMode>("transactions");
   const [ruleFormOpen, setRuleFormOpen] = useState(false);
   const [editingRuleId, setEditingRuleId] = useState<string | null>(null);
+  /** D2: rentang pencarian aktif + hasil filter tabel untuk export CSV. */
+  const [range, setRange] = useState<number>(1);
+  const [rangeLoading, setRangeLoading] = useState(false);
+  const [filteredTransactions, setFilteredTransactions] = useState<
+    Transaction[]
+  >(initialTransactions);
 
   /** Siklus aktif global (dipilih lewat DatePicker month di navbar). */
   const { cycle } = useCycle();
@@ -87,19 +100,37 @@ export default function TransactionsView({
     [rules, editingRuleId],
   );
 
-  const refreshCycle = useCallback(async (targetCycle: CycleInfo) => {
-    try {
-      setTransactions(await getCycleTransactionsAction(targetCycle));
-    } catch (err) {
-      console.error("[TransactionsView] gagal memuat transaksi:", err);
-      setTransactions([]);
-    }
-  }, []);
+  /**
+   * D2: muat transaksi sesuai rentang aktif — siklus ini, N siklus
+   * terakhir, atau semua waktu (pencarian lintas siklus).
+   */
+  const refreshData = useCallback(
+    async (targetCycle: CycleInfo, targetRange: number) => {
+      try {
+        setTransactions(
+          await getRangeTransactionsAction(targetCycle, targetRange),
+        );
+      } catch (err) {
+        console.error("[TransactionsView] gagal memuat transaksi:", err);
+        setTransactions([]);
+      }
+    },
+    [],
+  );
 
   /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
-    refreshCycle(cycle).catch(() => {});
-  }, [cycle, refreshCycle]);
+    let cancelled = false;
+    setRangeLoading(true);
+    refreshData(cycle, range)
+      .catch(() => {})
+      .finally(() => {
+        if (!cancelled) setRangeLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [cycle, range, refreshData]);
 
   useEffect(() => {
     getRecurringRulesAction()
@@ -148,10 +179,10 @@ export default function TransactionsView({
         await deleteTransactionAction(id);
       } catch (err) {
         console.error("[TransactionsView] gagal menghapus:", err);
-        await refreshCycle(cycle);
+        await refreshData(cycle, range);
       }
     },
-    [cycle, refreshCycle],
+    [cycle, range, refreshData],
   );
 
   const handleDeleteBulk = useCallback(
@@ -161,10 +192,16 @@ export default function TransactionsView({
         await deleteTransactionsAction(ids);
       } catch (err) {
         console.error("[TransactionsView] gagal menghapus bulk:", err);
-        await refreshCycle(cycle);
+        await refreshData(cycle, range);
       }
     },
-    [cycle, refreshCycle],
+    [cycle, range, refreshData],
+  );
+
+  /** D2: hasil filter/search tabel — dipakai export CSV (stabil untuk effect). */
+  const handleFilteredChange = useCallback(
+    (filtered: Transaction[]) => setFilteredTransactions(filtered),
+    [],
   );
 
   return (
@@ -173,20 +210,43 @@ export default function TransactionsView({
           tabel transaksi ↔ transaksi berulang ada di UJUNG KIRI toolbar;
           aksi import & tambah transaksi di kanan. */}
       <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
-        <Segmented
-          value={viewMode}
-          onChange={(v) => setViewMode(v as TableViewMode)}
-          options={[
-            { value: "transactions", label: t("menu.transactions") },
-            { value: "recurring", label: t("transactions.recurringTitle") },
-          ]}
-          aria-label={t("transactions.viewAria")}
-        />
+        <Space size="small" wrap>
+          <Segmented
+            value={viewMode}
+            onChange={(v) => setViewMode(v as TableViewMode)}
+            options={[
+              { value: "transactions", label: t("menu.transactions") },
+              { value: "recurring", label: t("transactions.recurringTitle") },
+            ]}
+            aria-label={t("transactions.viewAria")}
+          />
+          {/* D2: pencarian lintas siklus — rentang data yang dimuat. */}
+          <Select
+            size="small"
+            value={range}
+            disabled={rangeLoading}
+            onChange={(v) => setRange(v)}
+            options={RANGE_OPTIONS.map((n) => ({
+              value: n,
+              label:
+                n === 1
+                  ? t("transactions.rangeCycle")
+                  : n === 0
+                    ? t("transactions.rangeAll")
+                    : t("transactions.rangeCycles", { n }),
+            }))}
+            aria-label={t("transactions.rangeAria")}
+            style={{ minWidth: 120 }}
+          />
+        </Space>
         <Space size="small" wrap>
           <ImportExportButtons
             transactions={transactions}
             categories={categories}
-            onImported={() => void refreshCycle(cycle)}
+            exportTransactions={
+              viewMode === "transactions" ? filteredTransactions : undefined
+            }
+            onImported={() => void refreshData(cycle, range)}
           />
           <Button
             type="primary"
@@ -220,6 +280,7 @@ export default function TransactionsView({
           }}
           onDelete={handleDelete}
           onDeleteBulk={handleDeleteBulk}
+          onFilteredChange={handleFilteredChange}
         />
       )}
 
@@ -338,7 +399,7 @@ export default function TransactionsView({
           setEditingId(null);
         }}
         onSaved={() => {
-          void refreshCycle(cycle);
+          void refreshData(cycle, range);
           void refreshRules();
         }}
       />

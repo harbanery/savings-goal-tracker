@@ -372,6 +372,12 @@ const id: TranslationDict = {
     "Hapus aturan berulang ini? Transaksi yang sudah tercatat tetap ada.",
   "transactions.viewAria": "Pilih tampilan tabel transaksi",
 
+  // Rentang pencarian transaksi (rekomendasi D2 — lintas siklus)
+  "transactions.rangeAria": "Pilih rentang transaksi",
+  "transactions.rangeCycle": "Siklus ini",
+  "transactions.rangeCycles": "{n} siklus",
+  "transactions.rangeAll": "Semua waktu",
+
   // Kebutuhan: subkategori wadah (dipindah dari halaman Keuangan)
   "needs.title": "Kebutuhan",
   "needs.subcategories": "Subkategori",
@@ -734,6 +740,12 @@ const en: TranslationDict = {
   "transactions.deleteRecurringConfirm":
     "Delete this recurring rule? Already-recorded transactions remain.",
   "transactions.viewAria": "Select transaction table view",
+
+  // Transaction search range (D2 recommendation — cross-cycle)
+  "transactions.rangeAria": "Select transaction range",
+  "transactions.rangeCycle": "This cycle",
+  "transactions.rangeCycles": "{n} cycles",
+  "transactions.rangeAll": "All time",
 
   // Needs: envelope subcategories (moved from the Finance page)
   "needs.title": "Needs",

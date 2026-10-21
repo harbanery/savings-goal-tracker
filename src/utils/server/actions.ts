@@ -113,6 +113,44 @@ export async function getCycleTransactionsAction(
 }
 
 /**
+ * D2 (rekomendasi_feature.md): fetch transaksi lintas siklus untuk
+ * pencarian rentang di halaman Transaksi.
+ * - count = 1  → siklus aktif saja (sama dengan getCycleTransactionsAction).
+ * - count > 1  → N siklus terakhir berakhir di `cycle`; aturan berulang
+ *   dimaterialisasi per siklus dalam rentang (idempoten) lalu 1 query.
+ * - count <= 0 → semua waktu: 1 query tanpa batas awal, tanpa
+ *   materialisasi (menghindari backfill tak terbatas ke masa lalu —
+ *   kemunculan lama sudah termaterialisasi saat siklusnya dikunjungi).
+ */
+export async function getRangeTransactionsAction(
+  cycle: CycleInfo,
+  count: number,
+): Promise<Transaction[]> {
+  const userId = await requireUserId();
+  if (count > 1) {
+    const cycles: CycleInfo[] = [cycle];
+    let current = cycle;
+    for (let i = 1; i < count; i++) {
+      current = shiftCycle(current, -1);
+      cycles.push(current);
+    }
+    const oldest = cycles[cycles.length - 1];
+    if (!oldest) return [];
+    await Promise.all(
+      cycles.map((c) =>
+        materializeRecurringForCycle(userId, c).catch(() => undefined),
+      ),
+    );
+    return getTransactionsInRange(userId, oldest.startDate, cycle.endDate);
+  }
+  if (count <= 0) {
+    return getTransactionsInRange(userId, new Date(0), cycle.endDate);
+  }
+  await materializeRecurringForCycle(userId, cycle);
+  return getTransactionsInRange(userId, cycle.startDate, cycle.endDate);
+}
+
+/**
  * Fetch transaksi untuk beberapa siklus terakhir (untuk chart historis).
  * Mengembalikan map label siklus -> daftar transaksi.
  *

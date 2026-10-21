@@ -23,6 +23,12 @@ interface Props {
   transactions: Transaction[];
   categories: BudgetCategory[];
   onImported: () => void;
+  /**
+   * D2 (rekomendasi_feature.md): daftar yang diexport mengikuti
+   * filter/search aktif di tabel. Bila tidak diberikan (mis. sedang
+   * di tab Berulang), jatuh ke seluruh transaksi siklus/rentang aktif.
+   */
+  exportTransactions?: Transaction[];
 }
 
 /** Download CSV ke perangkat pengguna (dengan BOM UTF-8 agar Excel aman). */
@@ -49,11 +55,15 @@ export default function ImportExportButtons({
   transactions,
   categories,
   onImported,
+  exportTransactions,
 }: Readonly<Props>) {
   const [importing, setImporting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { t } = useLocale();
   const { message } = App.useApp();
+
+  /** D2: export mengikuti filter/search aktif bila tersedia. */
+  const exportList = exportTransactions ?? transactions;
 
   /** Download template CSV kosong (dengan contoh). */
   function handleDownloadTemplate() {
@@ -61,17 +71,14 @@ export default function ImportExportButtons({
     trackEvent("csv_template_downloaded");
   }
 
-  /** Export transaksi siklus aktif ke CSV. */
+  /** Export transaksi (mengikuti filter/search aktif) ke CSV. */
   function handleExport() {
-    if (transactions.length === 0) {
+    if (exportList.length === 0) {
       message.warning(t("io.noDataExport"));
       return;
     }
-    downloadCsv(
-      generateTransactionsCsv(transactions, categories),
-      "transaksi.csv",
-    );
-    trackEvent("csv_exported", { count: transactions.length });
+    downloadCsv(generateTransactionsCsv(exportList, categories), "transaksi.csv");
+    trackEvent("csv_exported", { count: exportList.length });
   }
 
   /** Buka file dialog untuk import CSV (button utama). */
@@ -142,7 +149,7 @@ export default function ImportExportButtons({
       key: "export",
       icon: <FileExcelOutlined />,
       label: t("io.export"),
-      disabled: transactions.length === 0,
+      disabled: exportList.length === 0,
       title: t("io.exportTooltip"),
     },
     {
