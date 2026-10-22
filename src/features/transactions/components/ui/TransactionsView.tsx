@@ -15,6 +15,7 @@ import {
   Typography,
 } from "antd";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { useLocale } from "@/components/i18n/LocaleProvider";
 import {
   deleteRecurringAction,
@@ -83,6 +84,27 @@ export default function TransactionsView({
   const { cycle } = useCycle();
 
   const { t, locale } = useLocale();
+
+  /**
+   * D3: deep-link "lihat mutasi wadah" dari halaman Keuangan —
+   * `/transactions?unit=<categoryId|subcategoryId>` menyetel filter
+   * wadah tabel sekali saat mount. Id divalidasi dulu agar URL
+   * manipulatif tidak merusak opsi Select.
+   */
+  const searchParams = useSearchParams();
+  const deepLinkUnit = searchParams.get("unit");
+  const initialFilterUnit = useMemo(
+    () =>
+      deepLinkUnit &&
+      categories.some(
+        (c) =>
+          c.id === deepLinkUnit ||
+          c.subcategories.some((s) => s.id === deepLinkUnit),
+      )
+        ? deepLinkUnit
+        : null,
+    [categories, deepLinkUnit],
+  );
 
   const editingTransaction = useMemo(
     () =>
@@ -281,6 +303,7 @@ export default function TransactionsView({
           onDelete={handleDelete}
           onDeleteBulk={handleDeleteBulk}
           onFilteredChange={handleFilteredChange}
+          initialFilterUnit={initialFilterUnit}
         />
       )}
 

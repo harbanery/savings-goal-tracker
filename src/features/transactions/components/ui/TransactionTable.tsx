@@ -56,6 +56,11 @@ interface Props {
   /** D2: laporkan hasil filter/search aktif ke parent (export CSV
    *  mengikuti filter — rekomendasi rekomendasi_feature.md). */
   onFilteredChange?: (filtered: Transaction[]) => void;
+  /**
+   * D3: filter wadah/subkategori awal via query param `?unit=` —
+   * deep-link "lihat mutasi wadah" dari halaman Keuangan.
+   */
+  initialFilterUnit?: string | null;
 }
 
 interface RowData {
@@ -80,11 +85,16 @@ export default function TransactionTable({
   onDelete,
   onDeleteBulk,
   onFilteredChange,
+  initialFilterUnit,
 }: Props) {
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
   const [searchText, setSearchText] = useState("");
   const [filterType, setFilterType] = useState<TransactionType | "ALL">("ALL");
-  const [filterUnit, setFilterUnit] = useState<string | null>(null);
+  // D3: filter wadah awal dari deep-link `?unit=` (hanya dibaca sekali
+  // saat mount — perubahan query param berikutnya lewat Select manual).
+  const [filterUnit, setFilterUnit] = useState<string | null>(
+    initialFilterUnit ?? null,
+  );
   const [pageSize, setPageSize] = useState(PAGE_SIZE_OPTIONS[0]);
   const { t, locale } = useLocale();
 
@@ -102,18 +112,26 @@ export default function TransactionTable({
         if (c.subcategories.length === 0) {
           return [{ value: c.id, label: c.name }];
         }
-        // Ada subkategori → grup: yang bisa diklik subkategorinya.
+        // Ada subkategori → grup: yang bisa diklik subkategorinya. Opsi
+        // wadah induk ("Semua …") tetap disertakan untuk filter level
+        // wadah (deep-link D3 dari halaman Keuangan).
         return [
           {
             label: c.name,
-            options: units
-              .filter((u) => u.categoryId === c.id)
-              .map((u) => ({ value: u.id, label: u.name })),
+            options: [
+              {
+                value: c.id,
+                label: t("table.filterWholeWallet", { name: c.name }),
+              },
+              ...units
+                .filter((u) => u.categoryId === c.id)
+                .map((u) => ({ value: u.id, label: u.name })),
+            ],
           },
         ];
       },
     ),
-    [categories, units],
+    [categories, units, t],
   );
 
   /** Opsi filter jenis transaksi. */

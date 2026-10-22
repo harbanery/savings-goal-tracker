@@ -81,6 +81,13 @@ interface Props {
   categories: BudgetCategory[];
   /** Siklus aktif — batas tanggal yang bisa dipilih pada input tanggal. */
   cycle: CycleInfo;
+  /**
+   * Aksi cepat (rekomendasi D3): jenis transaksi awal untuk transaksi
+   * baru — mis. "TRANSFER" dari tombol wadah di halaman Keuangan.
+   */
+  defaultType?: TransactionType;
+  /** Aksi cepat (D3): wadah/subkategori awal untuk transaksi baru. */
+  defaultUnitId?: string;
   onClose: () => void;
   onSaved: () => void;
 }
@@ -108,6 +115,8 @@ export default function TransactionFormModal({
   editingTransaction,
   categories,
   cycle,
+  defaultType,
+  defaultUnitId,
   onClose,
   onSaved,
 }: Props) {
@@ -125,10 +134,15 @@ export default function TransactionFormModal({
       footer={null}
     >
       <TransactionForm
-        key={editingTransaction?.id ?? "create"}
+        key={
+          editingTransaction?.id ??
+          `create-${defaultType ?? "new"}-${defaultUnitId ?? ""}`
+        }
         editingTransaction={editingTransaction}
         categories={categories}
         cycle={cycle}
+        defaultType={defaultType}
+        defaultUnitId={defaultUnitId}
         onClosed={onClose}
         onSaved={onSaved}
       />
@@ -140,6 +154,8 @@ interface FormProps {
   editingTransaction: Transaction | null;
   categories: BudgetCategory[];
   cycle: CycleInfo;
+  defaultType?: TransactionType;
+  defaultUnitId?: string;
   onClosed: () => void;
   onSaved: () => void;
 }
@@ -148,6 +164,8 @@ function TransactionForm({
   editingTransaction,
   categories,
   cycle,
+  defaultType,
+  defaultUnitId,
   onClosed,
   onSaved,
 }: FormProps) {
@@ -183,13 +201,14 @@ function TransactionForm({
 
   /**
    * Unit awal: subkategori transaksi (hanya pengeluaran — pemasukan &
-   * transfer selalu di level wadah), atau kategori itu sendiri.
+   * transfer selalu di level wadah), kategori itu sendiri, atau wadah
+   * dari aksi cepat (rekomendasi D3 — "Transfer dari wadah ini").
    */
   const initialUnitId = editingTransaction
     ? editingTransaction.type === "EXPENSE"
       ? (editingTransaction.subcategoryId ?? editingTransaction.categoryId)
       : editingTransaction.categoryId
-    : (units[0]?.id ?? "");
+    : (defaultUnitId ?? units[0]?.id ?? "");
 
   /** Opsi unit pencatatan: pengeluaran memakai subkategori (kebutuhan);
    *  pemasukan & transfer cukup di level wadah saja.
@@ -335,7 +354,7 @@ function TransactionForm({
       requiredMark={false}
       className="mt-2!"
       initialValues={{
-        type: editingTransaction?.type ?? "EXPENSE",
+        type: editingTransaction?.type ?? defaultType ?? "EXPENSE",
         name: editingTransaction?.name ?? "",
         unitId: initialUnitId,
         amount: editingTransaction?.amount,

@@ -73,6 +73,7 @@ const id: TranslationDict = {
   "table.empty": "Belum ada transaksi di siklus ini",
   "table.searchPlaceholder": "Cari nama transaksi...",
   "table.filterSubcategoryPlaceholder": "Semua Subkategori",
+  "table.filterWholeWallet": "Semua {name}",
   "table.filterResult": "Menampilkan {shown} dari {total}",
   "table.noMatch": "Tidak ada transaksi yang cocok",
 
@@ -341,6 +342,17 @@ const id: TranslationDict = {
     "Belum ada target. Buat target pertama Anda, mis. beli HP atau tabungan 1 tahun.",
   "finance.targetProgress": "{saved} dari {target}",
 
+  // Aksi cepat & info wadah (rekomendasi D3)
+  "finance.searchPlaceholder": "Cari wadah…",
+  "finance.searchEmpty": "Tidak ada wadah yang cocok",
+  "finance.walletTxCount": "{n} transaksi",
+  "finance.walletLastRecord": "terakhir {date}",
+  "finance.walletNoTx": "Belum ada transaksi siklus ini",
+  "finance.viewMutations": "Lihat Mutasi Wadah",
+  "finance.transferFrom": "Transfer dari wadah ini",
+  "finance.moveUpAria": "Naikkan urutan {name}",
+  "finance.moveDownAria": "Turunkan urutan {name}",
+
   // Transaksi berulang & proteksi tabungan
   "form.repeatLabel": "Pengulangan",
   "form.repeatOnce": "Sekali",
@@ -447,6 +459,7 @@ const en: TranslationDict = {
   "table.empty": "No transactions in this cycle",
   "table.searchPlaceholder": "Search transaction name...",
   "table.filterSubcategoryPlaceholder": "All Subcategories",
+  "table.filterWholeWallet": "All {name}",
   "table.filterResult": "Showing {shown} of {total}",
   "table.noMatch": "No matching transactions found",
 
@@ -709,6 +722,17 @@ const en: TranslationDict = {
   "finance.targetsEmpty":
     "No targets yet. Create your first one, e.g. buy a phone or a 1-year savings goal.",
   "finance.targetProgress": "{saved} of {target}",
+
+  // Wallet quick actions & info (D3 recommendation)
+  "finance.searchPlaceholder": "Search wallets…",
+  "finance.searchEmpty": "No matching wallets",
+  "finance.walletTxCount": "{n} transactions",
+  "finance.walletLastRecord": "last {date}",
+  "finance.walletNoTx": "No transactions this cycle",
+  "finance.viewMutations": "View Wallet Transactions",
+  "finance.transferFrom": "Transfer from this wallet",
+  "finance.moveUpAria": "Move {name} up",
+  "finance.moveDownAria": "Move {name} down",
 
   // Recurring transactions & savings protection
   "form.repeatLabel": "Repeat",

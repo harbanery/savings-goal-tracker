@@ -6,8 +6,13 @@ import {
   CloseOutlined,
   DeleteOutlined,
   DollarOutlined,
+  DownOutlined,
   EditOutlined,
   PlusOutlined,
+  SearchOutlined,
+  SwapOutlined,
+  UnorderedListOutlined,
+  UpOutlined,
   WalletOutlined,
 } from "@ant-design/icons";
 import {
@@ -26,6 +31,8 @@ import {
   Tooltip,
   Typography,
 } from "antd";
+import dayjs from "dayjs";
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useLocale } from "@/components/i18n/LocaleProvider";
 import type {
@@ -33,12 +40,14 @@ import type {
   Transaction,
   WalletType,
 } from "@/features/web/types";
+import TransactionFormModal from "@/features/transactions/components/ui/TransactionFormModal";
 import {
   createCategoryAction,
   deleteCategoryAction,
   getBudgetOverviewAction,
   getCycleTransactionsAction,
   getFinanceBundleAction,
+  reorderCategoriesAction,
   updateCategoryAction,
 } from "@/utils/server/actions";
 import { useCycle } from "@/features/web/hooks/cycle";
@@ -109,6 +118,7 @@ export default function WalletsView({
 }: Props) {
   const { t, locale } = useLocale();
   const { message } = App.useApp();
+  const router = useRouter();
   const creatableTypes = useCreatableWalletTypeOptions();
 
   const [categories, setCategories] = useState(initialCategories);
@@ -119,6 +129,10 @@ export default function WalletsView({
   /** Tabungan dilindungi — total alokasi tampil dikurangi nilai ini. */
   const [protectedSavings, setProtectedSavings] = useState(initialProtected);
   const [reloadKey, setReloadKey] = useState(0);
+  /** D3: aksi cepat transfer dari sebuah wadah (modal TRANSFER, fromUnit terisi). */
+  const [transferFrom, setTransferFrom] = useState<BudgetCategory | null>(null);
+  /** D3: pencarian wadah (ditampilkan saat jumlah wadah > 6). */
+  const [walletQuery, setWalletQuery] = useState("");
 
   /** Siklus aktif global (dipilih lewat DatePicker month di navbar). */
   const { cycle } = useCycle();
@@ -221,8 +235,54 @@ export default function WalletsView({
     }
   }
 
-  /** Semua wadah tampil sekaligus (tanpa filter jenis dompet). */
-  const visibleCategories = categories;
+  /**
+   * D3: transaksi terakhir per wadah (badge kartu) — tanggal mutasi
+   * terbaru yang menyentuh wadah (sebagai sumber/tujuan) di siklus aktif.
+   */
+  const lastDateByCat = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const tr of transactions) {
+      const ids = tr.toCategoryId
+        ? [tr.categoryId, tr.toCategoryId]
+        : [tr.categoryId];
+      for (const id of ids) {
+        const prev = map.get(id);
+        if (!prev || tr.date > prev) map.set(id, tr.date);
+      }
+    }
+    return map;
+  }, [transactions]);
+
+  /**
+   * D3: tombol naik/turun — tukar posisi dengan tetangga (optimistis),
+   * lalu persist urutan via `reorderCategoriesAction` (kolom `order`
+   * sudah ada di schema).
+   */
+  async function handleMoveCategory(index: number, dir: -1 | 1) {
+    const target = index + dir;
+    if (target < 0 || target >= categories.length) return;
+    const next = [...categories];
+    [next[index], next[target]] = [next[target], next[index]];
+    const prev = categories;
+    setCategories(next);
+    try {
+      await reorderCategoriesAction(next.map((c) => c.id));
+    } catch (err) {
+      console.error("[WalletsView] gagal menyimpan urutan wadah:", err);
+      setCategories(prev);
+      message.error(t("settings.saveFailed"));
+    }
+  }
+
+  /**
+   * Wadah yang tampil: semua secara default; D3 menambah pencarian
+   * nama (relevan saat jumlah wadah > 6).
+   */
+  const visibleCategories = useMemo(() => {
+    const q = walletQuery.trim().toLowerCase();
+    if (!q) return categories;
+    return categories.filter((c) => c.name.toLowerCase().includes(q));
+  }, [categories, walletQuery]);
 
   /**
    * Segmen alokasi dana tiap wadah untuk progress bar budget yang bisa
@@ -425,74 +485,84 @@ export default function WalletsView({
           </div>
         </div>
 
-        <Button
-          type="primary"
-          icon={<PlusOutlined />}
-          onClick={() => {
-            setEditingCat(null);
-            categoryForm.resetFields();
-            setCatModalOpen(true);
-          }}
-        >
-          {t("settings.addCategory")}
-        </Button>
+        <div className="flex flex-wrap items-center gap-2">
+          {/* D3: pencarian wadah — hanya relevan saat jumlah wadah > 6. */}
+          {categories.length > 6 && (
+            <div className="w-full max-w-[200px] sm:w-auto sm:max-w-[220px]">
+              <Input
+                allowClear
+                prefix={<SearchOutlined className="text-zinc-400!" />}
+                placeholder={t("finance.searchPlaceholder")}
+                value={walletQuery}
+                onChange={(e) => setWalletQuery(e.target.value)}
+                aria-label={t("finance.searchPlaceholder")}
+              />
+            </div>
+          )}
+          <Button
+            type="primary"
+            icon={<PlusOutlined />}
+            onClick={() => {
+              setEditingCat(null);
+              categoryForm.resetFields();
+              setCatModalOpen(true);
+            }}
+          >
+            {t("settings.addCategory")}
+          </Button>
+        </div>
       </div>
 
       {/* Daftar wadah sebagai grid card (bukan table) — subkategori ada di
           halaman Kebutuhan. */}
-      {visibleCategories.length === 0 ? (
+      {categories.length === 0 ? (
         <Card variant="borderless" className="shadow-sm!">
           <div className="flex items-center justify-center py-12">
             <Empty description={t("settings.categoriesEmpty")} />
           </div>
         </Card>
+      ) : visibleCategories.length === 0 ? (
+        // D3: pencarian wadah tanpa hasil.
+        <Card variant="borderless" className="shadow-sm!">
+          <div className="flex items-center justify-center py-12">
+            <Empty description={t("finance.searchEmpty")} />
+          </div>
+        </Card>
       ) : (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
-          {visibleCategories.map((category) => (
-            <Card
-              key={category.id}
-              variant="borderless"
-              className="shadow-sm!"
-              size="small"
-              title={
-                <span className="flex min-w-0 items-center gap-2">
-                  <span
-                    style={{
-                      display: "inline-block",
-                      width: 10,
-                      height: 10,
-                      borderRadius: "50%",
-                      background: category.color,
-                      flexShrink: 0,
-                    }}
-                  />
-                  <Text strong ellipsis className="max-w-40!">
-                    {category.name}
-                  </Text>
-                </span>
-              }
-              extra={
-                category.walletType === "CASH" ? (
-                  // Wadah Cash bawaan: hanya warnanya yang bisa diubah
-                  // (nama/jenis terkunci), tidak bisa dihapus.
-                  <Button
-                    type="text"
-                    shape="circle"
-                    size="small"
-                    icon={<EditOutlined />}
-                    onClick={() => {
-                      setEditingCat(category);
-                      categoryForm.setFieldsValue({
-                        name: category.name,
-                        color: category.color,
-                        walletType: category.walletType,
-                      });
-                      setCatModalOpen(true);
-                    }}
-                    aria-label={t("settings.editCategory")}
-                  />
-                ) : (
-                  <div className="flex gap-1">
+          {visibleCategories.map((category) => {
+            // Indeks pada daftar penuh (bukan hasil pencarian) untuk
+            // status disabled tombol naik/turun.
+            const fullIndex = categories.indexOf(category);
+            const txCount = statByCat.get(category.id)?.transactionCount ?? 0;
+            const lastDate = lastDateByCat.get(category.id);
+            return (
+              <Card
+                key={category.id}
+                variant="borderless"
+                className="shadow-sm!"
+                size="small"
+                title={
+                  <span className="flex min-w-0 items-center gap-2">
+                    <span
+                      style={{
+                        display: "inline-block",
+                        width: 10,
+                        height: 10,
+                        borderRadius: "50%",
+                        background: category.color,
+                        flexShrink: 0,
+                      }}
+                    />
+                    <Text strong ellipsis className="max-w-40!">
+                      {category.name}
+                    </Text>
+                  </span>
+                }
+                extra={
+                  category.walletType === "CASH" ? (
+                    // Wadah Cash bawaan: hanya warnanya yang bisa diubah
+                    // (nama/jenis terkunci), tidak bisa dihapus.
                     <Button
                       type="text"
                       shape="circle"
@@ -509,32 +579,111 @@ export default function WalletsView({
                       }}
                       aria-label={t("settings.editCategory")}
                     />
-                    <Popconfirm
-                      title={t("settings.deleteCategoryConfirm")}
-                      okText={t("common.delete")}
-                      okButtonProps={{ danger: true }}
-                      cancelText={t("common.cancel")}
-                      onConfirm={() => void handleDeleteCategory(category)}
-                    >
+                  ) : (
+                    <div className="flex gap-1">
                       <Button
                         type="text"
                         shape="circle"
                         size="small"
-                        danger
-                        icon={<DeleteOutlined />}
-                        aria-label={t("common.delete")}
+                        icon={<EditOutlined />}
+                        onClick={() => {
+                          setEditingCat(category);
+                          categoryForm.setFieldsValue({
+                            name: category.name,
+                            color: category.color,
+                            walletType: category.walletType,
+                          });
+                          setCatModalOpen(true);
+                        }}
+                        aria-label={t("settings.editCategory")}
                       />
-                    </Popconfirm>
+                      <Popconfirm
+                        title={t("settings.deleteCategoryConfirm")}
+                        okText={t("common.delete")}
+                        okButtonProps={{ danger: true }}
+                        cancelText={t("common.cancel")}
+                        onConfirm={() => void handleDeleteCategory(category)}
+                      >
+                        <Button
+                          type="text"
+                          shape="circle"
+                          size="small"
+                          danger
+                          icon={<DeleteOutlined />}
+                          aria-label={t("common.delete")}
+                        />
+                      </Popconfirm>
+                    </div>
+                  )
+                }
+              >
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  {renderWalletType(category.walletType)}
+                </div>
+                {renderWalletProgress(category)}
+
+                {/* D3: badge jumlah transaksi + terakhir dicatat (siklus
+                    aktif) & aksi cepat — lihat mutasi (deep-link ke
+                    /transactions?unit=), transfer dari wadah ini, dan
+                    urutan naik/turun. */}
+                <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-zinc-100 pt-2 dark:border-zinc-700/60">
+                  <Text type="secondary" style={{ fontSize: 11 }}>
+                    {txCount > 0 && lastDate
+                      ? `${t("finance.walletTxCount", { n: txCount })} · ${t("finance.walletLastRecord", {
+                          date: dayjs(lastDate).format("DD MMM YYYY"),
+                        })}`
+                      : t("finance.walletNoTx")}
+                  </Text>
+                  <div className="flex items-center gap-0.5">
+                    <Tooltip title={t("finance.moveUpAria", { name: category.name })}>
+                      <Button
+                        type="text"
+                        shape="circle"
+                        size="small"
+                        icon={<UpOutlined />}
+                        disabled={fullIndex <= 0}
+                        onClick={() => void handleMoveCategory(fullIndex, -1)}
+                        aria-label={t("finance.moveUpAria", { name: category.name })}
+                      />
+                    </Tooltip>
+                    <Tooltip title={t("finance.moveDownAria", { name: category.name })}>
+                      <Button
+                        type="text"
+                        shape="circle"
+                        size="small"
+                        icon={<DownOutlined />}
+                        disabled={fullIndex >= categories.length - 1}
+                        onClick={() => void handleMoveCategory(fullIndex, 1)}
+                        aria-label={t("finance.moveDownAria", { name: category.name })}
+                      />
+                    </Tooltip>
+                    <Tooltip title={t("finance.transferFrom")}>
+                      <Button
+                        type="text"
+                        shape="circle"
+                        size="small"
+                        icon={<SwapOutlined />}
+                        onClick={() => setTransferFrom(category)}
+                        aria-label={t("finance.transferFrom")}
+                      />
+                    </Tooltip>
+                    <Tooltip title={t("finance.viewMutations")}>
+                      <Button
+                        type="text"
+                        shape="circle"
+                        size="small"
+                        icon={<UnorderedListOutlined />}
+                        onClick={() =>
+                          router.push(`/transactions?unit=${category.id}`)
+                        }
+                        aria-label={t("finance.viewMutations")}
+                      />
+                    </Tooltip>
                   </div>
-                )
-              }
-            >
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                {renderWalletType(category.walletType)}
-              </div>
-              {renderWalletProgress(category)}
-            </Card>
-          ))}
+                </div>
+              </Card>
+            );
+          })}
         </div>
       )}
 
@@ -626,6 +775,19 @@ export default function WalletsView({
           </div>
         </Form>
       </Modal>
+
+      {/* D3: aksi cepat "Transfer dari wadah ini" — form TRANSFER dengan
+          wadah sumber sudah terisi; wadah tujuan dipilih user. */}
+      <TransactionFormModal
+        open={transferFrom !== null}
+        editingTransaction={null}
+        categories={categories}
+        cycle={cycle}
+        defaultType="TRANSFER"
+        defaultUnitId={transferFrom?.id}
+        onClose={() => setTransferFrom(null)}
+        onSaved={() => void refreshCycle(cycle)}
+      />
     </div>
   );
 }

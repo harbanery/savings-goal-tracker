@@ -19,6 +19,7 @@ import {
   updateUserSettings,
   getUserCategories,
   getUserSettings,
+  reorderCategories,
 } from "@/services/transaction";
 import {
   createRecurringRule,
@@ -487,6 +488,28 @@ export async function updateCategoryAction(
   if (!isUuid(categoryId)) throw new Error("Invalid category id.");
   if (data.name !== undefined) data.name = sanitizeText(data.name, 50);
   await updateCategory(userId, categoryId, data);
+  revalidatePath("/");
+  revalidatePath("/budget");
+  revalidatePath("/finance");
+  revalidatePath("/needs");
+}
+
+/**
+ * Simpan urutan tampilan wadah (rekomendasi D3 — tombol naik/turun di
+ * halaman Keuangan). Menerima daftar id wadah urut baru.
+ */
+export async function reorderCategoriesAction(
+  orderedIds: string[],
+): Promise<void> {
+  const userId = await requireUserId();
+  if (
+    !Array.isArray(orderedIds) ||
+    orderedIds.length === 0 ||
+    orderedIds.some((id) => typeof id !== "string" || !isUuid(id))
+  ) {
+    throw new Error("Invalid order payload.");
+  }
+  await reorderCategories(userId, orderedIds);
   revalidatePath("/");
   revalidatePath("/budget");
   revalidatePath("/finance");

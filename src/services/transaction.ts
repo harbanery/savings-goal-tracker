@@ -392,6 +392,34 @@ export async function updateCategory(
   );
 }
 
+/**
+ * Simpan urutan tampilan wadah (rekomendasi D3 — tombol naik/turun di
+ * halaman Keuangan). Kolom `order` sudah ada di schema; hanya UI-nya
+ * yang baru.
+ */
+export async function reorderCategories(
+  userId: string,
+  orderedIds: string[],
+): Promise<void> {
+  // Pastikan seluruh id benar-benar wadah milik user (anti-IDOR) dan
+  // tidak ada duplikat sebelum menulis urutan baru.
+  const unique = [...new Set(orderedIds)];
+  const owned = await prisma.category.findMany({
+    where: { userId, id: { in: unique } },
+    select: { id: true },
+  });
+  if (owned.length !== unique.length) {
+    throw new Error("Kategori tidak ditemukan.");
+  }
+  await withRetry(() =>
+    prisma.$transaction(
+      unique.map((id, index) =>
+        prisma.category.update({ where: { id }, data: { order: index } }),
+      ),
+    ),
+  );
+}
+
 /** Hapus kategori — ditolak bila masih dipakai transaksi/aturan berulang. */
 export async function deleteCategory(userId: string, categoryId: string): Promise<void> {
   const existing = await prisma.category.findFirst({
