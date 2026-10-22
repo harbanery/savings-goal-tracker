@@ -21,12 +21,12 @@ const id: TranslationDict = {
   "common.loading": "Memuat…",
 
   // Not Found / Error page
-  "notfound.desc": "Halaman yang Anda cari tidak tersedia atau sudah dipindahkan.",
+  "notfound.desc":
+    "Halaman yang Anda cari tidak tersedia atau sudah dipindahkan.",
   "notfound.back": "Kembali ke Beranda",
   "error.title": "Terjadi Kesalahan",
   "error.fallback": "Terjadi kesalahan yang tidak terduga.",
   "error.retry": "Coba Lagi",
-
 
   // App / Dashboard
   "app.title": "Savings Goal Tracker",
@@ -40,7 +40,6 @@ const id: TranslationDict = {
   "app.overLimitTitle": "Melebihi Limit Pengeluaran!",
   "app.overLimitDesc":
     "Pengeluaran sudah {spent}, melebihi limit {limit}. Selisih: {diff}.",
-
 
   // Stats
   "stats.initialBalance": "Saldo",
@@ -73,7 +72,7 @@ const id: TranslationDict = {
   "table.empty": "Belum ada transaksi di siklus ini",
   "table.searchPlaceholder": "Cari nama transaksi...",
   "table.filterSubcategoryPlaceholder": "Semua Subkategori",
-  "table.filterWholeWallet": "Semua {name}",
+  "table.filterWholeWallet": "Semua",
   "table.filterResult": "Menampilkan {shown} dari {total}",
   "table.noMatch": "Tidak ada transaksi yang cocok",
 
@@ -195,7 +194,8 @@ const id: TranslationDict = {
   "dev.quarterlyTrendBtn": "Quarterly Trend",
   "dev.quarterlyTrendTooltip": "Kirim email: laporan tren tabungan triwulanan",
   "dev.yearlyRecapBtn": "Yearly Recap",
-  "dev.yearlyRecapTooltip": "Kirim email: rekap akhir tahunan + top 3 wadah terboros",
+  "dev.yearlyRecapTooltip":
+    "Kirim email: rekap akhir tahunan + top 3 wadah terboros",
   "dev.pushSuccess": "Notifikasi terkirim ({val} subscriber).",
   "dev.emailSuccess": "Email berhasil dikirim.",
   "dev.skipped": "Notifikasi dilewati — kondisi tidak terpenuhi.",
@@ -229,8 +229,7 @@ const id: TranslationDict = {
   "auth.errorExchange": "Gagal memverifikasi akun Google. Coba lagi.",
   "auth.errorUnverified": "Email Google Anda belum terverifikasi.",
   "auth.errorGoogle": "Login Google dibatalkan atau gagal.",
-  "auth.errorLimit":
-    "Pendaftaran baru ditutup — kuota 5 akun sudah tercapai.",
+  "auth.errorLimit": "Pendaftaran baru ditutup — kuota 5 akun sudah tercapai.",
   "auth.errorDefault": "Gagal login. Coba lagi.",
 
   // Metadata halaman (title/description <head> — dipakai buildPageMetadata)
@@ -295,7 +294,8 @@ const id: TranslationDict = {
   // Kategori (table wadah & subkategori dipisah)
   "categories.wadahTitle": "Wadah",
   "categories.subTitle": "Subkategori",
-  "categories.subEmpty": "Belum ada subkategori. Tambahkan dari wadah yang tersedia.",
+  "categories.subEmpty":
+    "Belum ada subkategori. Tambahkan dari wadah yang tersedia.",
   "categories.subCount": "{n} subkategori",
 
   // Keuangan: halaman wadah / Budget / Target
@@ -410,12 +410,12 @@ const en: TranslationDict = {
   "common.loading": "Loading…",
 
   // Not Found / Error page
-  "notfound.desc": "The page you are looking for does not exist or has been moved.",
+  "notfound.desc":
+    "The page you are looking for does not exist or has been moved.",
   "notfound.back": "Back Home",
   "error.title": "Something Went Wrong",
   "error.fallback": "An unexpected error occurred.",
   "error.retry": "Try Again",
-
 
   "app.title": "Savings Goal Tracker",
   "app.description": "Track monthly spending with an envelope system.",
@@ -428,7 +428,6 @@ const en: TranslationDict = {
   "app.overLimitTitle": "Spending Limit Exceeded!",
   "app.overLimitDesc":
     "Spending is {spent}, exceeding the limit of {limit}. Difference: {diff}.",
-
 
   "stats.initialBalance": "Balance",
   "stats.totalSpent": "Total Spending",
@@ -459,7 +458,7 @@ const en: TranslationDict = {
   "table.empty": "No transactions in this cycle",
   "table.searchPlaceholder": "Search transaction name...",
   "table.filterSubcategoryPlaceholder": "All Subcategories",
-  "table.filterWholeWallet": "All {name}",
+  "table.filterWholeWallet": "All",
   "table.filterResult": "Showing {shown} of {total}",
   "table.noMatch": "No matching transactions found",
 
@@ -575,7 +574,8 @@ const en: TranslationDict = {
   "dev.quarterlyTrendBtn": "Quarterly Trend",
   "dev.quarterlyTrendTooltip": "Send email: quarterly savings trend report",
   "dev.yearlyRecapBtn": "Yearly Recap",
-  "dev.yearlyRecapTooltip": "Send email: end-of-year recap + top 3 spending envelopes",
+  "dev.yearlyRecapTooltip":
+    "Send email: end-of-year recap + top 3 spending envelopes",
   "dev.pushSuccess": "Notification sent ({val} subscriber).",
   "dev.emailSuccess": "Email sent successfully.",
   "dev.skipped": "Notification skipped — condition not met.",
