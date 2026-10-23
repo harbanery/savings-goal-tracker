@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { sendPushNotification } from "@/lib/web-push";
 import { sendEmail, isEmailConfigured } from "@/lib/email";
 import { getTransactionsInRange, getUserCategories, getUserSettings } from "@/services/transaction";
+import { getTargetsDueSoon } from "@/services/finance";
 import { getSubscriptionsOfUser, removeStaleSubscription } from "@/services/push";
 import type { BudgetCategory, Transaction, UserSettings } from "@/features/web/types";
 import { computeCycleStats, type CycleStats } from "@/features/web/utils/stats";
@@ -31,6 +32,7 @@ const APP_NAME = META_APP ?? "Savings Goal Tracker";
  * - tracking-nudge (B1)      → web push
  * - category-spotlight (C1)   → web push
  * - cycle-reset (D1)          → web push
+ * - target-deadline (D6)      → web push
  * - new-cycle-kickoff (D2+D4) → email
  * - monthly-summary (D3)     → email
  * - csv-export-reminder (E2) → email
@@ -290,6 +292,62 @@ export async function buildCycleResetReminder(
     body,
     tag: "cycle-reset",
     url: "/",
+    icon: PUSH_ICON,
+    badge: PUSH_BADGE,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// D6 – Target Deadline Reminder (H-7) — web push
+// ---------------------------------------------------------------------------
+
+/**
+ * Pengingat batas waktu target tabungan (rekomendasi D6): kirim push
+ * untuk target yang belum tercapai dan batas waktunya tinggal ≤ 7 hari
+ * (termasuk hari ini). Tag tetap "target-deadline" sehingga notifikasi
+ * hari berikutnya menggantikan yang lama, tidak menumpuk.
+ */
+export async function buildTargetDeadlineReminder(
+  ctx: UserFinance,
+): Promise<NotificationPayload | null> {
+  const targets = await getTargetsDueSoon(ctx.userId, 7);
+  const pending = targets.filter((t) => t.saved < t.targetAmount);
+  if (pending.length === 0) return null;
+
+  // Target paling mendesak = deadline terdekat (getTargetsDueSoon sudah
+  // urut asc berdasarkan deadline).
+  const nearest = pending[0];
+  const deadline = new Date(nearest.deadline!);
+
+  const daysLeft = Math.max(
+    0,
+    Math.ceil((deadline.getTime() - Date.now()) / 86_400_000),
+  );
+  const remaining = Math.max(0, nearest.targetAmount - nearest.saved);
+  const months = Math.max(1, Math.ceil(daysLeft / 30.44));
+  const perMonth = Math.ceil(remaining / months);
+  const deadlineStr = formatDateLabel(deadline, NOTIFICATION_LOCALE);
+
+  const whenText =
+    daysLeft === 0
+      ? L(`hari ini`, `today`)
+      : L(`H-${daysLeft}`, `in ${daysLeft} day${daysLeft === 1 ? "" : "s"}`);
+  const othersText =
+    pending.length > 1
+      ? L(
+          ` (+${pending.length - 1} target lain)`,
+          ` (+${pending.length - 1} more target${pending.length > 2 ? "s" : ""})`,
+        )
+      : "";
+
+  return {
+    title: L(`🎯 Target "${nearest.name}" hampir jatuh tempo`, `🎯 Target "${nearest.name}" is almost due`),
+    body: L(
+      `Batas waktu ${deadlineStr} (${whenText}). Kurang ${formatShortIDR(remaining)} lagi — sisihkan ±${formatShortIDR(perMonth)}/bulan agar tercapai.${othersText}`,
+      `Deadline is ${deadlineStr} (${whenText}). ${formatShortIDR(remaining)} to go — set aside ±${formatShortIDR(perMonth)}/month to make it.${othersText}`,
+    ),
+    tag: "target-deadline",
+    url: "/target",
     icon: PUSH_ICON,
     badge: PUSH_BADGE,
   };

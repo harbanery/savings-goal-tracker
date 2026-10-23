@@ -93,3 +93,23 @@ export const SMTP_FROM: string = process.env.SMTP_FROM || SMTP_USER;
 export type NotificationLocale = "id" | "en";
 export const NOTIFICATION_LOCALE: NotificationLocale =
   process.env.NOTIFICATION_LOCALE === "en" ? "en" : "id";
+
+// ---------------------------------------------------------------------------
+// WhatsApp bot (Baileys — service BE terpisah, lihat savings-goal-tracker-be)
+// ---------------------------------------------------------------------------
+/**
+ * Shared secret antara service BE (savings-goal-tracker-be) dan FE:
+ * dipakai FE untuk memanggil `/api/bot/*` (header `x-internal-secret`).
+ * Wajib sama dengan INTERNAL_SECRET di env BE. Jika kosong, pemanggilan
+ * ke BE ditolak (fail-closed).
+ */
+export const WHATSAPP_INTERNAL_SECRET: string =
+  process.env.WHATSAPP_INTERNAL_SECRET || "";
+/** URL dasar service BE WhatsApp (mis. http://localhost:4000). */
+export const WHATSAPP_BOT_API_URL: string =
+  (process.env.WHATSAPP_BOT_API_URL || "").replace(/\/+$/, "");
+/** Integrasi WhatsApp aktif hanya bila URL BE + secret terisi. */
+export const WHATSAPP_IS_CONFIGURED: boolean =
+  WHATSAPP_BOT_API_URL !== "" && WHATSAPP_INTERNAL_SECRET !== "";
+/** Masa berlaku kode pairing user (menit). */
+export const WHATSAPP_PAIRING_TTL_MINUTES = 10;

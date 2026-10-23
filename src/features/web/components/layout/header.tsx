@@ -1,6 +1,11 @@
 "use client";
 
-import { LogoutOutlined, MenuOutlined, UserOutlined } from "@ant-design/icons";
+import {
+  LogoutOutlined,
+  MenuOutlined,
+  UserOutlined,
+  WhatsAppOutlined,
+} from "@ant-design/icons";
 import {
   Avatar,
   Breadcrumb,
@@ -13,12 +18,13 @@ import {
   Typography,
 } from "antd";
 import { usePathname, useRouter } from "next/navigation";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import LanguageToggle from "@/components/i18n/LanguageToggle";
 import { useLocale } from "@/components/i18n/LocaleProvider";
 import ThemeToggle from "@/components/ui/theme/ThemeToggle";
 import NotificationBell from "@/features/web/components/ui/NotificationBell";
 import CycleClockPicker from "@/features/web/components/ui/CycleClockPicker";
+import WhatsAppLinkModal from "@/features/whatsapp/components/ui/WhatsAppLinkModal";
 import { clearWebSession, useWebSession } from "@/features/web/hooks/session";
 import { menuConfig } from "@/features/web/utils/menu";
 
@@ -37,6 +43,7 @@ export default function HeaderLayout({
   const { user } = useWebSession();
   const screens = Grid.useBreakpoint();
   const isMobile = !screens.md;
+  const [waOpen, setWaOpen] = useState(false);
   // Warna header mengikuti tema antd (light/dark) via design token.
   const { token } = theme.useToken();
 
@@ -59,9 +66,16 @@ export default function HeaderLayout({
 
   const userMenu = {
     items: [
+      {
+        key: "whatsapp",
+        icon: <WhatsAppOutlined style={{ color: "#25d366" }} />,
+        label: t("whatsapp.menuLabel"),
+      },
+      { type: "divider" as const },
       { key: "logout", icon: <LogoutOutlined />, label: t("auth.logout") },
     ],
     onClick: ({ key }: { key: string }) => {
+      if (key === "whatsapp") setWaOpen(true);
       if (key === "logout") void handleLogout();
     },
   };
@@ -127,6 +141,8 @@ export default function HeaderLayout({
           </Button>
         </Dropdown>
       </Space>
+
+      <WhatsAppLinkModal open={waOpen} onClose={() => setWaOpen(false)} />
     </Header>
   );
 }

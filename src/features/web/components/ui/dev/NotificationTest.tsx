@@ -33,6 +33,7 @@ type NotifKey =
   | "tracking-nudge"
   | "category-spotlight"
   | "cycle-reset"
+  | "target-deadline"
   | "new-cycle-kickoff"
   | "monthly-summary"
   | "csv-export-reminder"
@@ -44,6 +45,7 @@ const NOTIF_CHANNELS: Record<NotifKey, "push" | "email"> = {
   "tracking-nudge": "push",
   "category-spotlight": "push",
   "cycle-reset": "push",
+  "target-deadline": "push",
   "new-cycle-kickoff": "email",
   "monthly-summary": "email",
   "csv-export-reminder": "email",
@@ -64,6 +66,7 @@ export default function NotificationTest() {
     "tracking-nudge": false,
     "category-spotlight": false,
     "cycle-reset": false,
+    "target-deadline": false,
     "new-cycle-kickoff": false,
     "monthly-summary": false,
     "csv-export-reminder": false,
@@ -150,6 +153,13 @@ export default function NotificationTest() {
       path: "/api/cron/cycle-reset",
       labelKey: "dev.cycleResetBtn",
       tooltipKey: "dev.cycleResetTooltip",
+      icon: SendOutlined,
+    },
+    {
+      key: "target-deadline",
+      path: "/api/cron/target-deadline",
+      labelKey: "dev.targetDeadlineBtn",
+      tooltipKey: "dev.targetDeadlineTooltip",
       icon: SendOutlined,
     },
     {

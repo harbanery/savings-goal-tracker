@@ -21,17 +21,19 @@ const PRIVATE_PAGES = new Set([
   "/target",
   "/reports",
 ]);
-const PRIVATE_API_PREFIXES = ["/api/web/push"];
+const PRIVATE_API_PREFIXES = ["/api/web/push", "/api/web/whatsapp"];
 
 /**
  * Rate limit endpoint sensitif (rekomendasi B3): 10 req/menit untuk flow
  * Google OAuth (consent spam), 30 req/menit untuk push subscription
  * (flood subscribe/unsubscribe). Dihitung per IP, fixed window — lihat
- * src/utils/server/rateLimit.ts.
+ * src/utils/server/rateLimit.ts. Kode pairing WhatsApp dibatasi ketat
+ * (brute-force 6 digit).
  */
 const RATE_LIMIT_RULES: readonly RateLimitRule[] = [
   { prefix: "/api/web/auth/google/", limit: 10, windowMs: 60_000 },
   { prefix: "/api/web/push/", limit: 30, windowMs: 60_000 },
+  { prefix: "/api/web/whatsapp/link-code", limit: 6, windowMs: 60_000 },
 ];
 
 function hasSession(request: NextRequest): boolean {

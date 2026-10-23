@@ -85,3 +85,14 @@ export async function getSessionUser(userId: string) {
     },
   });
 }
+
+/** Nama user untuk konfirmasi pairing bot WhatsApp (null bila tidak ada). */
+export async function getUserNameById(
+  userId: string,
+): Promise<string | null> {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { name: true },
+  });
+  return user?.name ?? null;
+}

@@ -1,0 +1,3 @@
+-- No-op: seeding saldo awal dari env (NEXT_PUBLIC_SAVINGS_INITIAL) dihapus
+-- dari layer aplikasi; kolom savings_initial tetap di DB (default 0) demi
+-- kompatibilitas data lama. Tidak ada perubahan struktur.

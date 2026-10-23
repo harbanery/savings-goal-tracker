@@ -42,6 +42,8 @@ model User {
   recurrings   RecurringTransaction[]
   sessions     UserSession[]
   subscriptions PushSubscription[]
+  whatsappLinks WhatsAppLink[]
+  whatsappPairings WhatsAppPairing[]
 
   @@map("users")
 }
@@ -227,4 +229,58 @@ model PushSubscription {
 
   @@index([userId])
   @@map("push_subscriptions")
+}
+
+/// Akun bot WhatsApp (Baileys) — baris TUNGGAL (singleton, id deterministik).
+/// Menyimpan status koneksi worker + auth state (creds + keys, JSON blob)
+/// sehingga worker bisa restart/migrasi container tanpa scan QR ulang:
+/// state dipersist ke DB, bukan filesystem ephemeral worker.
+model WhatsAppAccount {
+  id     String  @id @db.Uuid
+  /// JID bot sendiri (mis. "62812…@s.whatsapp.net") setelah tersambung.
+  phone  String?
+  /// disconnected | connecting | connected.
+  status String  @default("disconnected")
+  /// Auth state Baileys: { creds, keys } — nilai base64 untuk Buffer.
+  state  Json?
+  lastConnectedAt DateTime? @map("last_connected_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("whatsapp_account")
+}
+
+/// Link nomor WhatsApp user (JID) ke akun aplikasi — dibuat via kode
+/// pairing (user kirim "link <kode>" dari WhatsApp-nya ke nomor bot).
+/// DIPAKAI BERSAMA service BE (savings-goal-tracker-be): FE membuat kode
+/// pairing & membaca/melepas link; BE mengonsumsi kode saat pesan
+/// "link <kode>" masuk. Model bot-only (whatsapp_account, whatsapp_inbound)
+/// dipetakan di skema BE — tabel fisiknya tetap dibuat migrasi repo ini.
+model WhatsAppLink {
+  id       String   @id @default(uuid()) @db.Uuid
+  userId   String   @map("user_id") @db.Uuid
+  /// JID WhatsApp user ("…@s.whatsapp.net") — unik: satu nomor satu akun.
+  jid      String   @unique
+  linkedAt DateTime @default(now()) @map("linked_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("whatsapp_links")
+}
+
+/// Kode pairing 6 digit untuk menghubungkan nomor WhatsApp ke akun.
+/// Kode asli TIDAK disimpan — hanya sha256 hash-nya.
+model WhatsAppPairing {
+  id        String    @id @default(uuid()) @db.Uuid
+  userId    String    @map("user_id") @db.Uuid
+  codeHash  String    @unique @map("code_hash")
+  expiresAt DateTime  @map("expires_at")
+  consumedAt DateTime? @map("consumed_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("whatsapp_pairings")
 }

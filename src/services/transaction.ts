@@ -98,6 +98,20 @@ export async function getTransactionsInRange(
   return rows.map(toTransaction);
 }
 
+/** Transaksi terbaru user (perintah "undo" bot WhatsApp). */
+export async function getLatestTransaction(
+  userId: string,
+): Promise<Transaction | null> {
+  const rows = await withRetry(() =>
+    prisma.transaction.findMany({
+      where: { userId },
+      orderBy: [{ date: "desc" }, { createdAt: "desc" }],
+      take: 1,
+    }),
+  );
+  return rows[0] ? toTransaction(rows[0]) : null;
+}
+
 /** Total pemasukan & pengeluaran seluruh waktu (kartu keuntungan dashboard). */
 export async function getAllTimeTotals(
   userId: string,

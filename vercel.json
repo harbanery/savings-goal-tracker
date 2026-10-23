@@ -1,8 +1,13 @@
 {
+  "regions": ["sin1"],
   "crons": [
     {
       "path": "/api/cron/tracking-nudge",
       "schedule": "0 13 * * *"
+    },
+    {
+      "path": "/api/cron/target-deadline",
+      "schedule": "0 12 * * *"
     },
     {
       "path": "/api/cron/category-spotlight",

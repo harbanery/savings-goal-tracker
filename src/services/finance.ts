@@ -78,6 +78,32 @@ async function assertCategoriesOwned(
   return unique;
 }
 
+/** Row SavingsTarget dari Prisma yang relevan untuk DTO target. */
+type TargetRow = {
+  id: string;
+  name: string;
+  targetAmount: Prisma.Decimal;
+  categoryIds: string[];
+  deadline: Date | null;
+  note: string;
+};
+
+/** Row → DTO target + dana terkumpul otomatis (tabungan bersih). */
+async function toTargetDto(
+  userId: string,
+  t: TargetRow,
+): Promise<SavingsTarget> {
+  return {
+    id: t.id,
+    name: t.name,
+    targetAmount: Number(t.targetAmount),
+    saved: await computeSaved(userId, t.categoryIds),
+    categoryIds: t.categoryIds,
+    deadline: t.deadline ? t.deadline.toISOString() : null,
+    note: t.note,
+  };
+}
+
 /** Target + dana terkumpul otomatis (tabungan bersih seluruh siklus). */
 export async function getTargets(
   userId: string,
@@ -88,17 +114,29 @@ export async function getTargets(
       orderBy: { createdAt: "asc" },
     }),
   );
-  return Promise.all(
-    rows.map(async (t) => ({
-      id: t.id,
-      name: t.name,
-      targetAmount: Number(t.targetAmount),
-      saved: await computeSaved(userId, t.categoryIds),
-      categoryIds: t.categoryIds,
-      deadline: t.deadline ? t.deadline.toISOString() : null,
-      note: t.note,
-    })),
+  return Promise.all(rows.map((t) => toTargetDto(userId, t)));
+}
+
+/**
+ * Target dengan deadline dalam `days` hari ke depan (termasuk hari ini)
+ * — untuk push reminder H-7 batas waktu target (rekomendasi D6).
+ */
+export async function getTargetsDueSoon(
+  userId: string,
+  days: number,
+): Promise<SavingsTarget[]> {
+  const start = new Date();
+  start.setHours(0, 0, 0, 0);
+  const end = new Date(start);
+  end.setDate(end.getDate() + days);
+  end.setHours(23, 59, 59, 999);
+  const rows = await withRetry(() =>
+    prisma.savingsTarget.findMany({
+      where: { userId, deadline: { gte: start, lte: end } },
+      orderBy: { deadline: "asc" },
+    }),
   );
+  return Promise.all(rows.map((t) => toTargetDto(userId, t)));
 }
 
 export interface TargetInput {

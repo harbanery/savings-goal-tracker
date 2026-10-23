@@ -6,6 +6,7 @@ import {
   CloseOutlined,
   DeleteOutlined,
   EditOutlined,
+  PlusCircleOutlined,
   PlusOutlined,
   WalletOutlined,
 } from "@ant-design/icons";
@@ -29,9 +30,11 @@ import {
   Typography,
 } from "antd";
 import dayjs, { type Dayjs } from "dayjs";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useLocale } from "@/components/i18n/LocaleProvider";
+import { useCycle } from "@/features/web/hooks/cycle";
 import type { BudgetCategory, SavingsTarget } from "@/features/web/types";
+import TransactionFormModal from "@/features/transactions/components/ui/TransactionFormModal";
 import {
   createTargetAction,
   deleteTargetAction,
@@ -41,6 +44,15 @@ import {
 import { formatIDR } from "@/utils/helpers";
 
 const { Text } = Typography;
+
+/** Opsi urut/tampil kartu target (rekomendasi D6). */
+type TargetSort = "default" | "deadline" | "progress" | "almost";
+
+/** Ambang "hampir tercapai" untuk opsi urut `almost` (progres ≥ 70%). */
+const ALMOST_THRESHOLD = 70;
+
+/** Rata-rata panjang bulan (hari) untuk estimasi sisihan per bulan. */
+const DAYS_PER_MONTH = 30.44;
 
 interface Props {
   initialTargets: SavingsTarget[];
@@ -55,6 +67,50 @@ interface TargetFormValues {
   categoryIds?: string[];
   deadline?: Dayjs | null;
   note?: string;
+}
+
+/** Estimasi sisihan per bulan menjelang deadline (rekomendasi D6). */
+interface DeadlineEstimate {
+  /** Sisa hari sampai deadline (0 = hari ini). */
+  daysLeft: number;
+  /** Sisa bulan (minimal 1) — dasar pembagian dana. */
+  months: number;
+  /** Sisa dana ÷ sisa bulan, dibulatkan ke atas. */
+  perMonth: number;
+  /** true bila deadline sudah terlewat. */
+  overdue: boolean;
+}
+
+/** Persentase progress (cap 100; dana minus dianggap 0). */
+function percentOf(target: SavingsTarget): number {
+  if (target.targetAmount <= 0) return 0;
+  return Math.min(
+    100,
+    Math.round((Math.max(0, target.saved) / target.targetAmount) * 100),
+  );
+}
+
+/**
+ * D6: estimasi "sisihkan Rp X/bulan" = (target − terkumpul) ÷ sisa
+ * bulan sampai deadline — murni kalkulasi client; null bila tanpa
+ * deadline atau sudah tercapai.
+ */
+function estimateOf(target: SavingsTarget): DeadlineEstimate | null {
+  if (!target.deadline || target.saved >= target.targetAmount) return null;
+  const daysLeft = dayjs(target.deadline)
+    .startOf("day")
+    .diff(dayjs().startOf("day"), "day");
+  const remaining = target.targetAmount - Math.max(0, target.saved);
+  const months = Math.max(
+    1,
+    Math.ceil(Math.max(0, daysLeft) / DAYS_PER_MONTH),
+  );
+  return {
+    daysLeft,
+    months,
+    perMonth: Math.ceil(remaining / months),
+    overdue: daysLeft < 0,
+  };
 }
 
 /**
@@ -72,6 +128,15 @@ export default function TargetsView({
 
   const [targets, setTargets] = useState(initialTargets);
   const [reloadKey, setReloadKey] = useState(0);
+  /** D6: urut/tampil kartu target. */
+  const [sortMode, setSortMode] = useState<TargetSort>("default");
+  /** D6: aksi cepat "Catat setoran" — form INCOME ke wadah scope target. */
+  const [depositTarget, setDepositTarget] = useState<SavingsTarget | null>(
+    null,
+  );
+
+  /** Siklus aktif global — batas tanggal form transaksi setoran. */
+  const { cycle } = useCycle();
 
   const [targetForm] = Form.useForm<TargetFormValues>();
   const scope = Form.useWatch("scope", targetForm) ?? "all";
@@ -134,14 +199,33 @@ export default function TargetsView({
     }
   }
 
-  /** Persentase progress (cap 100; dana minus dianggap 0). */
-  function percentOf(target: SavingsTarget): number {
-    if (target.targetAmount <= 0) return 0;
-    return Math.min(
-      100,
-      Math.round((Math.max(0, target.saved) / target.targetAmount) * 100),
-    );
-  }
+  /** D6: kartu target sesuai urut/tampil aktif. */
+  const visibleTargets = useMemo(() => {
+    switch (sortMode) {
+      case "deadline":
+        // Deadline terdekat duluan; tanpa deadline tetap di belakang.
+        return [...targets].sort((a, b) => {
+          if (!a.deadline && !b.deadline) return 0;
+          if (!a.deadline) return 1;
+          if (!b.deadline) return -1;
+          return a.deadline.localeCompare(b.deadline);
+        });
+      case "progress":
+        return [...targets].sort(
+          (a, b) => percentOf(b) - percentOf(a),
+        );
+      case "almost":
+        // Filter "hampir capai": belum selesai & progres ≥ ambang.
+        return targets
+          .filter((t) => {
+            const p = percentOf(t);
+            return p >= ALMOST_THRESHOLD && p < 100;
+          })
+          .sort((a, b) => percentOf(b) - percentOf(a));
+      default:
+        return targets;
+    }
+  }, [targets, sortMode]);
 
   /** Label cakupan wadah sumber dana target. */
   function renderScope(target: SavingsTarget) {
@@ -172,17 +256,34 @@ export default function TargetsView({
             {t("finance.targetAutoHint")}
           </Text>
         </div>
-        <Button
-          type="primary"
-          icon={<PlusOutlined />}
-          onClick={() => {
-            setEditing(null);
-            targetForm.resetFields();
-            setModalOpen(true);
-          }}
-        >
-          {t("finance.addTarget")}
-        </Button>
+        <div className="flex flex-wrap items-center gap-2">
+          {/* D6: urut/tampil kartu target (relevan saat > 1 target). */}
+          {targets.length > 1 && (
+            <Select<TargetSort>
+              className="min-w-40!"
+              value={sortMode}
+              onChange={setSortMode}
+              aria-label={t("finance.targetSortAria")}
+              options={[
+                { value: "default", label: t("finance.targetSortDefault") },
+                { value: "deadline", label: t("finance.targetSortDeadline") },
+                { value: "progress", label: t("finance.targetSortProgress") },
+                { value: "almost", label: t("finance.targetSortAlmost") },
+              ]}
+            />
+          )}
+          <Button
+            type="primary"
+            icon={<PlusOutlined />}
+            onClick={() => {
+              setEditing(null);
+              targetForm.resetFields();
+              setModalOpen(true);
+            }}
+          >
+            {t("finance.addTarget")}
+          </Button>
+        </div>
       </div>
 
       {targets.length === 0 ? (
@@ -191,11 +292,19 @@ export default function TargetsView({
             <Empty description={t("finance.targetsEmpty")} />
           </div>
         </Card>
+      ) : visibleTargets.length === 0 ? (
+        // D6: filter "hampir tercapai" tanpa hasil.
+        <Card variant="borderless" className="shadow-sm!">
+          <div className="flex items-center justify-center py-12">
+            <Empty description={t("finance.targetNoAlmost")} />
+          </div>
+        </Card>
       ) : (
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-          {targets.map((target) => {
+          {visibleTargets.map((target) => {
             const percent = percentOf(target);
             const done = percent >= 100;
+            const estimate = estimateOf(target);
             return (
               <Card
                 key={target.id}
@@ -255,10 +364,7 @@ export default function TargetsView({
                   <div className="flex flex-wrap items-center gap-2">
                     {renderScope(target)}
                     {target.deadline && (
-                      <Tag style={{ margin: 0 }}>
-                        {t("finance.targetDeadlineLabel")}:{" "}
-                        {dayjs(target.deadline).format("DD MMM YYYY")}
-                      </Tag>
+                      <DeadlineTag deadline={target.deadline} />
                     )}
                   </div>
                   <div>
@@ -276,11 +382,50 @@ export default function TargetsView({
                       status={done ? "success" : "active"}
                       strokeColor={done ? "#16a34a" : "#4f46e5"}
                     />
+                    {/* D6: estimasi sisihan per bulan sampai deadline. */}
+                    {estimate && !estimate.overdue && (
+                      <Text
+                        type="secondary"
+                        style={{ fontSize: 12 }}
+                        className="mt-1! block!"
+                      >
+                        {t("finance.targetMonthlyEstimate", {
+                          amount: formatIDR(estimate.perMonth, locale),
+                        })}{" "}
+                        · {t("finance.targetMonthsLeft", { n: estimate.months })}
+                      </Text>
+                    )}
+                    {estimate?.overdue && (
+                      <Text
+                        type="danger"
+                        style={{ fontSize: 12 }}
+                        className="mt-1! block!"
+                      >
+                        {t("finance.targetOverdue")}
+                      </Text>
+                    )}
                   </div>
                   {target.note && (
                     <Text type="secondary" style={{ fontSize: 12 }} ellipsis>
                       {target.note}
                     </Text>
+                  )}
+                  {/* D6: aksi cepat "Catat setoran" — form INCOME ke wadah
+                      scope target (semua wadah bila scope kosong). */}
+                  {!done && (
+                    <div className="border-t border-zinc-100 pt-1 dark:border-zinc-700/60">
+                      <Button
+                        size="small"
+                        block
+                        icon={<PlusCircleOutlined />}
+                        onClick={() => setDepositTarget(target)}
+                        aria-label={t("finance.targetRecordDepositAria", {
+                          name: target.name,
+                        })}
+                      >
+                        {t("finance.targetRecordDeposit")}
+                      </Button>
+                    </div>
                   )}
                 </div>
               </Card>
@@ -403,6 +548,46 @@ export default function TargetsView({
           </div>
         </Form>
       </Modal>
+
+      {/* D6: aksi cepat "Catat setoran" — form INCOME dengan wadah scope
+          target terisi (wadah pertama scope; scope semua wadah → user
+          pilih sendiri). Simpan memicu reload target (dana terkumpul
+          berubah). */}
+      <TransactionFormModal
+        open={depositTarget !== null}
+        editingTransaction={null}
+        categories={categories}
+        cycle={cycle}
+        defaultType="INCOME"
+        defaultUnitId={depositTarget?.categoryIds[0]}
+        onClose={() => setDepositTarget(null)}
+        onSaved={() => setReloadKey((k) => k + 1)}
+      />
     </div>
+  );
+}
+
+/**
+ * Tag batas waktu target (D6): tanggal + status urgensi — merah bila
+ * terlewat, oranye bila ≤ 7 hari lagi (sinkron cron H-7).
+ */
+function DeadlineTag({ deadline }: { deadline: string }) {
+  const { t } = useLocale();
+  const date = dayjs(deadline);
+  const daysLeft = date.startOf("day").diff(dayjs().startOf("day"), "day");
+  const overdue = daysLeft < 0;
+  const urgent = daysLeft >= 0 && daysLeft <= 7;
+  return (
+    <Tag
+      color={overdue ? "red" : urgent ? "orange" : undefined}
+      style={{ margin: 0 }}
+    >
+      {t("finance.targetDeadlineLabel")}: {date.format("DD MMM YYYY")}
+      {overdue && ` · ${t("finance.targetOverdueTag")}`}
+      {daysLeft === 0 && ` · ${t("finance.targetDueToday")}`}
+      {urgent &&
+        daysLeft > 0 &&
+        ` · ${t("finance.targetDaysLeftTag", { n: daysLeft })}`}
+    </Tag>
   );
 }
