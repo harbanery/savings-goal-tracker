@@ -20,6 +20,8 @@ export type AnalyticsEvent =
   | "csv_imported"
   | "csv_exported"
   | "csv_template_downloaded"
+  // Laporan
+  | "report_exported"
   // Preferensi pengguna
   | "locale_changed"
   | "theme_toggled"
