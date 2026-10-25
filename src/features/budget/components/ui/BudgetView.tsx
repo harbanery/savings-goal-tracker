@@ -7,6 +7,7 @@ import {
   Card,
   Form,
   InputNumber,
+  Progress,
   Select,
   Typography,
 } from "antd";
@@ -129,6 +130,18 @@ export default function BudgetView({ initialOverview, settings }: Props) {
   /** Warna kartu Terpakai: merah bila sudah menyentuh tabungan. */
   const spentColor = overview.overProtected ? ACCENT.red : ACCENT.amber;
 
+  /**
+   * Persentase Terpakai vs Bisa Dialokasikan (D5). Bisa > 100 saat
+   * over-protection (bar penuh, angka tetap ditampilkan apa adanya);
+   * alokasi <= 0 dengan pengeluaran > 0 dianggap 100%.
+   */
+  const usagePercent =
+    overview.allocatable > 0
+      ? Math.round((overview.totalSpent / overview.allocatable) * 100)
+      : overview.totalSpent > 0
+        ? 100
+        : 0;
+
   const primary = [
     {
       key: "totalIncome",
@@ -192,6 +205,52 @@ export default function BudgetView({ initialOverview, settings }: Props) {
           </Card>
         ))}
       </div>
+
+      {/* D5: progress bar Terpakai vs Bisa Dialokasikan (visual, bukan hanya
+          angka) + riwayat pelanggaran ("X kali dipaksa siklus ini"). */}
+      <Card
+        variant="borderless"
+        className="shadow-sm!"
+        title={<Text strong>{t("finance.budgetProgressTitle")}</Text>}
+      >
+        <Progress
+          percent={usagePercent}
+          status={overview.overProtected ? "exception" : "normal"}
+          strokeColor={overview.overProtected ? ACCENT.red : ACCENT.green}
+        />
+        <div className="mt-1 flex flex-wrap items-center justify-between gap-2">
+          <Text type="secondary" className="text-sm!">
+            {t("finance.budgetProgressLegend", {
+              spent: formatIDR(overview.totalSpent, locale),
+              allocatable: formatIDR(overview.allocatable, locale),
+            })}
+          </Text>
+          <Text
+            type={overview.remaining < 0 ? "danger" : "secondary"}
+            className="text-sm!"
+          >
+            {overview.remaining >= 0
+              ? t("finance.budgetRemaining", {
+                  amount: formatIDR(overview.remaining, locale),
+                })
+              : t("finance.budgetOverBy", {
+                  amount: formatIDR(Math.abs(overview.remaining), locale),
+                })}
+          </Text>
+        </div>
+        {overview.forcedCount > 0 && (
+          <Alert
+            type="warning"
+            showIcon
+            icon={<ExclamationCircleOutlined />}
+            className="mt-3!"
+            title={t("finance.budgetForcedTitle")}
+            description={t("finance.budgetForcedCount", {
+              n: overview.forcedCount,
+            })}
+          />
+        )}
+      </Card>
 
       <Card
         variant="borderless"

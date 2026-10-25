@@ -8,6 +8,9 @@ import { buildTargetDeadlineReminder } from "@/utils/server/notificationBuilder"
  */
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+// A6 (rekomendasi_feature.md): naikkan batas durasi agar broadcast push
+// per user tidak kena timeout default fungsi serverless.
+export const maxDuration = 60;
 
 const handlers = createCronHandlers({
   name: "target-deadline",

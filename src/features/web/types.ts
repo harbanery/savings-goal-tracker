@@ -67,6 +67,9 @@ export interface Transaction {
   toCategoryId: string | null;
   /** Aturan berulang pembuat transaksi ini (null = manual). */
   recurringId: string | null;
+  /** true = pengeluaran dipaksa melewati proteksi tabungan (konfirmasi
+   *  "terpaksa" di menu Budget) — riwayat pelanggaran per siklus (D5). */
+  forced: boolean;
 }
 
 /** Input untuk membuat/memperbarui transaksi. */
@@ -97,6 +100,9 @@ export interface BudgetOverview {
   remaining: number;
   /** true bila pengeluaran sudah menyentuh/melebihi batas alokasi. */
   overProtected: boolean;
+  /** Jumlah transaksi yang dipaksa melewati proteksi tabungan di siklus
+   *  ini (riwayat pelanggaran — rekomendasi D5). */
+  forcedCount: number;
 }
 
 /** Target tabungan user (menu Keuangan > Target). */

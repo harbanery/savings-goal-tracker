@@ -30,6 +30,7 @@ export function toTransaction(t: TransactionRecord): Transaction {
     subcategoryId: t.subcategoryId,
     toCategoryId: t.toCategoryId,
     recurringId: t.recurringId,
+    forced: t.forced,
   };
 }
 
@@ -152,6 +153,9 @@ export interface CreateTransactionData {
   categoryId: string;
   subcategoryId?: string | null;
   toCategoryId?: string | null;
+  /** true = pengeluaran melewati proteksi tabungan via konfirmasi
+   *  "terpaksa" (riwayat pelanggaran D5). */
+  forced?: boolean;
 }
 
 /** Buat transaksi baru milik user. */
@@ -179,6 +183,7 @@ export async function createTransaction(
         categoryId: data.categoryId,
         subcategoryId: data.subcategoryId ?? null,
         toCategoryId: data.toCategoryId ?? null,
+        forced: data.forced ?? false,
       },
     }),
   );
@@ -194,6 +199,9 @@ export interface UpdateTransactionData {
   categoryId?: string;
   subcategoryId?: string | null;
   toCategoryId?: string | null;
+  /** Recompute flag pelanggaran (hanya dikirim saat nominal/jenis
+   *  pengeluaran berubah — edit nama/catatan mempertahankan nilai lama). */
+  forced?: boolean;
 }
 
 /** Perbarui transaksi user berdasarkan id. */
@@ -215,6 +223,7 @@ export async function updateTransaction(
     update.amount = new Prisma.Decimal(data.amount);
   if (data.note !== undefined) update.note = data.note;
   if (data.date !== undefined) update.date = data.date;
+  if (data.forced !== undefined) update.forced = data.forced;
 
   const nextCategoryId = data.categoryId;
   const nextToCategoryId = data.toCategoryId;

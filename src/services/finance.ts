@@ -230,7 +230,7 @@ export async function getBudgetOverview(
   userId: string,
   cycle: CycleInfo,
 ): Promise<BudgetOverview> {
-  const [settings, agg] = await Promise.all([
+  const [settings, agg, forcedCount] = await Promise.all([
     prisma.userSettings.findUnique({ where: { userId } }),
     withRetry(() =>
       prisma.transaction.groupBy({
@@ -240,6 +240,17 @@ export async function getBudgetOverview(
           date: { gte: cycle.startDate, lte: cycle.endDate },
         },
         _sum: { amount: true },
+      }),
+    ),
+    // Riwayat pelanggaran (D5): jumlah transaksi yang dipaksa melewati
+    // proteksi tabungan pada siklus ini.
+    withRetry(() =>
+      prisma.transaction.count({
+        where: {
+          userId,
+          forced: true,
+          date: { gte: cycle.startDate, lte: cycle.endDate },
+        },
       }),
     ),
   ]);
@@ -263,6 +274,7 @@ export async function getBudgetOverview(
     allocatable,
     remaining,
     overProtected: totalSpent > allocatable,
+    forcedCount,
   };
 }
 

@@ -145,6 +145,10 @@ model Transaction {
   recurringId   String?   @map("recurring_id") @db.Uuid
   /// Tanggal kemunculan terjadwal (kunci idempotensi transaksi berulang).
   recurringDate DateTime? @map("recurring_date")
+  /// Transaksi EXPENSE dipaksa melewati proteksi tabungan lewat konfirmasi
+  /// "terpaksa" (menu Budget) — dipakai untuk riwayat pelanggaran per siklus
+  /// (rekomendasi D5).
+  forced        Boolean   @default(false)
 
   user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
   category    Category    @relation("TransactionFromCategory", fields: [categoryId], references: [id], onDelete: Restrict)

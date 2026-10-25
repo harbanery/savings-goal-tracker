@@ -275,7 +275,7 @@ export async function materializeRecurringForCycle(
  */
 export async function createRecurringWithFirstTransaction(
   userId: string,
-  data: CreateRecurringData & { date: Date },
+  data: CreateRecurringData & { date: Date; forced?: boolean },
 ): Promise<void> {
   const settings = await prisma.userSettings.findUnique({
     where: { userId },
@@ -307,6 +307,9 @@ export async function createRecurringWithFirstTransaction(
         subcategoryId: rule.subcategoryId,
         recurringId: rule.id,
         recurringDate: occurrence,
+        // Transaksi pertama ikut membawa flag "terpaksa" bila pembuatannya
+        // melewati proteksi tabungan (riwayat pelanggaran D5).
+        forced: data.forced ?? false,
       },
     }),
   );

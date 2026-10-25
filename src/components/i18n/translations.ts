@@ -351,6 +351,14 @@ const id: TranslationDict = {
   "finance.budgetOverTitle": "Alokasi Terlampaui",
   "finance.budgetOverDesc":
     "Pengeluaran {spent} sudah melebihi batas alokasi {limit} dan menyentuh tabungan dilindungi.",
+  // D5: progress bar Terpakai vs Bisa Dialokasikan + riwayat pelanggaran
+  "finance.budgetProgressTitle": "Terpakai vs Bisa Dialokasikan",
+  "finance.budgetProgressLegend": "Terpakai {spent} dari {allocatable}",
+  "finance.budgetRemaining": "Sisa alokasi {amount}",
+  "finance.budgetOverBy": "Lebih {amount} dari batas alokasi",
+  "finance.budgetForcedTitle": "Riwayat Pelanggaran",
+  "finance.budgetForcedCount":
+    "{n} kali dipaksa siklus ini — pengeluaran sengaja melewati proteksi tabungan dilindungi.",
   "finance.targetsTitle": "Target Tabungan",
   "finance.addTarget": "Tambah Target",
   "finance.editTarget": "Edit Target",
@@ -805,6 +813,14 @@ const en: TranslationDict = {
   "finance.budgetOverTitle": "Allocation Exceeded",
   "finance.budgetOverDesc":
     "Spending {spent} has exceeded the {limit} allocation limit and touched your protected savings.",
+  // D5: Spent vs Available to Allocate progress + violation history
+  "finance.budgetProgressTitle": "Spent vs Available to Allocate",
+  "finance.budgetProgressLegend": "Spent {spent} of {allocatable}",
+  "finance.budgetRemaining": "{amount} left to allocate",
+  "finance.budgetOverBy": "Over the allocation limit by {amount}",
+  "finance.budgetForcedTitle": "Violation History",
+  "finance.budgetForcedCount":
+    "Forced {n} time(s) this cycle — expenses deliberately bypassed the protected savings.",
   "finance.targetsTitle": "Savings Targets",
   "finance.addTarget": "Add Target",
   "finance.editTarget": "Edit Target",

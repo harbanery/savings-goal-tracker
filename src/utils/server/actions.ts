@@ -256,9 +256,21 @@ export async function createTransactionAction(
     throw new Error("Tanggal tidak valid.");
   }
 
-  // Proteksi tabungan (Budget): pengeluaran tidak boleh menyentuh tabungan
-  // dilindungi tanpa konfirmasi terpaksa dari user.
-  await assertSavingsProtection(userId, date, input.amount, options?.force ?? false);
+  // Proteksi tabungan (Budget): PENGELUARAN tidak boleh menyentuh tabungan
+  // dilindungi tanpa konfirmasi terpaksa dari user. Pemasukan/transfer tidak
+  // menambah pengeluaran siklus — konsisten dengan jalur update di bawah
+  // (fix: sebelumnya nominal INCOME/TRANSFER ikut diperiksa sehingga
+  // pemasukan pertama akun baru selalu minta konfirmasi terpaksa).
+  await assertSavingsProtection(
+    userId,
+    date,
+    input.type === "EXPENSE" ? input.amount : 0,
+    options?.force ?? false,
+  );
+
+  // Flag pelanggaran (D5): hanya pengeluaran yang benar-benar melewati
+  // proteksi (force) tercatat di riwayat pelanggaran siklus.
+  const forced = (options?.force ?? false) && input.type === "EXPENSE";
 
   // Batas alokasi wadah (insight DROID.md): PENGELUARAN dan TRANSFER keluar
   // hanya boleh sebesar dana tersedia wadah (alokasi + pemasukan + transfer
@@ -286,6 +298,7 @@ export async function createTransactionAction(
       subcategoryId,
       note: sanitizeText(input.note, 500),
       date,
+      forced,
     });
     revalidatePath("/");
     return;
@@ -300,6 +313,7 @@ export async function createTransactionAction(
     categoryId: input.categoryId,
     subcategoryId,
     toCategoryId: isUuid(input.toCategoryId ?? "") ? input.toCategoryId : null,
+    forced,
   });
   revalidatePath("/");
 }
@@ -348,6 +362,11 @@ export async function updateTransactionAction(
     );
   }
 
+  // Flag pelanggaran (D5): recompute hanya saat nominal/jenis pengeluaran
+  // berubah — edit nama/catatan/tanggal saja mempertahankan nilai lama
+  // (proteksi tidak dilewati ulang untuk delta nol).
+  const expenseChanged = newExpense !== oldExpense;
+
   await updateTransaction(userId, id, {
     type: input.type,
     name,
@@ -359,6 +378,9 @@ export async function updateTransactionAction(
       ? input.subcategoryId
       : null,
     toCategoryId: isUuid(input.toCategoryId ?? "") ? input.toCategoryId : null,
+    ...(expenseChanged
+      ? { forced: (force ?? false) && input.type === "EXPENSE" }
+      : {}),
   });
   revalidatePath("/");
 }

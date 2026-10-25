@@ -1424,8 +1424,26 @@ async function emailToUser(
 }
 
 /**
+ * Ukuran batch user per gelombang `Promise.all` (A6 — rekomendasi_feature.md):
+ * konkurensi terbatas agar broadcast semua user selesai jauh di dalam batas
+ * `maxDuration` tanpa membuka ratusan koneksi push/SMTP sekaligus.
+ */
+const BROADCAST_BATCH_SIZE = 20;
+
+/** Bagi array menjadi chunk berukuran tetap. */
+function chunk<T>(items: T[], size: number): T[][] {
+  const out: T[][] = [];
+  for (let i = 0; i < items.length; i += size) {
+    out.push(items.slice(i, i + size));
+  }
+  return out;
+}
+
+/**
  * Jalankan builder notifikasi untuk SEMUA user (push channel).
  * Builder mengembalikan null = skip user tsb.
+ * User diproses per gelombang 20 (batching A6) — urutan antar user tidak
+ * dijamin, tapi agregat hasil tetap sama.
  */
 export async function broadcastPushToAllUsers(
   build: (ctx: UserFinance) => Promise<NotificationPayload | null>,
@@ -1443,26 +1461,30 @@ export async function broadcastPushToAllUsers(
     emailed: 0,
   };
 
-  for (const user of users) {
-    result.users++;
-    try {
-      const ctx = await loadUserFinance(user);
-      const payload = await build(ctx);
-      if (!payload) {
-        result.skipped++;
-        continue;
-      }
-      const push = await pushToUser(user.id, payload);
-      result.sent += push.sent;
-      result.failed += push.failed;
-      result.cleanedUp += push.cleanedUp;
-    } catch (err) {
-      console.error(
-        `[notification] gagal kirim push utk user ${user.id}:`,
-        err,
-      );
-      result.failed++;
-    }
+  for (const batch of chunk(users, BROADCAST_BATCH_SIZE)) {
+    await Promise.all(
+      batch.map(async (user) => {
+        result.users++;
+        try {
+          const ctx = await loadUserFinance(user);
+          const payload = await build(ctx);
+          if (!payload) {
+            result.skipped++;
+            return;
+          }
+          const push = await pushToUser(user.id, payload);
+          result.sent += push.sent;
+          result.failed += push.failed;
+          result.cleanedUp += push.cleanedUp;
+        } catch (err) {
+          console.error(
+            `[notification] gagal kirim push utk user ${user.id}:`,
+            err,
+          );
+          result.failed++;
+        }
+      }),
+    );
   }
 
   return result;
@@ -1470,6 +1492,7 @@ export async function broadcastPushToAllUsers(
 
 /**
  * Jalankan builder notifikasi untuk SEMUA user (email channel).
+ * User diproses per gelombang 20 (batching A6) — konkurensi SMTP terbatas.
  */
 export async function broadcastEmailToAllUsers(
   build: (ctx: UserFinance) => Promise<NotificationPayload>,
@@ -1487,20 +1510,24 @@ export async function broadcastEmailToAllUsers(
     emailed: 0,
   };
 
-  for (const user of users) {
-    result.users++;
-    try {
-      const ctx = await loadUserFinance(user);
-      const payload = await build(ctx);
-      const emailed = await emailToUser(ctx, payload);
-      if (emailed) result.emailed++;
-    } catch (err) {
-      console.error(
-        `[notification] gagal kirim email utk user ${user.id}:`,
-        err,
-      );
-      result.failed++;
-    }
+  for (const batch of chunk(users, BROADCAST_BATCH_SIZE)) {
+    await Promise.all(
+      batch.map(async (user) => {
+        result.users++;
+        try {
+          const ctx = await loadUserFinance(user);
+          const payload = await build(ctx);
+          const emailed = await emailToUser(ctx, payload);
+          if (emailed) result.emailed++;
+        } catch (err) {
+          console.error(
+            `[notification] gagal kirim email utk user ${user.id}:`,
+            err,
+          );
+          result.failed++;
+        }
+      }),
+    );
   }
 
   return result;
