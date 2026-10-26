@@ -484,19 +484,30 @@ export async function createSubcategory(
   );
 }
 
-/** Ubah nama subkategori milik user. */
+/**
+ * Ubah nama subkategori milik user; `categoryId` terisi = pindah wadah
+ * (rekomendasi D4 — wadah tujuan diverifikasi milik user, anti-IDOR).
+ * Transaksi lama tetap tercatat pada wadah aslinya (tidak ditulis ulang).
+ */
 export async function updateSubcategory(
   userId: string,
   subcategoryId: string,
   name: string,
+  categoryId?: string,
 ): Promise<void> {
   const sub = await prisma.subcategory.findFirst({
     where: { id: subcategoryId, category: { userId } },
     select: { id: true },
   });
   if (!sub) throw new Error("Subkategori tidak ditemukan.");
+  if (categoryId !== undefined) {
+    await assertCategoryOwned(userId, categoryId);
+  }
   await withRetry(() =>
-    prisma.subcategory.update({ where: { id: subcategoryId }, data: { name } }),
+    prisma.subcategory.update({
+      where: { id: subcategoryId },
+      data: { name, ...(categoryId !== undefined ? { categoryId } : {}) },
+    }),
   );
 }
 

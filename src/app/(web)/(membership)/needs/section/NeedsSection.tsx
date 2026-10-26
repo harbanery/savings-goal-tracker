@@ -1,9 +1,11 @@
 import { Suspense } from "react";
 import NeedsView from "@/features/needs/components/ui/NeedsView";
-import type { BudgetCategory } from "@/features/web/types";
-import { getUserCategories } from "@/services/transaction";
+import type { Transaction } from "@/features/web/types";
+import { getUserCategories, getUserSettings } from "@/services/transaction";
 import { getCurrentUser } from "@/lib/auth";
 import { ensureUserDefaults } from "@/services/user";
+import { getCurrentCycle } from "@/features/web/utils/cycle";
+import { getCycleTransactionsAction } from "@/utils/server/actions";
 import SectionSkeleton from "@/features/web/components/ui/sectionSkeleton";
 
 /**
@@ -24,11 +26,26 @@ export default async function NeedsSection() {
   );
 }
 
-/** Muat wadah + subkategori lalu render daftar. */
+/**
+ * Muat wadah + transaksi siklus aktif lalu render daftar. Transaksi
+ * dipakai NeedsView untuk statistik pemakaian per subkategori
+ * (rekomendasi D4: Nx · Y% seperti ringkas di /finance).
+ */
 async function NeedsData({ userId }: { userId: string }) {
   await ensureUserDefaults(userId);
 
-  const categories: BudgetCategory[] = await getUserCategories(userId);
+  const settings = await getUserSettings(userId);
+  const cycle = getCurrentCycle(settings.cycleStartDay);
 
-  return <NeedsView initialCategories={categories} />;
+  const [categories, initialTransactions] = await Promise.all([
+    getUserCategories(userId),
+    getCycleTransactionsAction(cycle).catch(() => [] as Transaction[]),
+  ]);
+
+  return (
+    <NeedsView
+      initialCategories={categories}
+      initialTransactions={initialTransactions}
+    />
+  );
 }

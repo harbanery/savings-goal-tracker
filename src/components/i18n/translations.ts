@@ -450,6 +450,10 @@ const id: TranslationDict = {
   "needs.subcategories": "Subkategori",
   "needs.subEmptyInline": "Belum ada subkategori",
   "needs.subCount": "{n} subkategori total",
+  // D4: pencarian lintas wadah + pindah wadah saat edit
+  "needs.searchPlaceholder": "Cari subkategori…",
+  "needs.searchEmpty": "Tidak ada subkategori yang cocok",
+  "needs.moveHint": "Ubah wadah untuk memindahkan subkategori ini.",
 
   // Integrasi WhatsApp (bot transaksi via chat)
   "whatsapp.menuLabel": "WhatsApp",
@@ -912,6 +916,10 @@ const en: TranslationDict = {
   "needs.subcategories": "Subcategories",
   "needs.subEmptyInline": "No subcategories yet",
   "needs.subCount": "{n} subcategories total",
+  // D4: cross-envelope search + move envelope on edit
+  "needs.searchPlaceholder": "Search subcategories…",
+  "needs.searchEmpty": "No matching subcategories",
+  "needs.moveHint": "Change the envelope to move this subcategory.",
 
   // WhatsApp integration (transaction bot via chat)
   "whatsapp.menuLabel": "WhatsApp",

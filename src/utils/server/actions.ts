@@ -578,12 +578,16 @@ export async function deleteSubcategoryAction(
 export async function updateSubcategoryAction(
   subcategoryId: string,
   name: string,
+  categoryId?: string,
 ): Promise<void> {
   const userId = await requireUserId();
   if (!isUuid(subcategoryId)) throw new Error("Invalid subcategory id.");
+  if (categoryId !== undefined && !isUuid(categoryId)) {
+    throw new Error("Invalid category id.");
+  }
   const clean = sanitizeText(name, 50);
   if (!clean) throw new Error("Nama subkategori wajib diisi.");
-  await updateSubcategory(userId, subcategoryId, clean);
+  await updateSubcategory(userId, subcategoryId, clean, categoryId);
   revalidatePath("/");
   revalidatePath("/budget");
   revalidatePath("/finance");
