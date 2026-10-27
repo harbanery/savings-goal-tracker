@@ -2,7 +2,6 @@
 
 import {
   LogoutOutlined,
-  MenuOutlined,
   UserOutlined,
   WhatsAppOutlined,
 } from "@ant-design/icons";
@@ -32,11 +31,7 @@ const { Header } = Layout;
 const { Text } = Typography;
 
 /** Header sticky: breadcrumb kiri; tema/bahasa/jam/menu user di kanan. */
-export default function HeaderLayout({
-  onMobileMenuClick,
-}: {
-  onMobileMenuClick: () => void;
-}) {
+export default function HeaderLayout() {
   const router = useRouter();
   const pathname = usePathname();
   const { t } = useLocale();
@@ -102,15 +97,6 @@ export default function HeaderLayout({
       }}
     >
       <div className="flex min-w-0 items-center gap-2">
-        {isMobile && (
-          <Button
-            type="text"
-            shape="circle"
-            icon={<MenuOutlined />}
-            onClick={onMobileMenuClick}
-            aria-label={t("menu.open")}
-          />
-        )}
         <Breadcrumb items={breadcrumbItems} />
       </div>
 
