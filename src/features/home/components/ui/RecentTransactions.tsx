@@ -148,7 +148,7 @@ export default function RecentTransactions({
                     )}
                   </div>
                   <Text type="secondary" style={{ fontSize: 11 }}>
-                    {dayjs(tr.date).format("DD MMM YYYY, HH:mm")}
+                    {dayjs(tr.date.slice(0, 10)).format("DD MMM YYYY")}
                   </Text>
                 </div>
                 <Text

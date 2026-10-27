@@ -97,7 +97,7 @@ function percentOf(target: SavingsTarget): number {
  */
 function estimateOf(target: SavingsTarget): DeadlineEstimate | null {
   if (!target.deadline || target.saved >= target.targetAmount) return null;
-  const daysLeft = dayjs(target.deadline)
+  const daysLeft = dayjs(target.deadline.slice(0, 10))
     .startOf("day")
     .diff(dayjs().startOf("day"), "day");
   const remaining = target.targetAmount - Math.max(0, target.saved);
@@ -166,7 +166,7 @@ export default function TargetsView({
         name: values.name,
         targetAmount: Number(values.targetAmount),
         categoryIds: values.scope === "custom" ? values.categoryIds ?? [] : [],
-        deadline: values.deadline ? values.deadline.toISOString() : null,
+        deadline: values.deadline ? values.deadline.format("YYYY-MM-DD") : null,
         note: values.note ?? "",
       };
       if (editing) {
@@ -333,7 +333,7 @@ export default function TargetsView({
                           scope: target.categoryIds.length > 0 ? "custom" : "all",
                           categoryIds: target.categoryIds,
                           deadline: target.deadline
-                            ? dayjs(target.deadline)
+                            ? dayjs(target.deadline.slice(0, 10))
                             : null,
                           note: target.note,
                         });
@@ -573,7 +573,7 @@ export default function TargetsView({
  */
 function DeadlineTag({ deadline }: { deadline: string }) {
   const { t } = useLocale();
-  const date = dayjs(deadline);
+  const date = dayjs(deadline.slice(0, 10));
   const daysLeft = date.startOf("day").diff(dayjs().startOf("day"), "day");
   const overdue = daysLeft < 0;
   const urgent = daysLeft >= 0 && daysLeft <= 7;

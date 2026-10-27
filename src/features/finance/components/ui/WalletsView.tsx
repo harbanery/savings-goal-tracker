@@ -630,7 +630,7 @@ export default function WalletsView({
                   <Text type="secondary" style={{ fontSize: 11 }}>
                     {txCount > 0 && lastDate
                       ? `${t("finance.walletTxCount", { n: txCount })} · ${t("finance.walletLastRecord", {
-                          date: dayjs(lastDate).format("DD MMM YYYY"),
+                          date: dayjs(lastDate.slice(0, 10)).format("DD MMM YYYY"),
                         })}`
                       : t("finance.walletNoTx")}
                   </Text>

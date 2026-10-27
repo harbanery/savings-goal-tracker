@@ -97,7 +97,7 @@ export default function TransactionCardList({
                   </Text>
                 )}
                 <Text type="secondary" style={{ fontSize: 11 }}>
-                  {dayjs(tr.date).format("DD MMM YYYY, HH:mm")}
+                  {dayjs(tr.date.slice(0, 10)).format("DD MMM YYYY")}
                 </Text>
               </div>
               <div className="flex flex-col items-end gap-1">

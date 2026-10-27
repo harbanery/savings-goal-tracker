@@ -83,6 +83,25 @@ function sanitizeText(text: string, maxLen: number): string {
   return text.trim().slice(0, maxLen);
 }
 
+/**
+ * Parse tanggal input menjadi hari kanonik (tengah malam UTC).
+ * Klien mengirim "YYYY-MM-DD" (hari lokal user) — diparse langsung sebagai
+ * hari UTC agar server (timezone apa pun) membaca tanggal yang sama dengan
+ * yang dipilih user. Instan ISO lengkap (data lama) dibulatkan ke hari
+ * kanonik terdekat. Ini mencegah transaksi berulang di tanggal mulai
+ * siklus tergelincir ke siklus sebelumnya di server UTC (produksi).
+ */
+function parseTransactionDate(raw: string): Date {
+  const dayOnly = /^(\d{4})-(\d{2})-(\d{2})$/.exec(raw.trim());
+  if (dayOnly) {
+    const d = new Date(`${raw.trim()}T00:00:00.000Z`);
+    if (!Number.isNaN(d.getTime())) return d;
+  }
+  const parsed = new Date(raw);
+  if (Number.isNaN(parsed.getTime())) return parsed; // divalidasi pemanggil
+  return new Date(Math.round(parsed.getTime() / 86_400_000) * 86_400_000);
+}
+
 function validateInput(input: TransactionInput): void {
   if (!["EXPENSE", "INCOME", "TRANSFER"].includes(input.type)) {
     throw new Error("Jenis transaksi tidak valid.");
@@ -251,7 +270,7 @@ export async function createTransactionAction(
   if (!name) throw new Error("Nama transaksi wajib diisi.");
   validateInput(input);
 
-  const date = new Date(input.date);
+  const date = parseTransactionDate(input.date);
   if (Number.isNaN(date.getTime())) {
     throw new Error("Tanggal tidak valid.");
   }
@@ -293,7 +312,9 @@ export async function createTransactionAction(
       type: input.type,
       name,
       amount: Math.round(input.amount),
-      dayOfMonth: date.getDate(),
+      // Hari bulanan diambil dari hari kanonik (UTC) tanggal transaksi —
+      // bukan getDate() lokal server yang bisa beda hari di server UTC.
+      dayOfMonth: date.getUTCDate(),
       categoryId: input.categoryId,
       subcategoryId,
       note: sanitizeText(input.note, 500),
@@ -329,7 +350,7 @@ export async function updateTransactionAction(
   if (!name) throw new Error("Nama transaksi wajib diisi.");
   validateInput(input);
 
-  const date = new Date(input.date);
+  const date = parseTransactionDate(input.date);
   if (Number.isNaN(date.getTime())) {
     throw new Error("Tanggal tidak valid.");
   }
@@ -421,7 +442,7 @@ export async function importTransactionsAction(
       if (!name) throw new Error("Nama transaksi wajib diisi.");
       validateInput(input);
 
-      const date = new Date(input.date);
+      const date = parseTransactionDate(input.date);
       if (Number.isNaN(date.getTime())) throw new Error("Tanggal tidak valid.");
 
       // Batas alokasi wadah berlaku juga untuk import CSV (aturan keras —
@@ -665,7 +686,12 @@ export async function deleteTargetAction(id: string): Promise<void> {
 
 function parseDeadline(deadline?: string | null): Date | null {
   if (!deadline) return null;
-  const d = new Date(deadline);
+  // Deadline berupa hari "YYYY-MM-DD" (DatePicker) → hari kanonik UTC,
+  // agar label & hitungan hari tersisa tidak bergeser antar-timezone.
+  const dayOnly = /^(\d{4})-(\d{2})-(\d{2})$/.test(deadline.trim());
+  const d = dayOnly
+    ? new Date(`${deadline.trim()}T00:00:00.000Z`)
+    : new Date(deadline);
   if (Number.isNaN(d.getTime())) throw new Error("Batas waktu tidak valid.");
   return d;
 }

@@ -2,7 +2,7 @@ import { Prisma } from "@prisma/client";
 import { prisma, withRetry } from "@/lib/prisma";
 import type { RecurringRule, TransactionType } from "@/features/web/types";
 import type { CycleInfo } from "@/features/web/utils/cycle";
-import { getCycleForDate } from "@/features/web/utils/cycle";
+import { getCycleForDate, toDayUTC } from "@/features/web/utils/cycle";
 import { clampDayOfMonth } from "@/features/web/utils/finance";
 
 /**
@@ -185,9 +185,12 @@ export async function deleteRecurringRule(
 }
 
 /**
- * Tanggal kemunculan sebuah aturan dalam window siklus (lokal tengah malam).
+ * Tanggal kemunculan sebuah aturan dalam window siklus (hari kanonik UTC).
  * Siklus melintasi 2 bulan kalender (atau 1 bila startDay = 1); kandidat
- * di tiap bulan di-clamp ke jumlah hari bulan itu.
+ * di tiap bulan di-clamp ke jumlah hari bulan itu. Konstruksi memakai
+ * Date.UTC agar identik di server (timezone apa pun) dan di klien —
+ * mencegah kemunculan nyasar ke siklus sebelumnya saat server berjalan
+ * di UTC (mis. Vercel) sementara user memilih tanggal setempat.
  */
 export function occurrenceDatesInCycle(
   dayOfMonth: number,
@@ -197,21 +200,22 @@ export function occurrenceDatesInCycle(
   const out: Date[] = [];
 
   const d1 = new Date(
-    start.getFullYear(),
-    start.getMonth(),
-    clampDayOfMonth(dayOfMonth, start.getFullYear(), start.getMonth()),
+    Date.UTC(
+      start.getUTCFullYear(),
+      start.getUTCMonth(),
+      clampDayOfMonth(dayOfMonth, start.getUTCFullYear(), start.getUTCMonth()),
+    ),
   );
   if (d1 >= start && d1 <= end) out.push(d1);
 
   const d2 = new Date(
-    end.getFullYear(),
-    end.getMonth(),
-    clampDayOfMonth(dayOfMonth, end.getFullYear(), end.getMonth()),
+    Date.UTC(
+      end.getUTCFullYear(),
+      end.getUTCMonth(),
+      clampDayOfMonth(dayOfMonth, end.getUTCFullYear(), end.getUTCMonth()),
+    ),
   );
-  const sameAsD1 =
-    d1.getFullYear() === d2.getFullYear() &&
-    d1.getMonth() === d2.getMonth() &&
-    d1.getDate() === d2.getDate();
+  const sameAsD1 = d1.getTime() === d2.getTime();
   if (!sameAsD1 && d2 >= start && d2 <= end) out.push(d2);
 
   return out;
@@ -235,8 +239,9 @@ export async function materializeRecurringForCycle(
 
   const now = new Date();
   for (const rule of rules) {
-    const ruleCreated = new Date(rule.createdAt);
-    ruleCreated.setHours(0, 0, 0, 0);
+    // Aturan berlaku sejak hari kanonik pembuatannya (tengah malam UTC) —
+    // tidak ada backfill kemunculan sebelum aturan ada.
+    const ruleCreated = toDayUTC(new Date(rule.createdAt));
 
     for (const date of occurrenceDatesInCycle(rule.dayOfMonth, cycle)) {
       if (date > now) continue;
@@ -290,8 +295,8 @@ export async function createRecurringWithFirstTransaction(
   const occurrence =
     candidates.find(
       (c) =>
-        c.getFullYear() === data.date.getFullYear() &&
-        c.getMonth() === data.date.getMonth(),
+        c.getUTCFullYear() === data.date.getUTCFullYear() &&
+        c.getUTCMonth() === data.date.getUTCMonth(),
     ) ?? candidates[0] ?? data.date;
 
   await withRetry(() =>

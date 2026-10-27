@@ -8,7 +8,18 @@ import type { Locale } from "@/types/locale";
  * Contoh dengan startDay = 25, siklus "Agustus": 25 Juli s/d 24 Agustus.
  * Aturan: sebuah tanggal masuk ke siklus bulan BERIKUTNYA jika
  * tanggalnya >= startDay, atau siklus bulan INI jika < startDay.
+ *
+ * BASIS HARI KANONIK (UTC midnight): seluruh logika level-hari (batas
+ * siklus, kemunculan transaksi berulang) memakai tengah malam UTC sebagai
+ * hari kalender yang sama di server (apa pun timezone-nya) dan di klien.
+ * Sebelumnya batas siklus dibangun dengan konstruktor lokal sehingga
+ * server UTC (produksi) membaca tanggal setempat yang berbeda dari yang
+ * dipilih user — transaksi berulang di tanggal mulai siklus bisa nyasar
+ * ke siklus sebelumnya. Getter/ konstruktor UTC menjamin konsistensi.
  */
+
+/** Durasi satu hari dalam milidetik. */
+export const DAY_MS = 86_400_000;
 
 /** Rentang tanggal mulai siklus yang diperbolehkan. */
 export const MIN_CYCLE_START_DAY = 1;
@@ -26,9 +37,9 @@ export interface CycleInfo {
   year: number;
   /** Index bulan akhir siklus (0-based). */
   monthIndex: number;
-  /** Tanggal mulai siklus (startDay bulan sebelumnya). */
+  /** Tanggal mulai siklus (startDay bulan sebelumnya, tengah malam UTC). */
   startDate: Date;
-  /** Tanggal akhir siklus (startDay - 1 bulan ini). */
+  /** Tanggal akhir siklus (startDay - 1 bulan ini, 23:59:59.999 UTC). */
   endDate: Date;
   /** Kunci netral locale, mis. "2026-08". Stabil sebagai key data. */
   key: string;
@@ -83,7 +94,28 @@ export function formatCycleLabel(
 }
 
 /**
+ * Normalisasi instan apa pun ke hari kanoniknya (tengah malam UTC).
+ * Dipakai untuk tanggal tersimpan (selalu tengah malam UTC) dan untuk
+ * membandingkan hari pada level hari.
+ */
+export function toDayUTC(date: Date): Date {
+  return new Date(Math.floor(date.getTime() / DAY_MS) * DAY_MS);
+}
+
+/**
+ * Hari kalender LOKAL mesin yang menjalankan kode sebagai hari kanonik
+ * (tengah malam UTC). Di klien = "hari ini" versi user; di server
+ * produksi (UTC) = hari UTC. Konsisten dengan persepsi user di UI.
+ */
+export function localDayStart(date: Date = new Date()): Date {
+  return new Date(
+    Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()),
+  );
+}
+
+/**
  * Tentukan info siklus untuk tahun dan index bulan tertentu.
+ * Batas siklus dibangun dengan Date.UTC agar identik di server & klien.
  * @param year tahun bulan AKHIR siklus
  * @param monthIndex index bulan akhir siklus (0-based)
  * @param startDay tanggal mulai siklus tiap bulan (default dari config)
@@ -95,17 +127,18 @@ export function getCycleInfo(
 ): CycleInfo {
   const day = isValidCycleStartDay(startDay) ? startDay : DEFAULT_CYCLE_START_DAY;
 
-  // Start: tanggal startDay bulan sebelumnya
+  // Start: tanggal startDay bulan sebelumnya (tengah malam UTC).
   const prevMonth = monthIndex === 0 ? 11 : monthIndex - 1;
   const prevYear = monthIndex === 0 ? year - 1 : year;
-  const startDate = new Date(prevYear, prevMonth, day, 0, 0, 0, 0);
+  const startDate = new Date(Date.UTC(prevYear, prevMonth, day));
 
-  // End: tanggal (startDay - 1) bulan ini (akhir hari).
+  // End: tanggal (startDay - 1) bulan ini hingga akhir hari (UTC).
   // Jika startDay = 1, end = hari terakhir bulan sebelumnya (bukan 0 yang overflow).
-  const endDate =
+  const endDayMs =
     day === 1
-      ? new Date(year, monthIndex, 0, 23, 59, 59, 999)
-      : new Date(year, monthIndex, day - 1, 23, 59, 59, 999);
+      ? Date.UTC(year, monthIndex, 0)
+      : Date.UTC(year, monthIndex, day - 1);
+  const endDate = new Date(endDayMs + DAY_MS - 1);
 
   const key = getCycleKey(year, monthIndex);
   const label = formatCycleLabel(year, monthIndex, "id");
@@ -114,7 +147,7 @@ export function getCycleInfo(
 }
 
 /**
- * Tentukan siklus untuk sebuah tanggal.
+ * Tentukan siklus untuk sebuah tanggal (hari kanonik UTC).
  * Jika tanggal >= startDay: masuk siklus bulan berikutnya.
  * Jika tanggal < startDay: masuk siklus bulan ini.
  */
@@ -122,20 +155,21 @@ export function getCycleForDate(
   date: Date,
   startDay: number = DEFAULT_CYCLE_START_DAY,
 ): CycleInfo {
-  const day = date.getDate();
+  const day = date.getUTCDate();
   if (day >= startDay) {
     // Masuk siklus bulan depan
-    const nextMonth = date.getMonth() === 11 ? 0 : date.getMonth() + 1;
-    const nextYear = date.getMonth() === 11 ? date.getFullYear() + 1 : date.getFullYear();
+    const nextMonth = date.getUTCMonth() === 11 ? 0 : date.getUTCMonth() + 1;
+    const nextYear =
+      date.getUTCMonth() === 11 ? date.getUTCFullYear() + 1 : date.getUTCFullYear();
     return getCycleInfo(nextYear, nextMonth, startDay);
   }
   // Masuk siklus bulan ini
-  return getCycleInfo(date.getFullYear(), date.getMonth(), startDay);
+  return getCycleInfo(date.getUTCFullYear(), date.getUTCMonth(), startDay);
 }
 
-/** Siklus saat ini berdasarkan tanggal hari ini. */
+/** Siklus saat ini berdasarkan hari kalender lokal mesin (klien: hari user). */
 export function getCurrentCycle(startDay?: number): CycleInfo {
-  return getCycleForDate(new Date(), startDay);
+  return getCycleForDate(localDayStart(new Date()), startDay);
 }
 
 /** Geser siklus sebanyak n bulan (positif = maju, negatif = mundur). */
@@ -150,19 +184,15 @@ export function shiftCycle(
   return getCycleInfo(year, monthIndex, startDay);
 }
 
-/** Apakah sebuah tanggal berada dalam rentang siklus? */
+/** Apakah sebuah tanggal berada dalam rentang siklus? (level instan) */
 export function isDateInCycle(date: Date, cycle: CycleInfo): boolean {
   const d = new Date(date);
   return d >= cycle.startDate && d <= cycle.endDate;
 }
 
-/** Bandingkan dua tanggal pada level hari (abaikan jam). */
+/** Bandingkan dua tanggal pada level hari kanonik (abaikan jam). */
 export function isSameDay(a: Date, b: Date): boolean {
-  return (
-    a.getFullYear() === b.getFullYear() &&
-    a.getMonth() === b.getMonth() &&
-    a.getDate() === b.getDate()
-  );
+  return toDayUTC(a).getTime() === toDayUTC(b).getTime();
 }
 
 /** Apakah `date` adalah hari pertama sebuah siklus (tanggal = startDay)? */
@@ -170,11 +200,8 @@ export function isCycleStartDay(
   date: Date = new Date(),
   startDay: number = DEFAULT_CYCLE_START_DAY,
 ): boolean {
-  const cycle = getCycleForDate(date, startDay);
-  const yesterday = new Date(date);
-  yesterday.setDate(yesterday.getDate() - 1);
-  // Hari pertama siklus = kemarin masih berada di siklus sebelumnya.
-  return !isDateInCycle(yesterday, cycle);
+  const day = toDayUTC(date);
+  return day.getTime() === getCycleForDate(day, startDay).startDate.getTime();
 }
 
 /** Apakah `date` adalah hari terakhir sebuah siklus (tanggal = startDay - 1)? */
@@ -182,15 +209,12 @@ export function isCycleLastDay(
   date: Date = new Date(),
   startDay: number = DEFAULT_CYCLE_START_DAY,
 ): boolean {
-  const cycle = getCycleForDate(date, startDay);
-  const tomorrow = new Date(date);
-  tomorrow.setDate(tomorrow.getDate() + 1);
-  // Hari terakhir siklus = besar sudah masuk siklus berikutnya.
-  return !isDateInCycle(tomorrow, cycle);
+  const day = toDayUTC(date);
+  return day.getTime() === getCycleForDate(day, startDay).endDate.getTime();
 }
 
 /** Format tanggal panjang sesuai locale, mis. "24 Agustus 2026" / "24 August 2026". */
 export function formatDateLabel(date: Date, locale: Locale = "id"): string {
   const names = MONTH_NAMES[locale] ?? MONTH_NAMES.id;
-  return `${date.getDate()} ${names[date.getMonth()]} ${date.getFullYear()}`;
+  return `${date.getUTCDate()} ${names[date.getUTCMonth()]} ${date.getUTCFullYear()}`;
 }

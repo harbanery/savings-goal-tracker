@@ -57,7 +57,7 @@ export interface Transaction {
   /** Nominal selalu positif. */
   amount: number;
   note: string;
-  /** ISO datetime transaksi. */
+  /** ISO date transaksi (hari kanonik: tengah malam UTC "…T00:00:00.000Z"). */
   date: string;
   /** Wadah utama: sumber (EXPENSE/TRANSFER) atau tujuan (INCOME). */
   categoryId: string;

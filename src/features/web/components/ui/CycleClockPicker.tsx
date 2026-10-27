@@ -10,6 +10,7 @@ import {
   formatDateLabel,
   getCycleForDate,
   getCycleInfo,
+  localDayStart,
 } from "@/features/web/utils/cycle";
 import RealtimeClock from "./RealtimeClock";
 
@@ -48,14 +49,16 @@ export default function CycleClockPicker({
   /* eslint-enable react-hooks/set-state-in-effect */
 
   const now = nowTs === null ? null : new Date(nowTs);
+  /** "Hari ini" versi kalender lokal user sebagai hari kanonik (UTC). */
+  const today = now === null ? null : localDayStart(now);
   /** Datepicker "kosong" = siklus aktif masih siklus berjalan (hari ini). */
   const isCurrentCycle =
-    now === null || cycle.key === getCycleForDate(now, startDay).key;
+    today === null || cycle.key === getCycleForDate(today, startDay).key;
 
   const leftLabel = !isCurrentCycle
     ? formatCycleLabel(cycle.year, cycle.monthIndex, locale)
-    : now
-      ? formatDateLabel(now, locale)
+    : today
+      ? formatDateLabel(today, locale)
       : t("clock.loading");
 
   /** Popup tertutup → reset state aktif kapsul. */
@@ -132,7 +135,7 @@ export default function CycleClockPicker({
               type="text"
               size="small"
               className="font-mono! text-xs! font-semibold! p-0! m-0!"
-              onClick={() => setCycle(getCycleForDate(new Date(), startDay))}
+              onClick={() => setCycle(getCycleForDate(localDayStart(), startDay))}
               aria-label={t("app.todayAria")}
             >
               {t("app.today")}

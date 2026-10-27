@@ -158,14 +158,16 @@ function formatShortDayLabel(iso: string, locale: Locale): string {
   return `${day} ${months[monthIndex]}`;
 }
 
-/** Konversi Date/string ke ISO "YYYY-MM-DD" (hanya tanggal, tanpa zona). */
+/** Konversi Date/string ke ISO "YYYY-MM-DD" (hari kanonik, tanpa zona). */
 function toISODate(date: string | Date): string {
-  const d = typeof date === "string" ? new Date(date) : date;
-  if (Number.isNaN(d.getTime())) return "";
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${y}-${m}-${day}`;
+  // String ISO ("…T00:00:00.000Z") → ambil bagian hari langsung agar
+  // tidak bergeser oleh timezone klien.
+  if (typeof date === "string") {
+    const head = date.slice(0, 10);
+    return /^\d{4}-\d{2}-\d{2}$/.test(head) ? head : "";
+  }
+  if (Number.isNaN(date.getTime())) return "";
+  return date.toISOString().slice(0, 10);
 }
 
 /** Jumlah hari antara dua tanggal (inklusif). */
@@ -200,11 +202,11 @@ export function buildDailySpending(
   }
 
   const points: DailySpendingPoint[] = [];
-  const base = new Date(cycle.startDate);
-  base.setHours(0, 0, 0, 0);
+  // Iterasi hari kanonik (tengah malam UTC) — konsisten dengan batas
+  // siklus yang kini berbasis UTC.
+  const baseMs = Math.floor(cycle.startDate.getTime() / 86_400_000) * 86_400_000;
   for (let i = 0; i < totalDays; i++) {
-    const d = new Date(base.getFullYear(), base.getMonth(), base.getDate() + i);
-    const iso = toISODate(d);
+    const iso = toISODate(new Date(baseMs + i * 86_400_000));
     const entry = dayMap.get(iso);
     points.push({
       key: iso,
@@ -225,7 +227,8 @@ export function buildDailySpendingFromYearMonth(
   year: number,
   monthIndex: number,
   locale: Locale = "id",
+  startDay?: number,
 ): DailySpendingPoint[] {
-  const cycle = getCycleInfo(year, monthIndex);
+  const cycle = getCycleInfo(year, monthIndex, startDay);
   return buildDailySpending(transactions, cycle, locale);
 }

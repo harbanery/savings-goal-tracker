@@ -63,9 +63,9 @@ export function parseWalletLimitError(message: string): WalletLimitInfo | null {
   return { walletName, limit: limitNum, projected: projectedNum };
 }
 
-/** Banyak hari dalam sebuah bulan (month 0-based). */
+/** Banyak hari dalam sebuah bulan (month 0-based; basis hari kanonik UTC). */
 export function daysInMonth(year: number, monthIndex: number): number {
-  return new Date(year, monthIndex + 1, 0).getDate();
+  return new Date(Date.UTC(year, monthIndex + 1, 0)).getUTCDate();
 }
 
 /** Clamp tanggal jalur bulanan (1-31) ke jumlah hari bulan tersebut. */

@@ -178,18 +178,20 @@ function TransactionForm({
 
   const units = useMemo(() => buildUnits(categories), [categories]);
 
-  /** Batas tanggal siklus aktif — tanggal di luar rentang dinonaktifkan. */
-  const cycleStart = dayjs(cycle.startDate);
-  const cycleEnd = dayjs(cycle.endDate);
+  /** Batas tanggal siklus aktif — tanggal di luar rentang dinonaktifkan.
+   *  Dibandingkan sebagai hari ISO ("YYYY-MM-DD") agar tidak bergeser
+   *  antar-timezone klien (batas siklus adalah hari kanonik UTC). */
+  const cycleStartISO = cycle.startDate.toISOString().slice(0, 10);
+  const cycleEndISO = cycle.endDate.toISOString().slice(0, 10);
 
   /** Tanggal default transaksi baru: hari ini bila masih dalam siklus,
    *  atau awal siklus bila yang dilihat bukan siklus berjalan. */
   const defaultDate = useMemo(() => {
-    const now = dayjs();
-    return now.isBefore(cycleStart, "day") || now.isAfter(cycleEnd, "day")
-      ? cycleStart
-      : now;
-  }, [cycleStart, cycleEnd]);
+    const nowISO = dayjs().format("YYYY-MM-DD");
+    if (nowISO < cycleStartISO) return dayjs(cycleStartISO);
+    if (nowISO > cycleEndISO) return dayjs(cycleEndISO);
+    return dayjs();
+  }, [cycleStartISO, cycleEndISO]);
 
   const selectedType =
     Form.useWatch("type", form) ?? editingTransaction?.type ?? "EXPENSE";
@@ -275,7 +277,9 @@ function TransactionForm({
         name: (values.name ?? "").trim(),
         amount: Number(values.amount ?? 0),
         note: (values.note ?? "").trim(),
-        date: (values.date ?? dayjs()).toISOString(),
+        // Hari lokal user ("YYYY-MM-DD") — server memparse-nya sebagai hari
+        // kanonik UTC sehingga siklus/transaksi berulang tidak bergeser.
+        date: (values.date ?? dayjs()).format("YYYY-MM-DD"),
         categoryId,
         subcategoryId,
         toCategoryId:
@@ -359,7 +363,9 @@ function TransactionForm({
         unitId: initialUnitId,
         amount: editingTransaction?.amount,
         note: editingTransaction?.note ?? "",
-        date: editingTransaction ? dayjs(editingTransaction.date) : defaultDate,
+        date: editingTransaction
+          ? dayjs(editingTransaction.date.slice(0, 10))
+          : defaultDate,
         toCategoryId: editingTransaction?.toCategoryId ?? undefined,
         // Pengulangan default "sekali" (DROID.md).
         repeat: "once",
@@ -471,13 +477,13 @@ function TransactionForm({
         <DatePicker
           className="w-full!"
           inputReadOnly={isTouchDevice}
-          showTime={{ format: "HH:mm" }}
-          format="DD MMMM YYYY HH:mm"
-          // Hanya tanggal dalam siklus aktif yang bisa dipilih.
-          disabledDate={(current: Dayjs) =>
-            current.isBefore(cycleStart, "day") ||
-            current.isAfter(cycleEnd, "day")
-          }
+          format="DD MMMM YYYY"
+          // Hanya tanggal dalam siklus aktif yang bisa dipilih (bandingkan
+          // hari ISO agar konsisten di timezone klien mana pun).
+          disabledDate={(current: Dayjs) => {
+            const iso = current.format("YYYY-MM-DD");
+            return iso < cycleStartISO || iso > cycleEndISO;
+          }}
           placeholder={t("form.datePlaceholder")}
         />
       </Form.Item>

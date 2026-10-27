@@ -295,23 +295,27 @@ function parseCsvLine(line: string): string[] {
   return result;
 }
 
-/** Parse tanggal dari format YYYY-MM-DD atau DD/MM/YYYY. */
+/** Parse tanggal dari format YYYY-MM-DD atau DD/MM/YYYY (hari kanonik UTC). */
 function parseDate(str: string): Date | null {
   const isoMatch = str.match(/^(\d{4})-(\d{2})-(\d{2})$/);
   if (isoMatch) {
     const d = new Date(
-      Number(isoMatch[1]),
-      Number(isoMatch[2]) - 1,
-      Number(isoMatch[3]),
+      Date.UTC(
+        Number(isoMatch[1]),
+        Number(isoMatch[2]) - 1,
+        Number(isoMatch[3]),
+      ),
     );
     if (!Number.isNaN(d.getTime())) return d;
   }
   const dmyMatch = str.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
   if (dmyMatch) {
     const d = new Date(
-      Number(dmyMatch[3]),
-      Number(dmyMatch[2]) - 1,
-      Number(dmyMatch[1]),
+      Date.UTC(
+        Number(dmyMatch[3]),
+        Number(dmyMatch[2]) - 1,
+        Number(dmyMatch[1]),
+      ),
     );
     if (!Number.isNaN(d.getTime())) return d;
   }

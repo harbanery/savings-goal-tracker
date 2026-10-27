@@ -294,11 +294,11 @@ export default function TransactionTable({
       width: 130,
       sorter: (a, b) => a.transaction.date.localeCompare(b.transaction.date),
       render: (_: unknown, record: RowData) => (
-        <Tooltip title={dayjs(record.transaction.date).format("HH:mm")}>
-          <Text style={{ fontSize: 12 }}>
-            {dayjs(record.transaction.date).format("DD MMM YYYY")}
-          </Text>
-        </Tooltip>
+        <Text style={{ fontSize: 12 }}>
+          {/* Hari kanonik ("YYYY-MM-DD" di awal ISO) — tanpa jam, agar
+              tampilan sama di timezone klien mana pun. */}
+          {dayjs(record.transaction.date.slice(0, 10)).format("DD MMM YYYY")}
+        </Text>
       ),
     },
     {
