@@ -241,7 +241,7 @@ const id: TranslationDict = {
   "menu.budget": "Budget",
   "menu.target": "Target",
   "menu.reports": "Laporan",
-  "menu.open": "Buka menu",
+  "menu.navigation": "Navigasi utama",
 
   // Navigasi siklus (navbar)
   "app.cyclePicker": "Pilih siklus bulan",
@@ -737,7 +737,7 @@ const en: TranslationDict = {
   "menu.budget": "Budget",
   "menu.target": "Target",
   "menu.reports": "Reports",
-  "menu.open": "Open menu",
+  "menu.navigation": "Main navigation",
 
   // Cycle navigation (navbar)
   "app.cyclePicker": "Select cycle month",
