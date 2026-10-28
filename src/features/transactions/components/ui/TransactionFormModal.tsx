@@ -31,6 +31,7 @@ import type { CycleInfo } from "@/features/web/utils/cycle";
 import {
   parseSavingsProtectionError,
   parseWalletLimitError,
+  parseWalletLockedError,
 } from "@/features/web/utils/finance";
 import type {
   BudgetCategory,
@@ -304,6 +305,7 @@ function TransactionForm({
       const messageText = err instanceof Error ? err.message : String(err);
       const protection = parseSavingsProtectionError(messageText);
       const walletLimit = parseWalletLimitError(messageText);
+      const walletLocked = parseWalletLockedError(messageText);
       if (protection && !force) {
         // Pengeluaran menyentuh tabungan dilindungi (Budget) — minta
         // konfirmasi "terpaksa" sebelum menyimpan.
@@ -328,6 +330,14 @@ function TransactionForm({
             projected: formatIDR(walletLimit.projected, locale),
             limit: formatIDR(walletLimit.limit, locale),
           }),
+        });
+      } else if (walletLocked) {
+        // Siklus terkunci (sisa dompet sudah dipindahkan ke tabungan
+        // dilindungi) — hanya pemasukan yang boleh dicatat. Tidak bisa
+        // dipaksa, berbeda dari proteksi tabungan.
+        modal.error({
+          title: t("form.walletLockedTitle"),
+          content: t("form.walletLockedDesc", { detail: walletLocked }),
         });
       } else {
         console.error("[TransactionFormModal] gagal menyimpan:", err);

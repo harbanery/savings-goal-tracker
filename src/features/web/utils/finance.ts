@@ -63,6 +63,25 @@ export function parseWalletLimitError(message: string): WalletLimitInfo | null {
   return { walletName, limit: limitNum, projected: projectedNum };
 }
 
+/**
+ * Kode error siklus terkunci (DROID.md — Budget): setelah sisa saldo
+ * seluruh dompet dipindahkan ke tabungan dilindungi, dompet pada siklus
+ * itu hanya boleh menerima pemasukan. Server melempar error berformat
+ * `WALLET_LOCKED|<pesan>`; batas ini TIDAK bisa dilewati (tanpa paksa).
+ */
+export const WALLET_LOCKED_CODE = "WALLET_LOCKED";
+
+/** true bila pesan error adalah penolakan karena siklus sudah terkunci. */
+export function isWalletLockedError(message: string): boolean {
+  return message.startsWith(WALLET_LOCKED_CODE + "|");
+}
+
+/** Pesan penolakan siklus terkunci (tanpa kode), atau null. */
+export function parseWalletLockedError(message: string): string | null {
+  if (!isWalletLockedError(message)) return null;
+  return message.split("|").slice(1).join("|");
+}
+
 /** Banyak hari dalam sebuah bulan (month 0-based; basis hari kanonik UTC). */
 export function daysInMonth(year: number, monthIndex: number): number {
   return new Date(Date.UTC(year, monthIndex + 1, 0)).getUTCDate();

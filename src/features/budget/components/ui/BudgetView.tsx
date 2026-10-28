@@ -9,6 +9,8 @@ import {
   InputNumber,
   Progress,
   Select,
+  Tag,
+  Tooltip,
   Typography,
 } from "antd";
 import {
@@ -19,6 +21,7 @@ import {
   ExclamationCircleOutlined,
   LockOutlined,
   PieChartOutlined,
+  SwapOutlined,
 } from "@ant-design/icons";
 import { useRouter } from "next/navigation";
 import {
@@ -32,7 +35,9 @@ import { useLocale } from "@/components/i18n/LocaleProvider";
 import type { BudgetOverview, UserSettings } from "@/features/web/types";
 import { useCycle } from "@/features/web/hooks/cycle";
 import {
+  applyCycleLeftoverAction,
   getBudgetOverviewAction,
+  setCycleProtectedSavingsAction,
   updateSettingsAction,
 } from "@/utils/server/actions";
 import { formatIDR } from "@/utils/helpers";
@@ -79,11 +84,13 @@ function IconChip({ icon, color }: { icon: ReactNode; color: string }) {
  */
 export default function BudgetView({ initialOverview, settings }: Props) {
   const { t, locale } = useLocale();
-  const { message } = App.useApp();
+  const { message, modal } = App.useApp();
   const router = useRouter();
   const [form] = Form.useForm<BudgetFormValues>();
   const [overview, setOverview] = useState(initialOverview);
   const [saving, setSaving] = useState(false);
+  /** Sedang memindahkan sisa dompet ke tabungan dilindungi (akhir siklus). */
+  const [applyingLeftover, setApplyingLeftover] = useState(false);
 
   /** Siklus aktif global (dipilih lewat DatePicker month di navbar). */
   const { cycle } = useCycle();
@@ -106,13 +113,30 @@ export default function BudgetView({ initialOverview, settings }: Props) {
     refresh();
   }, [refresh]);
 
+  // Tabungan dilindungi DINAMIS PER SIKLUS: saat siklus berganti (DatePicker
+  // navbar) nilai di form harus ikut nilai siklus itu — antd Form hanya
+  // menerapkan initialValues saat mount, jadi disinkronkan manual di sini.
+  useEffect(() => {
+    form.setFieldValue("protectedSavings", overview.protectedSavingsBase);
+  }, [form, overview.protectedSavingsBase, overview.protectedSavingsLeftover]);
+
   async function handleSave(values: BudgetFormValues) {
     setSaving(true);
     try {
-      await updateSettingsAction({
-        protectedSavings: Number(values.protectedSavings ?? 0),
-        cycleStartDay: Number(values.cycleStartDay ?? settings.cycleStartDay),
-      });
+      // Tanggal mulai siklus tetap pengaturan global user (bukan per siklus).
+      const startDay = Number(values.cycleStartDay ?? settings.cycleStartDay);
+      if (startDay !== settings.cycleStartDay) {
+        await updateSettingsAction({ cycleStartDay: startDay });
+      }
+      // Tabungan dilindungi kini PER SIKLUS (dinamis) — disimpan ke siklus
+      // aktif, bukan lagi satu nilai global (DROID.md). Siklus yang sudah
+      // dikunci (hari terakhir siklus) dilewati: nilainya sudah final.
+      if (!overview.settled) {
+        await setCycleProtectedSavingsAction(
+          cycle,
+          Number(values.protectedSavings ?? 0),
+        );
+      }
       message.success(t("settings.saved"));
       // Refresh server component agar startDay baru tersalur ke
       // CycleProvider (batas tanggal siklus diturunkan ulang).
@@ -125,6 +149,33 @@ export default function BudgetView({ initialOverview, settings }: Props) {
     } finally {
       setSaving(false);
     }
+  }
+
+  /** Pindahkan sisa saldo semua dompet ke tabungan dilindungi (akhir siklus). */
+  async function handleApplyLeftover() {
+    modal.confirm({
+      title: t("finance.budgetLeftoverConfirmTitle"),
+      content: t("finance.budgetLeftoverConfirmDesc", {
+        amount: formatIDR(overview.leftover, locale),
+      }),
+      okText: t("finance.budgetLeftoverConfirmOk"),
+      cancelText: t("common.cancel"),
+      onOk: async () => {
+        setApplyingLeftover(true);
+        try {
+          await applyCycleLeftoverAction(cycle);
+          message.success(t("finance.budgetLeftoverSuccess"));
+          router.refresh();
+          await refresh();
+        } catch (err) {
+          message.error(
+            err instanceof Error ? err.message : t("settings.saveFailed"),
+          );
+        } finally {
+          setApplyingLeftover(false);
+        }
+      },
+    });
   }
 
   /** Warna kartu Terpakai: merah bila sudah menyentuh tabungan. */
@@ -174,7 +225,7 @@ export default function BudgetView({ initialOverview, settings }: Props) {
   ];
 
   return (
-    <div className="mx-auto flex w-full max-w-350 flex-col gap-4">
+    <div className="mx-auto flex w-full flex-col gap-4">
       {overview.overProtected && (
         <Alert
           type="warning"
@@ -252,6 +303,82 @@ export default function BudgetView({ initialOverview, settings }: Props) {
         )}
       </Card>
 
+      {/* Siklus berjalan: status penguncian nilai (hari terakhir siklus) +
+          tombol "pindahkan sisa dompet" ke tabungan dilindungi. */}
+      <Card
+        variant="borderless"
+        className="shadow-sm!"
+        title={
+          <Text strong>
+            {t("finance.budgetCycleStatusTitle", { cycle: cycle.label })}
+          </Text>
+        }
+      >
+        <div className="flex flex-col gap-3">
+          <div className="flex flex-wrap items-center gap-2">
+            {overview.settled ? (
+              <Tag color="purple" icon={<LockOutlined />}>
+                {t("finance.budgetSettledTag")}
+              </Tag>
+            ) : (
+              <Tag color="default" icon={<CalendarOutlined />}>
+                {t("finance.budgetOpenTag")}
+              </Tag>
+            )}
+            {overview.walletLocked && (
+              <Tag color="red">{t("finance.budgetWalletLockedTag")}</Tag>
+            )}
+          </div>
+
+          <Text type="secondary" className="text-sm!">
+            {overview.settled
+              ? t("finance.budgetSettledHint")
+              : t("finance.budgetOpenHint")}
+          </Text>
+
+          {/* Rincian tabungan dilindungi: nilai dasar + sisa yang dipindahkan. */}
+          {overview.protectedSavingsLeftover > 0 && (
+            <Text type="secondary" className="text-sm!">
+              {t("finance.budgetLeftoverBreakdown", {
+                base: formatIDR(overview.protectedSavingsBase, locale),
+                leftover: formatIDR(
+                  overview.protectedSavingsLeftover,
+                  locale,
+                ),
+              })}
+            </Text>
+          )}
+
+          {/* Sisa saldo seluruh dompet + tombol pindah (hanya akhir siklus,
+              dan belum pernah dipindahkan pada siklus ini). */}
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <Text className="text-sm!">
+              {t("finance.budgetLeftoverLabel", {
+                amount: formatIDR(overview.leftover, locale),
+              })}
+            </Text>
+            <Tooltip
+              title={
+                overview.canApplyLeftover
+                  ? undefined
+                  : t("finance.budgetLeftoverUnavailable")
+              }
+            >
+              <Button
+                icon={<SwapOutlined />}
+                loading={applyingLeftover}
+                disabled={!overview.canApplyLeftover}
+                onClick={handleApplyLeftover}
+              >
+                {overview.walletLocked
+                  ? t("finance.budgetLeftoverDone")
+                  : t("finance.budgetLeftoverAction")}
+              </Button>
+            </Tooltip>
+          </div>
+        </div>
+      </Card>
+
       <Card
         variant="borderless"
         className="shadow-sm!"
@@ -265,7 +392,7 @@ export default function BudgetView({ initialOverview, settings }: Props) {
           layout="vertical"
           onFinish={handleSave}
           initialValues={{
-            protectedSavings: settings.protectedSavings,
+            protectedSavings: overview.protectedSavingsBase,
             cycleStartDay: settings.cycleStartDay,
           }}
         >
@@ -275,6 +402,13 @@ export default function BudgetView({ initialOverview, settings }: Props) {
             <Form.Item
               name="protectedSavings"
               label={t("finance.budgetProtected")}
+              // Siklus yang sudah dikunci (hari terakhir siklus) tidak bisa
+              // diubah lagi — tombol simpan ikut dinonaktifkan.
+              extra={
+                overview.settled
+                  ? t("finance.budgetProtectedSettledHint")
+                  : t("finance.budgetProtectedHint")
+              }
               rules={[{ required: true }]}
             >
               <InputNumber<number>
@@ -282,6 +416,7 @@ export default function BudgetView({ initialOverview, settings }: Props) {
                 addonBefore={locale === "en" ? "IDR" : "Rp"}
                 min={0}
                 step={100000}
+                disabled={overview.settled}
                 formatter={(v) =>
                   v === undefined || v === null
                     ? ""
@@ -310,6 +445,7 @@ export default function BudgetView({ initialOverview, settings }: Props) {
               type="primary"
               htmlType="submit"
               loading={saving}
+              disabled={overview.settled}
               icon={<CheckOutlined />}
             >
               {t("settings.save")}

@@ -76,9 +76,8 @@ export default function TransactionsView({
   /** D2: rentang pencarian aktif + hasil filter tabel untuk export CSV. */
   const [range, setRange] = useState<number>(1);
   const [rangeLoading, setRangeLoading] = useState(false);
-  const [filteredTransactions, setFilteredTransactions] = useState<
-    Transaction[]
-  >(initialTransactions);
+  const [filteredTransactions, setFilteredTransactions] =
+    useState<Transaction[]>(initialTransactions);
 
   /** Siklus aktif global (dipilih lewat DatePicker month di navbar). */
   const { cycle } = useCycle();
@@ -172,9 +171,7 @@ export default function TransactionsView({
   async function handleToggleRule(id: string, active: boolean) {
     // Optimistis: update UI dulu, rollback bila gagal.
     const prev = rules;
-    setRules((rs) =>
-      rs.map((r) => (r.id === id ? { ...r, active } : r)),
-    );
+    setRules((rs) => rs.map((r) => (r.id === id ? { ...r, active } : r)));
     try {
       await toggleRecurringAction(id, active);
     } catch (err) {
@@ -227,7 +224,7 @@ export default function TransactionsView({
   );
 
   return (
-    <div className="mx-auto flex w-full max-w-350 flex-col">
+    <div className="mx-auto flex w-full flex-col">
       {/* Navigasi siklus ada di navbar (DatePicker month). Segmented pemilih
           tabel transaksi ↔ transaksi berulang ada di UJUNG KIRI toolbar;
           aksi import & tambah transaksi di kanan. */}
@@ -315,100 +312,102 @@ export default function TransactionsView({
           title={<Text strong>{t("transactions.recurringTitle")}</Text>}
           styles={{ body: { padding: rules.length === 0 ? 0 : 16 } }}
         >
-        {rules.length === 0 ? (
-          <div className="flex items-center justify-center py-8">
-            <Empty
-              description={t("transactions.recurringEmpty")}
-              className="py-2"
-            >
-              <Button
-                type="primary"
-                icon={<PlusOutlined />}
-                onClick={() => {
-                  setEditingRuleId(null);
-                  setRuleFormOpen(true);
-                }}
+          {rules.length === 0 ? (
+            <div className="flex items-center justify-center py-8">
+              <Empty
+                description={t("transactions.recurringEmpty")}
+                className="py-2"
               >
-                {t("transactions.recurringAdd")}
-              </Button>
-            </Empty>
-          </div>
-        ) : (
-          <div className="flex flex-col gap-2">
-            {rules.map((rule) => {
-              const category = categories.find(
-                (c) => c.id === rule.categoryId,
-              );
-              return (
-                <div
-                  key={rule.id}
-                  className="flex flex-wrap items-center justify-between gap-2 rounded-lg px-2 py-1.5 bg-black/[0.03] dark:bg-white/[0.05]"
+                <Button
+                  type="primary"
+                  icon={<PlusOutlined />}
+                  onClick={() => {
+                    setEditingRuleId(null);
+                    setRuleFormOpen(true);
+                  }}
                 >
-                  <div className="flex min-w-0 flex-wrap items-center gap-2">
-                    <Tag
-                      color={
-                        rule.type === "INCOME" ? "green" : "red"
-                      }
-                      style={{ margin: 0 }}
-                    >
-                      {t(`form.type${rule.type.charAt(0)}${rule.type.slice(1).toLowerCase()}`)}
-                    </Tag>
-                    <Text strong ellipsis className="max-w-40!">
-                      {rule.name}
-                    </Text>
-                    <Text>{formatIDR(rule.amount, locale)}</Text>
-                    <Text type="secondary" style={{ fontSize: 12 }}>
-                      {t("transactions.recurringEvery", { n: rule.dayOfMonth })}
-                    </Text>
-                    {category && (
-                      <Tag style={{ margin: 0 }}>{category.name}</Tag>
-                    )}
+                  {t("transactions.recurringAdd")}
+                </Button>
+              </Empty>
+            </div>
+          ) : (
+            <div className="flex flex-col gap-2">
+              {rules.map((rule) => {
+                const category = categories.find(
+                  (c) => c.id === rule.categoryId,
+                );
+                return (
+                  <div
+                    key={rule.id}
+                    className="flex flex-wrap items-center justify-between gap-2 rounded-lg px-2 py-1.5 bg-black/[0.03] dark:bg-white/[0.05]"
+                  >
+                    <div className="flex min-w-0 flex-wrap items-center gap-2">
+                      <Tag
+                        color={rule.type === "INCOME" ? "green" : "red"}
+                        style={{ margin: 0 }}
+                      >
+                        {t(
+                          `form.type${rule.type.charAt(0)}${rule.type.slice(1).toLowerCase()}`,
+                        )}
+                      </Tag>
+                      <Text strong ellipsis className="max-w-40!">
+                        {rule.name}
+                      </Text>
+                      <Text>{formatIDR(rule.amount, locale)}</Text>
+                      <Text type="secondary" style={{ fontSize: 12 }}>
+                        {t("transactions.recurringEvery", {
+                          n: rule.dayOfMonth,
+                        })}
+                      </Text>
+                      {category && (
+                        <Tag style={{ margin: 0 }}>{category.name}</Tag>
+                      )}
+                    </div>
+                    <Space size="small">
+                      <Tooltip title={t("transactions.recurringToggle")}>
+                        <Switch
+                          size="small"
+                          checked={rule.active}
+                          onChange={(checked) =>
+                            void handleToggleRule(rule.id, checked)
+                          }
+                        />
+                      </Tooltip>
+                      <Tooltip title={t("transactions.recurringEdit")}>
+                        <Button
+                          type="text"
+                          shape="circle"
+                          size="small"
+                          icon={<EditOutlined />}
+                          aria-label={t("transactions.recurringEdit")}
+                          onClick={() => {
+                            setEditingRuleId(rule.id);
+                            setRuleFormOpen(true);
+                          }}
+                        />
+                      </Tooltip>
+                      <Popconfirm
+                        title={t("transactions.deleteRecurringConfirm")}
+                        okText={t("common.delete")}
+                        okButtonProps={{ danger: true }}
+                        cancelText={t("common.cancel")}
+                        onConfirm={() => void handleDeleteRule(rule.id)}
+                      >
+                        <Button
+                          type="text"
+                          shape="circle"
+                          size="small"
+                          danger
+                          icon={<DeleteOutlined />}
+                          aria-label={t("common.delete")}
+                        />
+                      </Popconfirm>
+                    </Space>
                   </div>
-                  <Space size="small">
-                    <Tooltip title={t("transactions.recurringToggle")}>
-                      <Switch
-                        size="small"
-                        checked={rule.active}
-                        onChange={(checked) =>
-                          void handleToggleRule(rule.id, checked)
-                        }
-                      />
-                    </Tooltip>
-                    <Tooltip title={t("transactions.recurringEdit")}>
-                      <Button
-                        type="text"
-                        shape="circle"
-                        size="small"
-                        icon={<EditOutlined />}
-                        aria-label={t("transactions.recurringEdit")}
-                        onClick={() => {
-                          setEditingRuleId(rule.id);
-                          setRuleFormOpen(true);
-                        }}
-                      />
-                    </Tooltip>
-                    <Popconfirm
-                      title={t("transactions.deleteRecurringConfirm")}
-                      okText={t("common.delete")}
-                      okButtonProps={{ danger: true }}
-                      cancelText={t("common.cancel")}
-                      onConfirm={() => void handleDeleteRule(rule.id)}
-                    >
-                      <Button
-                        type="text"
-                        shape="circle"
-                        size="small"
-                        danger
-                        icon={<DeleteOutlined />}
-                        aria-label={t("common.delete")}
-                      />
-                    </Popconfirm>
-                  </Space>
-                </div>
-              );
-            })}
-          </div>
-        )}
+                );
+              })}
+            </div>
+          )}
         </Card>
       )}
 

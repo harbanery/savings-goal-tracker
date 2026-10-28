@@ -8,6 +8,7 @@ import {
   DollarOutlined,
   DownOutlined,
   EditOutlined,
+  LockOutlined,
   PlusOutlined,
   SearchOutlined,
   SwapOutlined,
@@ -16,6 +17,7 @@ import {
   WalletOutlined,
 } from "@ant-design/icons";
 import {
+  Alert,
   App,
   Button,
   Card,
@@ -64,6 +66,8 @@ interface Props {
   initialAllocatable: number;
   /** Tabungan dilindungi siklus awal (dikurangkan dari total alokasi). */
   initialProtected: number;
+  /** Siklus awal sudah terkunci (sisa dompet dipindahkan) — hanya pemasukan. */
+  initialWalletLocked: boolean;
 }
 
 const PRESET_COLORS = [
@@ -115,6 +119,7 @@ export default function WalletsView({
   initialTransactions,
   initialAllocatable,
   initialProtected,
+  initialWalletLocked,
 }: Props) {
   const { t, locale } = useLocale();
   const { message } = App.useApp();
@@ -128,6 +133,8 @@ export default function WalletsView({
   const [allocatable, setAllocatable] = useState(initialAllocatable);
   /** Tabungan dilindungi — total alokasi tampil dikurangi nilai ini. */
   const [protectedSavings, setProtectedSavings] = useState(initialProtected);
+  /** Siklus aktif terkunci (sisa dompet dipindahkan) — hanya pemasukan. */
+  const [walletLocked, setWalletLocked] = useState(initialWalletLocked);
   const [reloadKey, setReloadKey] = useState(0);
   /** D3: aksi cepat transfer dari sebuah wadah (modal TRANSFER, fromUnit terisi). */
   const [transferFrom, setTransferFrom] = useState<BudgetCategory | null>(null);
@@ -161,6 +168,7 @@ export default function WalletsView({
       setTransactions(fresh);
       setAllocatable(overview.allocatable);
       setProtectedSavings(overview.protectedSavings);
+      setWalletLocked(overview.walletLocked);
     } catch (err) {
       console.error("[WalletsView] gagal memuat data siklus:", err);
       setTransactions([]);
@@ -453,6 +461,20 @@ export default function WalletsView({
 
   return (
     <div className="w-full">
+      {/* Kunci siklus (DROID.md — Budget): setelah sisa saldo seluruh dompet
+          dipindahkan ke tabungan dilindungi, siklus ini hanya boleh menerima
+          pemasukan pada semua wadah. */}
+      {walletLocked && (
+        <Alert
+          type="warning"
+          showIcon
+          icon={<LockOutlined />}
+          className="mb-4!"
+          title={t("finance.walletsLockedTitle")}
+          description={t("finance.walletsLockedDesc")}
+        />
+      )}
+
       {/* Toolbar: progress bar alokasi dana tiap wadah (bukan yang
           terpakai) terhadap budget yang bisa dialokasikan + tombol
           tambah wadah. */}
@@ -657,12 +679,19 @@ export default function WalletsView({
                         aria-label={t("finance.moveDownAria", { name: category.name })}
                       />
                     </Tooltip>
-                    <Tooltip title={t("finance.transferFrom")}>
+                    <Tooltip
+                      title={
+                        walletLocked
+                          ? t("finance.walletsLockedTitle")
+                          : t("finance.transferFrom")
+                      }
+                    >
                       <Button
                         type="text"
                         shape="circle"
                         size="small"
                         icon={<SwapOutlined />}
+                        disabled={walletLocked}
                         onClick={() => setTransferFrom(category)}
                         aria-label={t("finance.transferFrom")}
                       />

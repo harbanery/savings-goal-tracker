@@ -15,10 +15,17 @@ import {
   getUserCategories,
   getUserSettings,
 } from "@/services/transaction";
+import {
+  getCycleBudget,
+  getCycleBudgetMap,
+} from "@/services/cycleBudget";
 import { getCurrentUser } from "@/lib/auth";
 import { ensureUserDefaults } from "@/services/user";
-import { getCurrentCycle } from "@/features/web/utils/cycle";
+import { getCurrentCycle, shiftCycle } from "@/features/web/utils/cycle";
 import SectionSkeleton from "@/features/web/components/ui/sectionSkeleton";
+
+/** Jumlah siklus historis awal (selaras default rentang di DashboardView). */
+const INITIAL_RANGE = 3;
 
 /**
  * Feature module dashboard: kartu keuntungan seluruh waktu + kartu mini
@@ -64,16 +71,34 @@ async function DashboardData({ userId }: { userId: string }) {
     return { income: 0, spent: 0 };
   });
   const historicalPromise: Promise<Record<string, Transaction[]>> =
-    getHistoricalTransactionsAction(cycle, 6).catch((err) => {
+    getHistoricalTransactionsAction(cycle, INITIAL_RANGE).catch((err) => {
       console.error("[DashboardSection] gagal memuat transaksi historis:", err);
       return {} as Record<string, Transaction[]>;
     });
+
+  // Tabungan dilindungi DINAMIS PER SIKLUS: nilai siklus aktif + peta nilai
+  // siklus historis (target chart per siklus). Kegagalan tidak memblokir
+  // dashboard — jatuh ke 0 (perilaku "siklus baru = 0").
+  const cycles = Array.from({ length: INITIAL_RANGE }, (_, i) =>
+    shiftCycle(cycle, -i),
+  );
+  const [protectedSavings, protectedSavingsMap]: [
+    number,
+    Record<string, number>,
+  ] = await Promise.all([
+    getCycleBudget(userId, cycle.key)
+      .then((info) => info.total)
+      .catch(() => 0),
+    getCycleBudgetMap(userId, cycles).catch(() => ({})),
+  ]);
 
   return (
     <DashboardView
       transactionsPromise={transactionsPromise}
       allTimePromise={allTimePromise}
       historicalPromise={historicalPromise}
+      protectedSavings={protectedSavings}
+      protectedSavingsMap={protectedSavingsMap}
       categories={categories}
       settings={settings}
     />

@@ -1,7 +1,7 @@
 "use client";
 
 import { PlusOutlined } from "@ant-design/icons";
-import { Alert, Button, Card, Segmented, Typography } from "antd";
+import { Alert, Button, Card, Divider, Segmented, Typography } from "antd";
 import dynamic from "next/dynamic";
 import {
   Suspense,
@@ -14,8 +14,10 @@ import {
 import { useLocale } from "@/components/i18n/LocaleProvider";
 import {
   getAllTimeTotalsAction,
+  getBudgetOverviewAction,
   getCycleTransactionsAction,
   getHistoricalTransactionsAction,
+  getProtectedSavingsMapAction,
 } from "@/utils/server/actions";
 import { computeCycleStats } from "@/features/web/utils/stats";
 import { buildCycleChartData } from "@/features/home/utils/chartData";
@@ -37,7 +39,7 @@ const { Text } = Typography;
 
 /** Pilihan rentang historis chart (rekomendasi D1: 3/6/12 siklus). */
 const RANGE_OPTIONS = [3, 6, 12] as const;
-const DEFAULT_RANGE = 6;
+const DEFAULT_RANGE = 3;
 
 const ChartLoading = () => {
   const { t } = useLocale();
@@ -69,8 +71,17 @@ interface Props {
   transactionsPromise: Promise<Transaction[]>;
   /** Total pemasukan & pengeluaran seluruh waktu (kartu utama). */
   allTimePromise: Promise<AllTimeTotals>;
-  /** Transaksi 6 siklus terakhir untuk grafik historis. */
+  /** Transaksi beberapa siklus terakhir untuk grafik historis. */
   historicalPromise: Promise<Record<string, Transaction[]>>;
+  /**
+   * Tabungan dilindungi siklus aktif (dinamis per siklus — siklus baru = 0).
+   */
+  protectedSavings: number;
+  /**
+   * Tabungan dilindungi per siklus (map kunci siklus → nilai) untuk grafik
+   * historis — target tiap siklus berbeda karena nilainya dinamis.
+   */
+  protectedSavingsMap: Record<string, number>;
   categories: BudgetCategory[];
   settings: UserSettings;
 }
@@ -109,6 +120,8 @@ export default function DashboardView({
   transactionsPromise,
   allTimePromise,
   historicalPromise,
+  protectedSavings,
+  protectedSavingsMap,
   categories,
   settings,
 }: Readonly<Props>) {
@@ -134,7 +147,7 @@ export default function DashboardView({
   }, []);
 
   return (
-    <div className="mx-auto w-full max-w-350">
+    <div className="mx-auto w-full">
       {/* Navigasi siklus ada di navbar (DatePicker month); sisakan tombol tambah.
           Modal dipakai bersama: mode tambah (CTA/tombol) & mode edit (aksi
           cepat di daftar transaksi terakhir — D1). */}
@@ -155,6 +168,7 @@ export default function DashboardView({
         <DashboardStatsSlice
           transactionsPromise={transactionsPromise}
           allTimePromise={allTimePromise}
+          protectedSavings={protectedSavings}
           categories={categories}
           settings={settings}
           refreshKey={refreshKey}
@@ -170,6 +184,8 @@ export default function DashboardView({
         <DashboardChartsSlice
           transactionsPromise={transactionsPromise}
           historicalPromise={historicalPromise}
+          protectedSavings={protectedSavings}
+          protectedSavingsMap={protectedSavingsMap}
           categories={categories}
           settings={settings}
           refreshKey={refreshKey}
@@ -194,6 +210,7 @@ export default function DashboardView({
 function DashboardStatsSlice({
   transactionsPromise,
   allTimePromise,
+  protectedSavings,
   categories,
   settings,
   refreshKey,
@@ -203,6 +220,8 @@ function DashboardStatsSlice({
 }: Readonly<StatsSliceProps & {
   transactionsPromise: Promise<Transaction[]>;
   allTimePromise: Promise<AllTimeTotals>;
+  /** Tabungan dilindungi siklus aktif (dinamis per siklus). */
+  protectedSavings: number;
 }>) {
   // Data awal di-stream dari server; setelahnya dikelola state lokal.
   const initialTransactions = use(transactionsPromise);
@@ -214,25 +233,31 @@ function DashboardStatsSlice({
   const { cycle } = useCycle();
   const { t, locale } = useLocale();
 
+  // Tabungan dilindungi siklus aktif — dinamis per siklus, jadi ikut
+  // dimuat ulang saat siklus berubah (nilai awal dari server).
+  const [cycleProtected, setCycleProtected] = useState(protectedSavings);
+
   const stats = useMemo(
     () =>
       computeCycleStats(
         transactions,
         categories,
         settings.savingsInitial,
-        settings.protectedSavings,
+        cycleProtected,
       ),
-    [transactions, categories, settings],
+    [transactions, categories, settings.savingsInitial, cycleProtected],
   );
 
   const refresh = useCallback(async (targetCycle: CycleInfo) => {
     try {
-      const [fresh, freshAllTime] = await Promise.all([
+      const [fresh, freshAllTime, overview] = await Promise.all([
         getCycleTransactionsAction(targetCycle),
         getAllTimeTotalsAction(),
+        getBudgetOverviewAction(targetCycle),
       ]);
       setTransactions(fresh);
       setAllTime(freshAllTime);
+      setCycleProtected(overview.protectedSavings);
     } catch (err) {
       console.error("[DashboardView] gagal memuat data:", err);
       setTransactions([]);
@@ -291,6 +316,8 @@ function DashboardStatsSlice({
 function DashboardChartsSlice({
   transactionsPromise,
   historicalPromise,
+  protectedSavings,
+  protectedSavingsMap,
   categories,
   settings,
   refreshKey,
@@ -298,6 +325,10 @@ function DashboardChartsSlice({
 }: Readonly<SliceProps & {
   transactionsPromise: Promise<Transaction[]>;
   historicalPromise: Promise<Record<string, Transaction[]>>;
+  /** Tabungan dilindungi siklus aktif (dinamis per siklus). */
+  protectedSavings: number;
+  /** Tabungan dilindungi per siklus (map kunci siklus → nilai). */
+  protectedSavingsMap: Record<string, number>;
 }>) {
   const initialTransactions = use(transactionsPromise);
   const initialHistorical = use(historicalPromise);
@@ -312,6 +343,11 @@ function DashboardChartsSlice({
   const { cycle } = useCycle();
   const { locale, t } = useLocale();
 
+  // Tabungan dilindungi siklus aktif + peta per siklus (dinamis per siklus).
+  const [cycleProtected, setCycleProtected] = useState(protectedSavings);
+  const [protectedMap, setProtectedMap] =
+    useState<Record<string, number>>(protectedSavingsMap);
+
   // Rincian kategori diturunkan dari transaksi siklus (statistik siklus).
   const stats = useMemo(
     () =>
@@ -319,30 +355,35 @@ function DashboardChartsSlice({
         transactions,
         categories,
         settings.savingsInitial,
-        settings.protectedSavings,
+        cycleProtected,
       ),
-    [transactions, categories, settings],
+    [transactions, categories, settings.savingsInitial, cycleProtected],
   );
   const chartData = useMemo(
     () =>
       buildCycleChartData(
         historical,
-        settings.protectedSavings,
+        protectedMap,
         settings.savingsInitial,
         locale,
       ),
-    [historical, settings.protectedSavings, settings.savingsInitial, locale],
+    [historical, protectedMap, settings.savingsInitial, locale],
   );
 
   const refresh = useCallback(async (targetCycle: CycleInfo, count: number) => {
     setRangeLoading(true);
     try {
-      const [fresh, freshHistorical] = await Promise.all([
-        getCycleTransactionsAction(targetCycle),
-        getHistoricalTransactionsAction(targetCycle, count),
-      ]);
+      const [fresh, freshHistorical, overview, freshProtectedMap] =
+        await Promise.all([
+          getCycleTransactionsAction(targetCycle),
+          getHistoricalTransactionsAction(targetCycle, count),
+          getBudgetOverviewAction(targetCycle),
+          getProtectedSavingsMapAction(targetCycle, count),
+        ]);
       setTransactions(fresh);
       setHistorical(freshHistorical);
+      setCycleProtected(overview.protectedSavings);
+      setProtectedMap(freshProtectedMap);
     } catch (err) {
       console.error("[DashboardView] gagal memuat data historis:", err);
       setTransactions([]);
@@ -359,6 +400,11 @@ function DashboardChartsSlice({
 
   return (
     <>
+      {/* Divider pemisah di atas kontrol "Rentang historis" (DROID.md:
+          beri divider di atasnya) agar tidak menyatu dengan chart
+          pengeluaran harian di atasnya. */}
+      <Divider style={{ margin: "0 0 12px" }} />
+
       {/* D1: pilihan rentang historis (3/6/12 siklus) untuk semua chart
           historis di bawah. */}
       <div className="mb-3 flex flex-wrap items-center justify-end gap-2">

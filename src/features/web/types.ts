@@ -36,8 +36,6 @@ export interface UserSettings {
   cycleStartDay: number;
   /** Saldo/modal awal per siklus. */
   savingsInitial: number;
-  /** Tabungan yang dilindungi per siklus (menu Budget). */
-  protectedSavings: number;
 }
 
 /** User sesi login (Google). */
@@ -86,8 +84,15 @@ export interface TransactionInput {
 
 /** Ringkasan Budget per siklus (menu Keuangan > Budget). */
 export interface BudgetOverview {
-  /** Tabungan yang dilindungi (set user). */
+  /**
+   * Total tabungan yang dilindungi untuk siklus ini (dasar + sisa dompet
+   * yang dipindahkan). Nilainya DINAMIS PER SIKLUS — siklus baru = 0.
+   */
   protectedSavings: number;
+  /** Nilai dasar tabungan dilindungi yang diisi user untuk siklus ini. */
+  protectedSavingsBase: number;
+  /** Bagian dari sisa saldo dompet yang dipindahkan ke tabungan dilindungi. */
+  protectedSavingsLeftover: number;
   /** Saldo awal siklus. */
   savingsInitial: number;
   /** Total pemasukan siklus. */
@@ -103,6 +108,14 @@ export interface BudgetOverview {
   /** Jumlah transaksi yang dipaksa melewati proteksi tabungan di siklus
    *  ini (riwayat pelanggaran — rekomendasi D5). */
   forcedCount: number;
+  /** true bila hari terakhir siklus sudah tercapai (nilai sudah dikunci). */
+  settled: boolean;
+  /** true bila sisa dompet sudah dipindahkan (dompet hanya boleh pemasukan). */
+  walletLocked: boolean;
+  /** Sisa saldo seluruh dompet siklus ini (pemasukan − pengeluaran). */
+  leftover: number;
+  /** true bila sisa dompet bisa dipindahkan ke tabungan dilindungi. */
+  canApplyLeftover: boolean;
 }
 
 /** Target tabungan user (menu Keuangan > Target). */

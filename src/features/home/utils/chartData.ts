@@ -53,13 +53,15 @@ function keyToParts(key: string): { year: number; monthIndex: number } | null {
 /**
  * Ubah map key -> transactions menjadi array CycleChartData terurut kronologis.
  * @param historical map dengan kunci netral "YYYY-MM"
- * @param protectedSavings tabungan dilindungi per siklus (target tabungan)
+ * @param protectedByCycle tabungan dilindungi PER SIKLUS (map kunci siklus →
+ *        nilai) — target tabungan tiap siklus berbeda karena nilainya
+ *        dinamis (siklus baru = 0); siklus tanpa nilai dianggap 0
  * @param savingsInitial saldo awal per siklus milik user
  * @param locale locale untuk label tampilan
  */
 export function buildCycleChartData(
   historical: Record<string, Transaction[]>,
-  protectedSavings: number,
+  protectedByCycle: Record<string, number>,
   savingsInitial: number,
   locale: Locale = "id",
 ): CycleChartData[] {
@@ -88,11 +90,12 @@ export function buildCycleChartData(
     const label = parts
       ? formatCycleLabel(parts.year, parts.monthIndex, locale)
       : key;
-    // Target tabungan per siklus = tabungan dilindungi. Rumus lama
-    // (saldo awal − total alokasi wadah) menghasilkan 0 ketika seluruh
-    // saldo dialokasikan sehingga chart target tampak kosong (insight
-    // DROID.md). Aktual = tabungan bersih siklus (tanpa saldo awal).
-    const expectedSavings = protectedSavings;
+    // Target tabungan per siklus = tabungan dilindungi SIKLUS ITU (dinamis
+    // per siklus — siklus baru = 0). Rumus lama (saldo awal − total alokasi
+    // wadah) menghasilkan 0 ketika seluruh saldo dialokasikan sehingga chart
+    // target tampak kosong (insight DROID.md). Aktual = tabungan bersih
+    // siklus (tanpa saldo awal).
+    const expectedSavings = protectedByCycle[key] ?? 0;
     const actualSavings = totalIncome - totalSpent;
     // Kumulatif = saldo awal + Σ tabungan tiap siklus (target maupun
     // aktual); saldo awal tidak diulang per siklus agar tak dobel hitung.

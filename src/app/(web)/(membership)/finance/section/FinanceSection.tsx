@@ -56,6 +56,7 @@ async function FinanceData({ userId }: { userId: string }) {
       initialTransactions={initialTransactions}
       initialAllocatable={overview.allocatable}
       initialProtected={overview.protectedSavings}
+      initialWalletLocked={overview.walletLocked}
     />
   );
 }

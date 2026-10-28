@@ -14,10 +14,7 @@ import {
   getHistoricalTransactionsAction,
   getRangeTransactionsAction,
 } from "@/utils/server/actions";
-import type {
-  BudgetCategory,
-  Transaction,
-} from "@/features/web/types";
+import type { BudgetCategory, Transaction } from "@/features/web/types";
 import { useCycle } from "@/features/web/hooks/cycle";
 import {
   formatCycleLabel,
@@ -181,7 +178,7 @@ export default function ReportsView({
   }
 
   return (
-    <div className="mx-auto w-full max-w-350">
+    <div className="mx-auto w-full">
       {/* Toolbar: rentang laporan (multi-siklus) + export CSV. */}
       <div className="flex flex-wrap items-center justify-between gap-2">
         <Select

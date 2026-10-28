@@ -4,6 +4,7 @@ import type { RecurringRule, TransactionType } from "@/features/web/types";
 import type { CycleInfo } from "@/features/web/utils/cycle";
 import { getCycleForDate, toDayUTC } from "@/features/web/utils/cycle";
 import { clampDayOfMonth } from "@/features/web/utils/finance";
+import { isCycleLocked } from "@/services/cycleBudget";
 
 /**
  * Data-access layer transaksi berulang: aturan bulanan yang otomatis
@@ -237,8 +238,14 @@ export async function materializeRecurringForCycle(
   );
   if (rules.length === 0) return;
 
+  // Siklus terkunci (sisa dompet sudah dipindahkan ke tabungan dilindungi)
+  // hanya boleh menerima pemasukan — aturan pengeluaran TIDAK lagi
+  // dimaterialisasi agar kunci tidak ditembus jalur otomatis.
+  const locked = await isCycleLocked(userId, cycle.key);
+
   const now = new Date();
   for (const rule of rules) {
+    if (locked && rule.type !== "INCOME") continue;
     // Aturan berlaku sejak hari kanonik pembuatannya (tengah malam UTC) —
     // tidak ada backfill kemunculan sebelum aturan ada.
     const ruleCreated = toDayUTC(new Date(rule.createdAt));

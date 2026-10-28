@@ -68,7 +68,6 @@ export const getUserSettings = cache(
     return {
       cycleStartDay: s?.cycleStartDay ?? 25,
       savingsInitial: s ? Number(s.savingsInitial) : 0,
-      protectedSavings: s ? Number(s.protectedSavings) : 0,
     };
   },
 );
@@ -292,13 +291,13 @@ export async function deleteManyTransactions(
 // Settings
 // ---------------------------------------------------------------------------
 
-/** Perbarui settings user (cycle start day / tabungan dilindungi).
- *  Saldo awal tidak bisa di-set — selalu 0 (lihat DROID.md). */
+/** Perbarui settings user (tanggal mulai siklus).
+ *  Saldo awal selalu 0, dan tabungan dilindungi kini DINAMIS PER SIKLUS
+ *  (tabel `cycle_budgets` — lihat services/cycleBudget.ts, DROID.md). */
 export async function updateUserSettings(
   userId: string,
   data: {
     cycleStartDay?: number;
-    protectedSavings?: number;
   },
 ): Promise<UserSettings> {
   const patch: Prisma.UserSettingsUpdateInput = {};
@@ -308,14 +307,6 @@ export async function updateUserSettings(
     }
     patch.cycleStartDay = data.cycleStartDay;
   }
-  if (data.protectedSavings !== undefined) {
-    if (!Number.isFinite(data.protectedSavings) || data.protectedSavings < 0) {
-      throw new Error("Tabungan dilindungi tidak valid.");
-    }
-    patch.protectedSavings = new Prisma.Decimal(
-      Math.round(data.protectedSavings),
-    );
-  }
   const row = await withRetry(() =>
     prisma.userSettings.upsert({
       where: { userId },
@@ -323,14 +314,12 @@ export async function updateUserSettings(
       create: {
         userId,
         cycleStartDay: data.cycleStartDay ?? 25,
-        protectedSavings: Math.round(data.protectedSavings ?? 0),
       },
     }),
   );
   return {
     cycleStartDay: row.cycleStartDay,
     savingsInitial: Number(row.savingsInitial),
-    protectedSavings: Number(row.protectedSavings),
   };
 }
 

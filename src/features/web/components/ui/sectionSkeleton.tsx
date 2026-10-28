@@ -40,7 +40,7 @@ export default function SectionSkeleton({
   switch (variant) {
     case "cards":
       return (
-        <div className="mx-auto grid w-full max-w-350 grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="mx-auto grid w-full grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
           {[0, 1, 2, 3].map((i) => (
             <SkeletonCard key={i} />
           ))}
@@ -48,7 +48,7 @@ export default function SectionSkeleton({
       );
     case "stats":
       return (
-        <div className="mx-auto flex w-full max-w-350 flex-col gap-4">
+        <div className="mx-auto flex w-full flex-col gap-4">
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
             {[0, 1, 2, 3].map((i) => (
               <SkeletonCard key={i} />
@@ -62,7 +62,7 @@ export default function SectionSkeleton({
       );
     case "charts":
       return (
-        <div className="mx-auto flex w-full max-w-350 flex-col gap-4">
+        <div className="mx-auto flex w-full flex-col gap-4">
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
             <div className="lg:col-span-5">
               <SkeletonBlock rows={5} />
@@ -79,14 +79,14 @@ export default function SectionSkeleton({
       );
     case "list":
       return (
-        <div className="mx-auto w-full max-w-350">
+        <div className="mx-auto w-full">
           <SkeletonBlock rows={6} />
         </div>
       );
     case "table":
     default:
       return (
-        <div className="mx-auto w-full max-w-350">
+        <div className="mx-auto w-full">
           <SkeletonBlock rows={9} />
         </div>
       );

@@ -39,6 +39,14 @@ import {
   getTargets,
   updateTarget,
 } from "@/services/finance";
+import {
+  applyCycleLeftoverToProtected,
+  assertCycleNotLocked,
+  getCycleBudget,
+  getCycleBudgetMap,
+  setCycleProtectedSavings,
+  type CycleBudgetInfo,
+} from "@/services/cycleBudget";
 import type {
   BudgetCategory,
   BudgetOverview,
@@ -68,6 +76,22 @@ async function requireUserId(): Promise<string> {
   const user = await getCurrentUser();
   if (!user) throw new Error("Unauthorized — silakan login kembali.");
   return user.id;
+}
+
+/**
+ * Tolak pengeluaran/transfer pada siklus yang sudah terkunci (sisa saldo
+ * dompetnya sudah dipindahkan ke tabungan dilindungi). Pemasukan selalu
+ * lolos. Dipakai semua jalur mutasi transaksi (tambah/edit/import) agar
+ * aturan "hanya pemasukan" konsisten — batas ini tidak bisa dilewati.
+ */
+async function assertOutflowCycleUnlocked(
+  userId: string,
+  date: Date,
+  type: string,
+): Promise<void> {
+  if (type === "INCOME") return;
+  const { cycleStartDay } = await getUserSettings(userId);
+  await assertCycleNotLocked(userId, date, cycleStartDay, type);
 }
 
 function validateAmount(amount: number): void {
@@ -275,6 +299,13 @@ export async function createTransactionAction(
     throw new Error("Tanggal tidak valid.");
   }
 
+  // Kunci siklus (DROID.md — Budget): setelah sisa saldo dompet dipindahkan
+  // ke tabungan dilindungi, siklus itu hanya boleh menerima PEMASUKAN.
+  // Diperiksa LEBIH DULU (sebelum proteksi tabungan) agar user langsung
+  // mendapat pesan yang tepat, bukan konfirmasi "terpaksa" yang tak akan
+  // pernah bisa berhasil. Batas ini tidak bisa dilewati.
+  await assertOutflowCycleUnlocked(userId, date, input.type);
+
   // Proteksi tabungan (Budget): PENGELUARAN tidak boleh menyentuh tabungan
   // dilindungi tanpa konfirmasi terpaksa dari user. Pemasukan/transfer tidak
   // menambah pengeluaran siklus — konsisten dengan jalur update di bawah
@@ -358,6 +389,17 @@ export async function updateTransactionAction(
   // Proteksi tabungan: hitung delta pengeluaran terhadap transaksi lama.
   const old = await getTransactionById(userId, id);
   if (!old) throw new Error("Transaksi tidak ditemukan.");
+
+  // Kunci siklus: siklus terkunci hanya boleh menerima pemasukan. Diperiksa
+  // untuk tanggal BARU maupun tanggal LAMA agar pengeluaran tidak bisa
+  // dipindahkan masuk ke dalam siklus yang sudah terkunci.
+  await assertOutflowCycleUnlocked(userId, date, input.type);
+  await assertOutflowCycleUnlocked(
+    userId,
+    parseTransactionDate(old.date),
+    old.type,
+  );
+
   const oldExpense = old.type === "EXPENSE" ? old.amount : 0;
   const newExpense = input.type === "EXPENSE" ? input.amount : 0;
   await assertSavingsProtection(
@@ -445,6 +487,11 @@ export async function importTransactionsAction(
       const date = parseTransactionDate(input.date);
       if (Number.isNaN(date.getTime())) throw new Error("Tanggal tidak valid.");
 
+      // Kunci siklus (DROID.md — Budget): baris pada siklus yang sudah
+      // terkunci hanya boleh pemasukan — dilaporkan per baris seperti
+      // pelanggaran batas wadah di bawah.
+      await assertOutflowCycleUnlocked(userId, date, input.type);
+
       // Batas alokasi wadah berlaku juga untuk import CSV (aturan keras —
       // baris yang melanggar dilaporkan per baris, baris lain tetap masuk).
       if (input.type === "EXPENSE" || input.type === "TRANSFER") {
@@ -488,7 +535,6 @@ export async function importTransactionsAction(
 
 export async function updateSettingsAction(data: {
   cycleStartDay?: number;
-  protectedSavings?: number;
 }): Promise<UserSettings> {
   const userId = await requireUserId();
   const settings = await updateUserSettings(userId, data);
@@ -625,6 +671,70 @@ export async function getBudgetOverviewAction(
 ): Promise<BudgetOverview> {
   const userId = await requireUserId();
   return getBudgetOverview(userId, cycle);
+}
+
+/** Tabungan dilindungi satu siklus (dinamis: siklus baru = 0). */
+export async function getCycleBudgetAction(
+  cycle: CycleInfo,
+): Promise<CycleBudgetInfo> {
+  const userId = await requireUserId();
+  return getCycleBudget(userId, cycle.key);
+}
+
+/**
+ * Tabungan dilindungi beberapa siklus terakhir (map kunci siklus → nilai)
+ * — dipakai chart historis dashboard agar target tiap siklus akurat
+ * (nilainya dinamis per siklus, bukan satu nilai global).
+ */
+export async function getProtectedSavingsMapAction(
+  endCycle: CycleInfo,
+  count: number,
+): Promise<Record<string, number>> {
+  const userId = await requireUserId();
+  if (count <= 0) return {};
+  const cycles: CycleInfo[] = [];
+  let current = endCycle;
+  for (let i = 0; i < count; i++) {
+    cycles.push(current);
+    current = shiftCycle(current, -1);
+  }
+  return getCycleBudgetMap(userId, cycles);
+}
+
+/**
+ * Tetapkan tabungan dilindungi untuk SIKLUS yang dipilih (dinamis per
+ * siklus — bukan lagi nilai global). Ditolak bila siklus sudah dikunci
+ * (hari terakhir siklus terlampaui).
+ */
+export async function setCycleProtectedSavingsAction(
+  cycle: CycleInfo,
+  amount: number,
+): Promise<CycleBudgetInfo> {
+  const userId = await requireUserId();
+  const info = await setCycleProtectedSavings(userId, cycle, amount);
+  revalidatePath("/");
+  revalidatePath("/budget");
+  revalidatePath("/finance");
+  return info;
+}
+
+/**
+ * Pindahkan sisa saldo seluruh dompet ke tabungan dilindungi siklus ini,
+ * lalu kunci siklus tersebut (hanya boleh menerima pemasukan). Hanya
+ * tersedia pada hari terakhir siklus dan bila belum dipindahkan.
+ */
+export async function applyCycleLeftoverAction(
+  cycle: CycleInfo,
+): Promise<CycleBudgetInfo> {
+  const userId = await requireUserId();
+  const info = await applyCycleLeftoverToProtected(userId, cycle);
+  // Tabungan dilindungi bertambah → batas pengeluaran siklus berubah, dan
+  // dompet siklus ini terkunci. Segarkan seluruh halaman keuangan.
+  revalidatePath("/");
+  revalidatePath("/budget");
+  revalidatePath("/finance");
+  revalidatePath("/transactions");
+  return info;
 }
 
 export async function getTargetsAction(): Promise<SavingsTarget[]> {

@@ -7,6 +7,7 @@ import {
   SAVINGS_PROTECTION_CODE,
   WALLET_LIMIT_CODE,
 } from "@/features/web/utils/finance";
+import { settleCycleBudgetIfDue } from "@/services/cycleBudget";
 
 /**
  * Data-access layer menu Keuangan: ringkasan Budget per siklus (proteksi
@@ -225,13 +226,20 @@ export async function deleteTarget(userId: string, id: string): Promise<void> {
 /**
  * Ringkasan Budget satu siklus:
  * bisa dialokasikan = saldo awal + pemasukan - tabungan dilindungi.
+ *
+ * Tabungan dilindungi kini DINAMIS PER SIKLUS (tabel `cycle_budgets`):
+ * siklus baru = 0, dan nilainya dikunci pada hari terakhir siklus.
+ * Fungsi ini juga menandai penguncian bila hari terakhir siklus sudah
+ * tercapai ("uang disimpan saat hari terakhir siklus") serta menghitung
+ * sisa saldo seluruh dompet yang bisa dipindahkan ke tabungan dilindungi.
  */
 export async function getBudgetOverview(
   userId: string,
   cycle: CycleInfo,
 ): Promise<BudgetOverview> {
-  const [settings, agg, forcedCount] = await Promise.all([
+  const [settings, cycleBudget, agg, forcedCount] = await Promise.all([
     prisma.userSettings.findUnique({ where: { userId } }),
+    settleCycleBudgetIfDue(userId, cycle),
     withRetry(() =>
       prisma.transaction.groupBy({
         by: ["type"],
@@ -255,7 +263,7 @@ export async function getBudgetOverview(
     ),
   ]);
 
-  const protectedSavings = Number(settings?.protectedSavings ?? 0);
+  const protectedSavings = cycleBudget.total;
   const savingsInitial = Number(settings?.savingsInitial ?? 0);
   const totalIncome = Number(
     agg.find((g) => g.type === "INCOME")?._sum.amount ?? 0,
@@ -265,9 +273,12 @@ export async function getBudgetOverview(
   );
   const allocatable = savingsInitial + totalIncome - protectedSavings;
   const remaining = allocatable - totalSpent;
+  const leftover = Math.max(0, totalIncome - totalSpent);
 
   return {
     protectedSavings,
+    protectedSavingsBase: cycleBudget.protectedSavings,
+    protectedSavingsLeftover: cycleBudget.leftoverAdded,
     savingsInitial,
     totalIncome,
     totalSpent,
@@ -275,6 +286,13 @@ export async function getBudgetOverview(
     remaining,
     overProtected: totalSpent > allocatable,
     forcedCount,
+    // Sisa saldo seluruh dompet hanya bisa dipindahkan pada hari terakhir
+    // siklus, dan hanya bila belum dipindahkan (dompet belum terkunci).
+    settled: cycleBudget.settled,
+    walletLocked: cycleBudget.locked,
+    leftover,
+    canApplyLeftover:
+      cycleBudget.settled && !cycleBudget.locked && leftover > 0,
   };
 }
 

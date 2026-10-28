@@ -347,7 +347,35 @@ const id: TranslationDict = {
   "finance.budgetSpent": "Terpakai",
   "finance.budgetSettingTitle": "Atur Tabungan per Siklus",
   "finance.budgetSettingHint":
-    "Nominal tabungan yang tidak boleh tersentuh pengeluaran pada setiap siklus. Pengeluaran yang mencoba melampaui batas alokasi akan diminta konfirmasi terpaksa sebelum tersimpan.",
+    "Nominal tabungan yang tidak boleh tersentuh pengeluaran pada setiap siklus. Nilainya DINAMIS PER SIKLUS — siklus baru mulai dari 0 dan nilai yang diisi hanya berlaku untuk siklus yang sedang dipilih.",
+  "finance.budgetProtectedHint":
+    "Hanya berlaku untuk siklus yang sedang dipilih — siklus baru selalu mulai dari 0.",
+  "finance.budgetProtectedSettledHint":
+    "Siklus ini sudah dikunci (hari terakhir siklus) — nilainya tersimpan sebagai riwayat.",
+  "finance.budgetCycleStatusTitle": "Status Siklus {cycle}",
+  "finance.budgetSettledTag": "Nilai dikunci",
+  "finance.budgetOpenTag": "Masih bisa diubah",
+  "finance.budgetWalletLockedTag": "Dompet terkunci (hanya pemasukan)",
+  "finance.budgetSettledHint":
+    "Uang disimpan pada hari terakhir siklus, jadi nilai tabungan dilindungi siklus ini tidak bisa diubah lagi.",
+  "finance.budgetOpenHint":
+    "Tabungan dilindungi siklus ini masih bisa diubah sampai hari terakhir siklus.",
+  "finance.budgetLeftoverLabel": "Sisa saldo seluruh dompet: {amount}",
+  "finance.budgetLeftoverBreakdown":
+    "Tabungan dilindungi = {base} (diisi) + {leftover} (sisa dompet).",
+  "finance.budgetLeftoverAction": "Pindahkan Sisa ke Tabungan Dilindungi",
+  "finance.budgetLeftoverDone": "Sisa Sudah Dipindahkan",
+  "finance.budgetLeftoverUnavailable":
+    "Hanya bisa dipindahkan pada hari terakhir siklus dan bila masih ada sisa saldo dompet.",
+  "finance.budgetLeftoverConfirmTitle": "Pindahkan sisa ke tabungan dilindungi?",
+  "finance.budgetLeftoverConfirmDesc":
+    "Sisa saldo seluruh dompet sebesar {amount} akan ditambahkan ke tabungan dilindungi siklus ini. Setelah dipindahkan, seluruh dompet pada siklus ini hanya bisa menerima pemasukan (tidak bisa pengeluaran atau transfer).",
+  "finance.budgetLeftoverConfirmOk": "Pindahkan",
+  "finance.budgetLeftoverSuccess":
+    "Sisa dompet berhasil dipindahkan ke tabungan dilindungi.",
+  "finance.walletsLockedTitle": "Dompet Siklus Ini Terkunci",
+  "finance.walletsLockedDesc":
+    "Sisa saldo dompet siklus ini sudah dipindahkan ke tabungan dilindungi, jadi wadah hanya bisa menerima pemasukan — pengeluaran dan transfer dimatikan sampai siklus berikutnya.",
   "finance.budgetOverTitle": "Alokasi Terlampaui",
   "finance.budgetOverDesc":
     "Pengeluaran {spent} sudah melebihi batas alokasi {limit} dan menyentuh tabungan dilindungi.",
@@ -428,6 +456,9 @@ const id: TranslationDict = {
   "form.walletLimitTitle": "Dana Wadah Tidak Cukup",
   "form.walletLimitDesc":
     "Total pengeluaran/transfer dari wadah {wallet} akan menjadi {projected}, melebihi dana tersedia {limit}. Catat pemasukan atau terima transfer masuk ke wadah tersebut terlebih dulu.",
+  "form.walletLockedTitle": "Siklus Terkunci",
+  "form.walletLockedDesc":
+    "Sisa saldo dompet siklus ini sudah dipindahkan ke tabungan dilindungi, jadi hanya pemasukan yang bisa dicatat. {detail}",
   "transactions.recurringTitle": "Transaksi Berulang",
   "transactions.recurringEvery": "tiap tanggal {n}",
   "transactions.recurringEmpty": "Belum ada transaksi berulang.",
@@ -813,7 +844,35 @@ const en: TranslationDict = {
   "finance.budgetSpent": "Spent",
   "finance.budgetSettingTitle": "Set Savings per Cycle",
   "finance.budgetSettingHint":
-    "The amount of savings that spending must not touch each cycle. Expenses that would exceed the allocation limit will require a forced confirmation before saving.",
+    "The amount of savings that spending must not touch each cycle. The value is DYNAMIC PER CYCLE — a new cycle always starts at 0 and the value you enter only applies to the selected cycle.",
+  "finance.budgetProtectedHint":
+    "Applies only to the selected cycle — a new cycle always starts at 0.",
+  "finance.budgetProtectedSettledHint":
+    "This cycle is locked (last day of the cycle) — the value is kept as history.",
+  "finance.budgetCycleStatusTitle": "Cycle {cycle} Status",
+  "finance.budgetSettledTag": "Value locked",
+  "finance.budgetOpenTag": "Still editable",
+  "finance.budgetWalletLockedTag": "Envelopes locked (income only)",
+  "finance.budgetSettledHint":
+    "Money is stored on the last day of the cycle, so this cycle's protected savings can no longer be changed.",
+  "finance.budgetOpenHint":
+    "This cycle's protected savings remains editable until the last day of the cycle.",
+  "finance.budgetLeftoverLabel": "Leftover across all envelopes: {amount}",
+  "finance.budgetLeftoverBreakdown":
+    "Protected savings = {base} (entered) + {leftover} (envelope leftover).",
+  "finance.budgetLeftoverAction": "Move Leftover to Protected Savings",
+  "finance.budgetLeftoverDone": "Leftover Already Moved",
+  "finance.budgetLeftoverUnavailable":
+    "Can only be moved on the last day of the cycle and when an envelope leftover exists.",
+  "finance.budgetLeftoverConfirmTitle": "Move the leftover to protected savings?",
+  "finance.budgetLeftoverConfirmDesc":
+    "The {amount} leftover across all envelopes will be added to this cycle's protected savings. Once moved, every envelope in this cycle can only receive income (no expenses or transfers).",
+  "finance.budgetLeftoverConfirmOk": "Move",
+  "finance.budgetLeftoverSuccess":
+    "Envelope leftover moved to protected savings.",
+  "finance.walletsLockedTitle": "This Cycle's Envelopes Are Locked",
+  "finance.walletsLockedDesc":
+    "This cycle's envelope leftover has been moved to protected savings, so envelopes can only receive income — expenses and transfers are disabled until the next cycle.",
   "finance.budgetOverTitle": "Allocation Exceeded",
   "finance.budgetOverDesc":
     "Spending {spent} has exceeded the {limit} allocation limit and touched your protected savings.",
@@ -894,6 +953,9 @@ const en: TranslationDict = {
   "form.walletLimitTitle": "Insufficient Envelope Funds",
   "form.walletLimitDesc":
     "Total spending/transfers from {wallet} will reach {projected}, exceeding its available funds of {limit}. Record income or receive an incoming transfer to that envelope first.",
+  "form.walletLockedTitle": "Cycle Locked",
+  "form.walletLockedDesc":
+    "This cycle's envelope leftover has been moved to protected savings, so only income can be recorded. {detail}",
   "transactions.recurringTitle": "Recurring Transactions",
   "transactions.recurringEvery": "every day {n}",
   "transactions.recurringEmpty": "No recurring transactions yet.",

@@ -36,6 +36,7 @@ model User {
   updatedAt     DateTime  @updatedAt @map("updated_at")
 
   settings     UserSettings?
+  cycleBudgets CycleBudget[]
   categories   Category[]
   transactions Transaction[]
   targets      SavingsTarget[]
@@ -68,8 +69,9 @@ model UserSettings {
   cycleStartDay Int @default(25) @map("cycle_start_day")
   /// Saldo/modal awal per siklus (dipakai sebagai baseline tabungan).
   savingsInitial Decimal @default(0) @map("savings_initial") @db.Decimal(14, 2)
-  /// Tabungan yang dilindungi per siklus (menu Budget): pengeluaran tidak
-  /// boleh menyentuh nilai ini kecuali dikonfirmasi "terpaksa" user.
+  /// DEPRECATED (kompatibilitas data lama): nilai tabungan dilindungi
+  /// kini DINAMIS per siklus di tabel `cycle_budgets` (siklus baru = 0).
+  /// Kolom ini tidak lagi dibaca/ditulis jalur aplikasi.
   protectedSavings Decimal @default(0) @map("protected_savings") @db.Decimal(14, 2)
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -77,6 +79,37 @@ model UserSettings {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("user_settings")
+}
+
+/// Tabungan yang dilindungi PER SIKLUS (menu Budget) — dinamis: siklus baru
+/// tidak punya baris ini sehingga nilainya 0, dan nilai tiap siklus
+/// tersimpan sebagai riwayat (bukan lagi skalar global di UserSettings).
+model CycleBudget {
+  id     String @id @default(uuid()) @db.Uuid
+  userId String @map("user_id") @db.Uuid
+  /// Kunci siklus netral locale, mis. "2026-08" (lihat CycleInfo.key).
+  cycleKey String @map("cycle_key")
+  /// Tabungan yang dilindungi untuk siklus ini (rupiah).
+  protectedSavings Decimal @default(0) @map("protected_savings") @db.Decimal(14, 2)
+  /// Tambahan dari sisa saldo seluruh dompet yang dipindahkan user ke
+  /// tabungan dilindungi di akhir siklus (aksi "pindahkan sisa").
+  leftoverAdded Decimal @default(0) @map("leftover_added") @db.Decimal(14, 2)
+  /// Waktu nilai siklus ini DIKUNCI (hari terakhir siklus) — uang
+  /// "disimpan" pada hari terakhir siklus; setelah terkunci, tabungan
+  /// dilindungi siklus ini tidak bisa diubah lagi.
+  settledAt DateTime? @map("settled_at")
+  /// Waktu sisa dompet dipindahkan ke tabungan dilindungi. Setelah ini
+  /// seluruh dompet hanya boleh menerima pemasukan (tanpa pengeluaran/
+  /// transfer keluar) pada siklus ini.
+  lockedAt DateTime? @map("locked_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, cycleKey])
+  @@index([userId])
+  @@map("cycle_budgets")
 }
 
 /// Kategori/wadah alokasi milik user (dinamis, di DB).
