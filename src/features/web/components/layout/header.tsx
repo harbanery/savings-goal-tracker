@@ -80,7 +80,9 @@ export default function HeaderLayout() {
       style={{
         position: "sticky",
         top: 0,
-        zIndex: 10,
+        // Di atas rail sider (z-20) agar header "menimpa" sider: rail tampak
+        // hanya di sisi kiri content, bukan menembus header.
+        zIndex: 30,
         display: "flex",
         alignItems: "center",
         justifyContent: "space-between",
