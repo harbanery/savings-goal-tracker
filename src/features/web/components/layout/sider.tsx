@@ -24,8 +24,9 @@ import { menuConfig } from "@/features/web/utils/menu";
  * - Karena rail `fixed` keluar dari alur normal, kolom content diberi
  *   padding kiri senilai lebar rail (lihat layout/index.tsx).
  *
- * Ikon mengikuti state: item AKTIF memakai varian *Filled* + aksen primary,
- * item lain *Outlined* (`menuConfig` menyimpan kedua variannya).
+ * Ikon mengikuti state lewat prop `icon` antd Button: item AKTIF memakai
+ * varian *Filled* + aksen primary, item lain *Outlined* (`menuConfig`
+ * menyimpan kedua variannya).
  */
 export default function SiderLayout() {
   const router = useRouter();
@@ -66,16 +67,19 @@ export default function SiderLayout() {
             aria-label={t(m.labelKey)}
             aria-current={active ? "page" : undefined}
             title={t(m.labelKey)}
-            className="flex! h-10! w-full! shrink-0! items-center! justify-start! gap-3! rounded-xl! px-3!"
+            icon={
+              <span className="flex size-4 shrink-0 items-center justify-center text-base leading-none">
+                {/* Filled saat aktif, outlined saat tidak. */}
+                {active ? m.iconFilled : m.icon}
+              </span>
+            }
+            className="flex! h-10! w-full! shrink-0! items-center! justify-start! group-hover/rail:rounded-xl!"
+            shape="round"
             style={{
               color: active ? token.colorPrimary : token.colorTextSecondary,
               background: active ? token.colorPrimaryBg : undefined,
             }}
           >
-            {/* Ikon: filled saat aktif, outlined saat tidak. */}
-            <span className="flex size-4 shrink-0 items-center justify-center text-base leading-none">
-              {active ? m.iconFilled : m.icon}
-            </span>
             {/* Label: hanya tampil saat rail mengembang (rail di-hover),
                 tetapi ruangnya selalu ada agar ikon tidak bergeser. */}
             <span className="whitespace-nowrap text-sm font-medium opacity-0 transition-opacity duration-150 group-hover/rail:opacity-100">
